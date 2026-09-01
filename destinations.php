@@ -76,6 +76,17 @@ $cat  = isset($_GET['cat'])  ? trim($_GET['cat'])  : '';
    others, which means a search result is a shareable URL too. */
 $q    = isset($_GET['q'])    ? trim($_GET['q'])    : '';
 
+/* ?focus=<slug> is read in JavaScript only, at the foot of this page.
+   It is NOT a filter: it does not narrow the 24, it says which pin to
+   open once the map is up. Filtering to one result would leave the map
+   showing a single dot with no coast around it, which is worse than
+   useless for working out where a place actually is.
+
+   No PHP counterpart on purpose. Opening a map pin needs Leaflet, so
+   there is nothing a no-JS visitor could be given here, and the slug is
+   validated against the printed data-focus attributes — which is a
+   stronger check than re-deriving the slugs would be. */
+
 $allPlaces = $destinations;   /* the unfiltered 24, for counts */
 
 /* ===================================================================
@@ -243,15 +254,38 @@ foreach ($destinations as $d) {
    bottom half now and scrolls, so a cap would only be hiding
    destinations behind nothing.
    =================================================================== */
+/* ALL 24, NEVER THE FILTERED SET.
+
+   This used to read $destinations, so the block narrowed with the
+   filter. That was right when every filter change was a page load.
+   It is wrong now that searching swaps the results in place: the
+   swap replaces the chips and the grid, deliberately leaving the
+   banner alone, because the crossfading photo layers here belong to
+   destinations-hero.js and tearing them out from under it breaks
+   the slideshow.
+
+   Which left the banner frozen on whatever the filter was when the
+   page last loaded. Search Vinzons, clear the box, and the grid and
+   the map came back to all 24 while this still read 02 / 02 — the
+   one part of the page that had not caught up, and the largest.
+
+   Reading $allPlaces makes it a fixed showcase instead. It cannot go
+   stale because it never changes, and the results below it are
+   answering the search on their own.
+
+   TO PUT THE OLD BEHAVIOUR BACK you would need more than this line:
+   the hero would have to become a swap region too, and
+   destinations-hero.js would need re-initialising on
+   destinations:swapped. */
 $railPicks = [];
 $railTowns = [];
-foreach ($destinations as $d) {
+foreach ($allPlaces as $d) {
     if (in_array($d['town'], $railTowns, true)) continue;
     $railTowns[] = $d['town'];
     $railPicks[] = $d;
 }
 $picked = array_column($railPicks, 'name');
-foreach ($destinations as $d) {
+foreach ($allPlaces as $d) {
     if (in_array($d['name'], $picked, true)) continue;
     $railPicks[] = $d;
 }
@@ -655,8 +689,9 @@ $showIntro = true;
      link are rewritten in place rather than the block being rebuilt,
      so focus survives the switch.
 
-     Filters narrow this. Pick "Falls & Rivers" and the section is
-     waterfalls, because $railPicks comes from the FILTERED set.
+     ALWAYS ALL 24, whatever is filtered below. $railPicks reads
+     $allPlaces — see the note above it for why it stopped following
+     the filter.
 
      LAYERS, bottom to top:
        1  .hero-feature__fallback   the video, seen only through gaps
@@ -889,7 +924,28 @@ $showIntro = true;
         }, 4000);
       }
 
-      function go(url, push) {
+      /* live=true means "the visitor is still typing".
+
+         Three things have to behave differently for a keystroke than
+         for a deliberate submit, and all three are wrong by default:
+
+           HISTORY   pushState per keystroke buries the page they
+                     came from under one entry per letter. Typing
+                     "bagasbas" and pressing Back eight times to
+                     escape is not a back button.
+
+           THE MAP   narrowing to one card auto-opens its pin. Mid-
+                     word that fires and re-fires as the count passes
+                     through one, yanking the map around while the
+                     visitor is looking at the keyboard.
+
+           FOCUS     a zero-result response re-focuses and selects
+                     the field, which mid-typing would eat the next
+                     character.
+
+         So typing REPLACES the history entry and stays quiet; Enter
+         pushes one and does the rest. */
+      function go(url, push, live) {
         /* a second search while the first is still in the air wins.
            Without this the slower response can land last and put the
            wrong results on screen. */
@@ -947,9 +1003,15 @@ $showIntro = true;
                 ? 'Nothing matches \u201c' + term + '\u201d'
                 : 'Nothing matches that combination');
 
-              /* put the caret back where the fix has to happen */
-              var box = document.getElementById('destSearch');
-              if (box && term) { box.focus(); box.select(); }
+              /* Put the caret back where the fix has to happen — but
+                 ONLY after a deliberate submit. Doing this on a
+                 keystroke would select the text the visitor is
+                 halfway through, and the next letter would replace
+                 all of it. */
+              if (!live) {
+                var box = document.getElementById('destSearch');
+                if (box && term) { box.focus(); box.select(); }
+              }
               return;
             }
 
@@ -963,10 +1025,24 @@ $showIntro = true;
               var cur  = document.getElementById('destMapPoints');
               if (isle && cur) cur.textContent = isle.textContent;
 
+              /* and the sentence that counts them. ONLY this element:
+                 the section around it holds Leaflet's container and must
+                 not be rebuilt. */
+              var cntNew = doc.getElementById('destMapCount');
+              var cntCur = document.getElementById('destMapCount');
+              if (cntNew && cntCur) cntCur.innerHTML = cntNew.innerHTML;
+
               if (doc.title) document.title = doc.title;
             });
 
-            if (push) history.pushState({ destSwap: true }, '', url);
+            /* replaceState while typing: the URL stays true to what
+               is on screen and stays shareable, without one entry
+               per letter. */
+            if (push) {
+              history.pushState({ destSwap: true }, '', url);
+            } else if (live) {
+              history.replaceState({ destSwap: true }, '', url);
+            }
 
             /* keep the box in step when the back button drives this */
             var field = document.getElementById('destSearch');
@@ -984,14 +1060,28 @@ $showIntro = true;
                pins. Until those lines exist the cards render correctly
                but the map pins stay on the previous result. */
             document.dispatchEvent(new CustomEvent('destinations:swapped', {
-              detail: { url: url }
+              /* live is passed on so the map knows not to fly to a
+                 pin while somebody is still choosing a word. */
+              detail: { url: url, live: !!live }
             }));
 
-            /* only chase the results if they are off the top of the
-               screen. Someone already looking at the grid should not have
-               the page yanked out from under them. */
-            var top = bar.getBoundingClientRect().top;
-            if (top < 0) bar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            /* TYPING NEVER MOVES THE PAGE.
+
+               The grid updating under a scroll position the visitor chose
+               is the whole point of filtering in place. They can see the
+               count change, and they scroll down when they are ready.
+               Deciding that for them on a keystroke takes the page away
+               mid-word.
+
+               A DELIBERATE SUBMIT OR A CHIP still gets the old
+               correction, and only when the bar has gone off the TOP of
+               the screen — pressing Enter from the banner and being left
+               looking at the banner is a dead end. Results already in
+               view are left where they are. */
+            if (!live) {
+              var top = bar.getBoundingClientRect().top;
+              if (top < 0) bar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
           })
           .catch(function (err) {
             if (err && err.name === 'AbortError') return;
@@ -1002,8 +1092,72 @@ $showIntro = true;
 
       form.addEventListener('submit', function (e) {
         e.preventDefault();
-        go(formUrl(), true);
+        clearTimeout(typeTimer);   /* Enter beats a pending keystroke */
+        go(formUrl(), true, false);
       });
+
+      /* ---- FILTERING AS YOU TYPE ----
+
+         WHY THIS STILL GOES TO THE SERVER for 24 places. The filter
+         is four lines of PHP at the top of this file, and it also
+         decides the category counts, the chips, the result line and
+         the map payload. Doing it again in JavaScript means two
+         implementations of one rule, and the day someone edits the
+         PHP the typed version quietly disagrees with the submitted
+         one. The response is small and the abort below means only
+         the last one is ever applied.
+
+         220ms IS THE PAUSE, not a delay on every letter. Fast typing
+         cancels and re-arms, so a word is one request rather than
+         eight. Long enough to skip the middle of a word, short
+         enough to feel immediate when you stop.
+
+         TWO CHARACTERS MINIMUM. One letter matches most of the
+         province and the grid thrashes for no information. Clearing
+         the box is exempt: empty means "show everything again", and
+         waiting for two characters would leave the last search
+         stranded on screen with an empty field above it. */
+      var typeTimer = null;
+      var lastSent  = null;
+      var composing = false;
+
+      function queueLive() {
+        /* An IME composes a character over several keystrokes. Firing
+           mid-composition searches for a half-formed word and can
+           disturb the candidate window. */
+        if (composing) return;
+
+        clearTimeout(typeTimer);
+
+        var field = document.getElementById('destSearch');
+        var term  = field ? field.value.trim() : '';
+        if (term !== '' && term.length < 2) return;
+
+        typeTimer = setTimeout(function () {
+          var url = formUrl();
+
+          /* Backspacing to a term already on screen, or any edit that
+             leaves the query unchanged, is not a new search. */
+          if (url === lastSent) return;
+          lastSent = url;
+
+          go(url, false, true);
+        }, 220);
+      }
+
+      var field = document.getElementById('destSearch');
+      if (field) {
+        field.addEventListener('input', queueLive);
+        field.addEventListener('compositionstart', function () { composing = true; });
+        field.addEventListener('compositionend', function () {
+          composing = false;
+          queueLive();
+        });
+
+        /* the little x inside type=search clears the field without
+           firing input in some browsers */
+        field.addEventListener('search', queueLive);
+      }
 
       /* the chips are plain <a href> and reload for the same reason the
          form did. Delegated, because the bar replaces its own contents. */
@@ -1017,7 +1171,7 @@ $showIntro = true;
         if (!/destinations\.php$/.test(url.pathname)) return;
 
         e.preventDefault();
-        go(url.pathname + url.search + url.hash, true);
+        go(url.pathname + url.search + url.hash, true, false);
       });
 
       /* "Clear filters" and the empty-state link live in #destMain */
@@ -1209,7 +1363,16 @@ $showIntro = true;
     <div class="dest-atlas__bar">
       <div class="dest-atlas__title">
         <span class="dest-atlas__label">Province map</span>
-        <p class="dest-atlas__hint">
+        <!-- id so the swap can refresh JUST this sentence.
+
+             The map section is deliberately NOT one of the regions the
+             search swaps: #destMap below is Leaflet's own container and
+             replacing it would leave a grey box. But that meant this
+             line, which counts the FILTERED set, froze at whatever the
+             page loaded with — search one town and it read "1 of 1
+             mapped" for the rest of the visit, even after the pins had
+             gone back to all 24. -->
+        <p class="dest-atlas__hint" id="destMapCount">
           <?= count($mapPoints) ?> of <?= count($destinations) ?> mapped &mdash; every pin sits on the spot itself. Tap one for details.
         </p>
       </div>
@@ -1690,6 +1853,127 @@ $showIntro = true;
      Bottom CENTRE, kept clear of the Bud.Ai widget in the bottom right.
      ================================================================== -->
 <div id="destToast" class="dest-toast" role="status" aria-live="polite"></div>
+
+<!-- ===================================================================
+     OPEN ONE PIN ON ARRIVAL
+
+     THIS ADDS NO NEW MAP CODE. Every card already prints a Map button
+     carrying data-focus="<slug>" (see .dest-card__map above), and
+     destinations-map.js already listens for it — that is the same path
+     a visitor takes when they press Map on a card by hand. All this
+     does is press it for them.
+
+     Driving the existing button rather than calling into the map
+     directly means this keeps working through any change to how the
+     map opens a pin, and it cannot get out of step with what the
+     button does.
+
+     TWO WAYS IN:
+       ?focus=bagasbas-beach   an exact hand-off, from search.php
+       ?q=bagasbas             a search that left exactly ONE card
+
+     The second is the one that makes searching feel like it knows the
+     province: narrow to a single place and the map opens it rather
+     than making you find the one card and press Map yourself.
+     =================================================================== -->
+<script>
+(function () {
+  function ready(fn) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', fn);
+    } else { fn(); }
+  }
+
+  /* WAITING FOR THE MAP, NOT FOR THE BUTTON.
+
+     The handler for data-focus is delegated on document from inside
+     destinations-map.js (line ~878), and it looks the slug up in a
+     markers object that is not populated until Leaflet has loaded and
+     the pins are placed. The button itself is printed by PHP and is
+     therefore there from the very first parse.
+
+     So testing for the button proves nothing. Click too early and the
+     handler runs, finds markers[slug] undefined, and returns — a clean
+     silent no-op, and the retry would stop because the button existed.
+
+     A placed pin is the honest signal: .leaflet-marker-icon only
+     appears inside #destMap once Leaflet has actually drawn one.
+
+     Twenty attempts at 150ms is three seconds. Leaflet also calls
+     invalidateSize at 300ms, so this has to outlast that comfortably
+     while still giving up rather than polling forever. */
+  function press(slug, tries) {
+    tries = tries || 0;
+
+    var btn    = document.querySelector('[data-focus="' + slug + '"]');
+    var placed = document.querySelector('#destMap .leaflet-marker-icon');
+
+    if (btn && placed) {
+      /* NO SCROLLING HERE. The map handler already ends with
+         host.scrollIntoView({ block: "start" }) — a second smooth
+         scroll from this side, to a different block position, fights
+         it and the page ends up somewhere neither asked for. */
+      btn.click();
+      return;
+    }
+
+    if (tries < 20) {
+      setTimeout(function () { press(slug, tries + 1); }, 150);
+    }
+  }
+
+  /* A destination with no coordinates prints no Map button at all (the
+     $ll check on the card), so there is genuinely nothing to open. Say
+     so rather than failing quietly. */
+  function announce(msg) {
+    var el = document.getElementById('destToast');
+    if (!el) return;
+    el.textContent = '';
+    el.textContent = msg;
+    el.classList.add('is-on');
+    setTimeout(function () { el.classList.remove('is-on'); }, 4000);
+  }
+
+  function run() {
+    var params = new URLSearchParams(location.search);
+    var slug = params.get('focus') || '';
+
+    if (slug) {
+      if (document.querySelector('[data-focus="' + slug + '"]')) {
+        press(slug);
+      } else {
+        announce('That place is not on the map yet');
+      }
+      return;
+    }
+
+    /* A SEARCH THAT LEFT EXACTLY ONE CARD is an exact hit in all but
+       name, so treat it as one. More than one and we must not choose —
+       the visitor is still deciding, and opening a pin for them would
+       be answering a question they have not asked. */
+    if (!params.get('q')) return;
+
+    var cards = document.querySelectorAll('#destGrid .dest-card');
+    if (cards.length !== 1) return;
+
+    var only = cards[0].querySelector('[data-focus]');
+    if (only) press(only.getAttribute('data-focus'));
+  }
+
+  ready(run);
+
+  /* the swap never reloads the page, so a search that narrows to one
+     card has to reach this the same way a fresh load does */
+  document.addEventListener('destinations:swapped', function (e) {
+    /* Not while they are still typing. A query passing through a
+       single match on its way to a longer word would open that pin,
+       zoom to 15 and scroll the map into view — for a word the
+       visitor had not finished. Enter still does all of it. */
+    if (e && e.detail && e.detail.live) return;
+    setTimeout(run, 0);
+  });
+}());
+</script>
 
 <style>
   .dest-toast {

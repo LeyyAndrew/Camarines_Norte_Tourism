@@ -810,8 +810,13 @@
 
   var markers = {};
   var group   = [];
+  var home    = null;
 
-  POINTS.forEach(function (p, i) {
+  /* Was an inline POINTS.forEach. Named and re-callable now because
+     destinations.php can replace the results without reloading the
+     page — see buildMarkers and the destinations:swapped listener at
+     the foot of this file. Body is unchanged. */
+  function addMarker(p, i) {
     var m = L.marker([p.lat, p.lng], {
       icon: pinFor(i),
       title: p.name,          /* the native tooltip, for keyboard and screen readers */
@@ -869,10 +874,37 @@
 
     markers[p.slug] = m;
     group.push([p.lat, p.lng]);
-  });
+  }
 
-  var home = L.latLngBounds(group).pad(0.15);
-  map.fitBounds(home);
+  /* Tears down whatever is on the map and lays the current POINTS
+     down fresh. Called once on load, and again after every swap.
+
+     REMOVING FIRST MATTERS. Leaflet has no concept of "the markers
+     this file put here" — add a second set without taking the first
+     away and the province quietly accumulates pins, with the old
+     ones still answering clicks for destinations no longer in the
+     results.
+
+     AN EMPTY SET LEAVES THE VIEW ALONE. L.latLngBounds([]) is not a
+     valid bounds and fitBounds throws on it, which would take the
+     rest of the swap down with it. Holding the previous view is also
+     the right answer for the visitor: the map stays where they were
+     looking rather than snapping to nothing. */
+  function buildMarkers() {
+    Object.keys(markers).forEach(function (k) {
+      map.removeLayer(markers[k]);
+    });
+    markers = {};
+    group   = [];
+
+    POINTS.forEach(addMarker);
+    if (!group.length) return;
+
+    home = L.latLngBounds(group).pad(0.15);
+    map.fitBounds(home);
+  }
+
+  buildMarkers();
 
   /* "Show on map" on a card: centre its pin and show its balloon */
   document.addEventListener('click', function (e) {
@@ -913,7 +945,9 @@
     map.closePopup();
     Object.keys(markers).forEach(function (k) { markers[k].closeTooltip(); });
     setActivePin(null);
-    map.fitBounds(home);
+    /* null after a filter that matched nothing mappable — there is no
+       home to go back to, and fitBounds(null) throws. */
+    if (home) map.fitBounds(home);
   });
 
   /* A pin sitting comfortably mid-panel can be hard against an edge
@@ -927,6 +961,49 @@
      someone has clicked into it, zooming is exactly what they want */
   map.on('focus', function () { map.scrollWheelZoom.enable(); });
   map.on('blur',  function () { map.scrollWheelZoom.disable(); });
+
+  /* =================================================================
+     RESULTS CHANGED WITHOUT A PAGE LOAD
+
+     destinations.php fetches itself and swaps the grid in place, so
+     the document this file initialised against is never torn down and
+     nothing here would otherwise run again. The pins would sit on the
+     previous search for the rest of the visit.
+
+     That page refreshes the #destMapPoints island as part of the swap
+     and then fires this event, so the fresh data is already in the DOM
+     by the time we are called — this re-reads it rather than being
+     handed it, which keeps the contract identical to the one on first
+     load and means there is only one way this file ever gets data.
+
+     THE OPEN BALLOON AND THE ACTIVE PIN ARE CLEARED FIRST. Both point
+     at marker objects that are about to be removed from the map, and a
+     tooltip anchored to a marker that is no longer there is a balloon
+     floating over the province attached to nothing.
+
+     A BAD PAYLOAD CHANGES NOTHING. Parsing before touching any state
+     means a truncated or malformed island leaves the previous pins
+     standing, which is stale but coherent — better than half-applying
+     it and leaving an empty map with no way back.
+     ================================================================= */
+  document.addEventListener('destinations:swapped', function () {
+    var el = document.getElementById('destMapPoints');
+    if (!el) return;
+
+    var next;
+    try { next = JSON.parse(el.textContent); }
+    catch (e) { return; }
+    if (!Array.isArray(next)) return;
+
+    if (openTip) { openTip.closeTooltip(); openTip = null; }
+    setActivePin(null);
+
+    POINTS  = next;
+    BY_SLUG = {};
+    POINTS.forEach(function (p, i) { p._n = i + 1; BY_SLUG[p.slug] = p; });
+
+    buildMarkers();
+  });
 
   /* Leaflet is often laid out before it is visible, which leaves it
      holding the wrong dimensions and painting grey gaps where tiles
