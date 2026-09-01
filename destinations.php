@@ -280,6 +280,9 @@ $featured = $railPicks[0] ?? ($destinations[0] ?? null);
 $heroSlides = [];
 foreach ($railPicks as $d) {
     $heroSlides[] = [
+        /* the primary key, so the hero's save button can re-point at
+           whichever destination is currently showing */
+        'id'    => $d['id'] ?? null,
         'slug'  => destSlug($d['name']),
         'name'  => $d['name'],
         'town'  => $d['town'],
@@ -756,12 +759,31 @@ $showIntro = true;
         <a class="hero-feature__cta" id="heroCta"
            href="#dest-<?= destSlug($featured['name']) ?>">Explore</a>
 
+        <!-- SIGNED IN this is a working bookmark; signed out it stays
+             the auth gate it has always been.
+
+             data-destination-id starts on the featured destination and
+             is rewritten by assets/js/saved-places.js each time the
+             hero changes slide — the block cycles through 24 places
+             behind one button, so a fixed id would save the wrong one
+             from the second slide onwards. -->
+        <?php if (isset($_SESSION['user_id']) && !empty($featured['id'])): ?>
+        <button type="button" class="hero-feature__save" data-save data-hero-save
+                data-destination-id="<?= (int) $featured['id'] ?>"
+                aria-pressed="false"
+                aria-label="Save this destination">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-4-6.5 4v-16a1 1 0 0 1 1-1z"></path>
+          </svg>
+        </button>
+        <?php else: ?>
         <button type="button" class="hero-feature__save" data-auth-gate
                 aria-label="Save this destination">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-4-6.5 4v-16a1 1 0 0 1 1-1z"></path>
           </svg>
         </button>
+        <?php endif; ?>
       </div>
 
       <!-- ---- previous / next ----
