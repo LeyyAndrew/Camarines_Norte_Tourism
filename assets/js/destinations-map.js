@@ -282,6 +282,16 @@
 
   function closeSheet() {
     if (!sheet || sheet.hidden) return;
+
+    /* Captured before openSlug is cleared: closing the panel should put
+       you back where you were, which is the pin with its balloon open —
+       not on a map that has quietly forgotten what you were looking at.
+
+       The pin's click handler closes the balloon on the way in, because
+       on a phone it would otherwise sit behind the panel. That is right
+       going in and wrong coming out, so it is reopened here. */
+    var wasOpen = openSlug;
+
     sheet.classList.remove('is-open');
     document.body.classList.remove('dest-sheet-open');
     openSlug = null;
@@ -294,6 +304,22 @@
     }, 220);
 
     if (lastFocus && lastFocus.focus) lastFocus.focus();
+
+    /* CLOSING THE PANEL CLEARS THE PIN.
+
+       X means done with this destination, so the map goes back to
+       neutral: no balloon, no highlighted pin. Leaving either behind
+       makes the map look like it is still mid-answer, and the balloon
+       in particular reappears over a province the visitor has already
+       moved on from.
+
+       The balloon is closed rather than left to Leaflet's pointer
+       handling: one opened by the Map button on a card has no pointer
+       to leave, so nothing would ever dismiss it. */
+    var m = wasOpen && markers[wasOpen];
+    if (m) m.closeTooltip();
+    closeOtherTips(null);
+    setActivePin(null);
   }
 
   buildSheet();
@@ -621,6 +647,14 @@
   var TIP_PAD = 8;    /* keep this much balloon inside the map edge */
   var openTip = null; /* the marker whose balloon is currently open */
 
+  /* Every balloon except this one. Called on open, so the rule holds
+     however the balloon was opened. */
+  function closeOtherTips(keep) {
+    Object.keys(markers).forEach(function (k) {
+      if (markers[k] !== keep) markers[k].closeTooltip();
+    });
+  }
+
   function positionerFor(m) {
     return function () {
       var el = this._container;
@@ -801,6 +835,21 @@
 
     m.on('tooltipopen', function (e) {
       var el = e.tooltip.getElement();
+
+      /* ONE BALLOON AT A TIME.
+
+         Leaflet closes a tooltip when the pointer leaves the pin, which
+         is enough while they are only ever opened by hovering. The Map
+         button on a card opens one programmatically, and that one has no
+         pointer to leave — so pressing Map on a second card left the
+         first balloon sitting on the province with nothing to dismiss it.
+         Two open at once also means two photographs competing, and
+         neither is the one you just asked for.
+
+         Closing from inside tooltipopen catches every route: hover, the
+         Map button, and anything added later. */
+      closeOtherTips(m);
+
       ownPlacement(m, e.tooltip); /* take over positioning, before anything else */
       guardImages(el);            /* the balloon's own images */
       openTip = m;
