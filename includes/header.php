@@ -569,10 +569,22 @@ if ($pageCss !== 'assets/css/search.css' && is_file(__DIR__ . '/../' . $pageCss)
 
            THE BUTTON IS NOT THE GATE. plan-trip.php checks the session
            itself, because this only stops the click, not the URL. -->
-      <?php if ($navSignedIn): ?>
-        <a href="plan-trip.php" class="nav__cta">Plan your trip</a>
-      <?php else: ?>
-        <button type="button" class="nav__cta" style="border:0;font-family:inherit;-webkit-appearance:none;appearance:none;cursor:pointer" data-auth-gate>Plan your trip</button>
+      <?php
+      /* NOT ON THE PAGE IT POINTS AT. On plan-trip.php this is an
+         invitation to go where you already are, and clicking it throws
+         away whatever has been typed into the builder — the page holds
+         its state in memory, so a reload is a blank itinerary.
+
+         Hidden rather than disabled: a greyed-out control still asks to
+         be read and explained. The gap it leaves is the point, and the
+         nav's own is-active state already says where you are. */
+      ?>
+      <?php if ($here !== 'plan-trip.php'): ?>
+        <?php if ($navSignedIn): ?>
+          <a href="plan-trip.php" class="nav__cta">Plan your trip</a>
+        <?php else: ?>
+          <button type="button" class="nav__cta" style="border:0;font-family:inherit;-webkit-appearance:none;appearance:none;cursor:pointer" data-auth-gate>Plan your trip</button>
+        <?php endif; ?>
       <?php endif; ?>
 
       <!-- The burger. Hidden from 1080px up. -->
@@ -736,10 +748,13 @@ if ($pageCss !== 'assets/css/search.css' && is_file(__DIR__ . '/../' . $pageCss)
     </nav>
 
     <div class="nav-drawer__foot">
-      <?php if ($navSignedIn): ?>
-        <a href="plan-trip.php" class="nav__cta nav__cta--block">Plan your trip</a>
-      <?php else: ?>
-        <button type="button" class="nav__cta nav__cta--block" style="border:0;font-family:inherit;-webkit-appearance:none;appearance:none;cursor:pointer" data-auth-gate>Plan your trip</button>
+      <?php /* Same reasoning as the desktop CTA above. */ ?>
+      <?php if ($here !== 'plan-trip.php'): ?>
+        <?php if ($navSignedIn): ?>
+          <a href="plan-trip.php" class="nav__cta nav__cta--block">Plan your trip</a>
+        <?php else: ?>
+          <button type="button" class="nav__cta nav__cta--block" style="border:0;font-family:inherit;-webkit-appearance:none;appearance:none;cursor:pointer" data-auth-gate>Plan your trip</button>
+        <?php endif; ?>
       <?php endif; ?>
       <?php if (isset($_SESSION['user_id'])): ?>
         <p class="nav-drawer__who">Signed in as <strong><?= htmlspecialchars($navName, ENT_QUOTES, 'UTF-8') ?></strong></p>
