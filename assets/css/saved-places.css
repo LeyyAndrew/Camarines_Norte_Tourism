@@ -1,0 +1,390 @@
+/* ===================================================================
+   assets/css/saved-places.css
+
+   The bookmark button, the picker panel it fills, and the toast that
+   confirms a save. Loaded on every page by includes/header.php,
+   because a card can appear on the homepage, on destinations.php and
+   in search results, and the panel is opened from plan-trip.php.
+
+   COLOURS COME FROM base.css. --orange, --navy, --ink and the rest
+   are the project's tokens; the fallbacks after each are only for the
+   case where this file somehow loads without base.css, so a button
+   still reads rather than disappearing into its own background.
+
+   The button borrows its glass treatment from .dest-card__tag in
+   destinations.css — same blur, same inset hairline, same dark plate.
+   They sit on opposite corners of the same photograph and would look
+   like two unrelated products otherwise.
+   =================================================================== */
+
+/* ---------- 1. THE BOOKMARK BUTTON ---------- */
+
+.save-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(10, 19, 32, .62);
+  -webkit-backdrop-filter: blur(10px) saturate(1.3);
+          backdrop-filter: blur(10px) saturate(1.3);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18);
+  color: #fff;
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+}
+
+.save-btn svg {
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
+}
+
+.save-btn:hover {
+  background: rgba(10, 19, 32, .8);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3);
+}
+
+/* Keyboard focus has to clear the photograph behind it, so the ring is
+   drawn outside the button rather than inset like the hover state. */
+.save-btn:focus-visible {
+  outline: 2px solid var(--orange, #f2a33c);
+  outline-offset: 2px;
+}
+
+/* SAVED. The fill is the state — not a checkmark, not a second icon —
+   so the button says the same thing at a glance from across the grid
+   that it says up close. */
+.save-btn.is-saved {
+  background: var(--orange, #f2a33c);
+  color: #10161f;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .35);
+}
+
+.save-btn.is-saved svg {
+  animation: sp-pop .3s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+@keyframes sp-pop {
+  from { transform: scale(.72); }
+  to   { transform: scale(1); }
+}
+
+/* ---------- 2. ON A DESTINATION CARD ----------
+
+   The bookmark now sits in .dest-card__actions beside Map, and borrows
+   .dest-card__map's own rule to get there — that class is on the
+   button too, so it inherits the pill shape, the size and, crucially,
+   the position:relative; z-index:4 that lifts it clear of the
+   stretched View details link.
+
+   What is left here is only what differs from Map: the saved state.
+   Anything more would be re-declaring a rule that already works. */
+
+.dest-card__save.is-saved {
+  background: var(--orange, #f2a33c);
+  border-color: var(--orange, #f2a33c);
+  color: #10161f;
+}
+
+.dest-card__save svg { width: 1rem; height: 1rem; }
+
+.dest-card__save.is-saved svg {
+  animation: sp-pop .3s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+/* The label text is swapped in JS (Save / Saved), so nothing is
+   declared for it here. It is reserved a fixed minimum width instead,
+   so the longer word does not nudge the Map button sideways when the
+   state flips — a row that shifts under the cursor reads as a
+   misclick even when the click landed. */
+.dest-card__save-label { min-width: 3.1em; text-align: left; }
+
+/* THE PULSE. One ring, expanding once, on the button that was actually
+   pressed. There are 24 identical cards; the toast says what happened,
+   this says where. It draws outside the button so it never covers the
+   label, and it is purely decorative, so pointer-events are off. */
+.sp-just-changed { position: relative; }
+
+.sp-just-changed::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid var(--orange, #f2a33c);
+  pointer-events: none;
+  animation: sp-ring .6s ease-out forwards;
+}
+
+@keyframes sp-ring {
+  from { opacity: 1;   transform: scale(1); }
+  to   { opacity: 0;   transform: scale(1.35); }
+}
+
+/* ---------- 2b. THE HERO BUTTON ----------
+   destinations.css already styles .hero-feature__save — the circle,
+   the size, the glass. Only the saved state is new. */
+
+.hero-feature__save.is-saved {
+  background: var(--orange, #f2a33c);
+  border-color: var(--orange, #f2a33c);
+  color: #10161f;
+}
+
+.hero-feature__save.is-saved svg { fill: currentColor; }
+
+/* ---------- 3. THE PICKER TRIGGER ----------
+   Used in the Trip details header on plan-trip.php. Ghost-weight on
+   purpose: the primary action on that page is Save my itinerary, and a
+   second filled button beside the heading would compete with it. */
+
+.sp-trigger {
+  margin-left: auto;          /* right edge of .pt-card-h, without editing it */
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .5rem .85rem;
+  border: 1px solid var(--rule, rgba(255, 255, 255, .16));
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink, #eef1f4);
+  font: inherit;
+  font-size: .82rem;
+  cursor: pointer;
+  transition: border-color .16s ease, color .16s ease;
+}
+
+.sp-trigger:hover {
+  border-color: var(--orange, #f2a33c);
+  color: var(--orange, #f2a33c);
+}
+
+.sp-trigger:focus-visible {
+  outline: 2px solid var(--orange, #f2a33c);
+  outline-offset: 2px;
+}
+
+/* ---------- 3. THE COUNT ON THE PICKER TRIGGER ---------- */
+
+/* On plan-trip.php this badge sits inside a .pt-scope button, which is
+   a small control — so the badge is sized in em and rides whatever the
+   button's font-size is, rather than carrying a fixed px size that
+   would swamp it. */
+[data-saved-count] {
+  display: inline-block;
+  min-width: 1.4em;
+  margin-left: .45em;
+  padding: .05em .4em;
+  border-radius: 999px;
+  background: var(--orange, #f2a33c);
+  color: #10161f;
+  font-size: .78em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* ---------- 4. THE PANEL ----------
+   A right-hand sheet rather than a centred dialog: on plan-trip.php it
+   is read against the itinerary it feeds, and a centred box would
+   cover the thing you are adding to. */
+
+.sp-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;   /* above the sticky nav */
+}
+
+.sp-panel__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 11, 18, .62);
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+
+.sp-panel.is-open .sp-panel__scrim { opacity: 1; }
+
+.sp-panel__sheet {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(23rem, 100%);
+  display: flex;
+  flex-direction: column;
+  background: var(--navy, #0f1722);
+  border-left: 1px solid var(--rule, rgba(255, 255, 255, .1));
+  color: var(--ink, #eef1f4);
+  transform: translateX(100%);
+  transition: transform .22s cubic-bezier(.32, .72, 0, 1);
+}
+
+.sp-panel.is-open .sp-panel__sheet { transform: none; }
+
+.sp-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem .3rem;
+}
+
+.sp-panel__head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.sp-panel__close {
+  border: 0;
+  background: none;
+  color: var(--quiet, #97a1ad);
+  font-size: 1.6rem;
+  line-height: 1;
+  padding: 0 .2rem;
+  cursor: pointer;
+}
+
+.sp-panel__close:hover { color: var(--ink, #eef1f4); }
+
+.sp-panel__hint {
+  margin: 0;
+  padding: 0 1.25rem 1rem;
+  color: var(--quiet, #97a1ad);
+  font-size: .84rem;
+}
+
+.sp-panel__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 1.25rem 1.5rem;
+}
+
+/* ---------- 5. THE SAVED LIST ---------- */
+
+.sp-list { list-style: none; margin: 0; padding: 0; }
+
+.sp-item {
+  display: grid;
+  grid-template-columns: 3.2rem 1fr auto auto;
+  align-items: center;
+  gap: .7rem;
+  padding: .7rem 0;
+  border-top: 1px solid var(--rule, rgba(255, 255, 255, .1));
+}
+
+.sp-item:first-child { border-top: 0; }
+
+.sp-item__img {
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: .5rem;
+  object-fit: cover;
+}
+
+/* A place whose photo is not in uploads/Destination-Photo/ yet. Flat
+   panel, not a broken-image icon — the same choice the cards make. */
+.sp-item__img--blank {
+  display: block;
+  background: rgba(255, 255, 255, .06);
+}
+
+.sp-item__text { min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
+
+.sp-item__name {
+  font-size: .92rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sp-item__meta { color: var(--quiet, #97a1ad); font-size: .77rem; }
+
+.sp-item__add {
+  border: 1px solid color-mix(in srgb, var(--orange, #f2a33c) 45%, transparent);
+  border-radius: .45rem;
+  background: transparent;
+  color: var(--orange, #f2a33c);
+  font-size: .78rem;
+  padding: .38rem .6rem;
+  cursor: pointer;
+  transition: background .16s ease, color .16s ease;
+}
+
+.sp-item__add:hover { background: var(--orange, #f2a33c); color: #10161f; }
+
+.sp-item__drop {
+  border: 0;
+  background: none;
+  color: var(--quiet, #97a1ad);
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: .15rem .25rem;
+  cursor: pointer;
+}
+
+.sp-item__drop:hover { color: #e2705f; }
+
+.sp-loading { color: var(--quiet, #97a1ad); font-size: .87rem; }
+.sp-error   { color: #e2705f;               font-size: .87rem; }
+
+/* An empty panel is an instruction, not an apology. */
+.sp-empty { padding: 1.4rem 0; color: var(--quiet, #97a1ad); font-size: .87rem; }
+.sp-empty p { margin: 0 0 .55rem; }
+.sp-empty__link {
+  color: var(--orange, #f2a33c);
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+}
+
+/* ---------- 6. THE ROW THAT JUST RECEIVED A PLACE ----------
+   Motion that answers a click, showing which of several identical rows
+   changed. It fades on its own; nothing to dismiss. */
+
+.pt-stop.is-just-filled,
+.activity-row.is-just-filled {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--orange, #f2a33c) 55%, transparent);
+  border-radius: .6rem;
+}
+
+/* ---------- 7. TOAST ---------- */
+
+/* z-index above everything including the chat widget, and a real
+   shadow: the first build sat flush against a dark page bottom with a
+   hairline border and was genuinely easy to miss. */
+.sp-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.75rem;
+  transform: translate(-50%, .75rem);
+  z-index: 2147483000;
+  padding: .7rem 1.15rem;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 999px;
+  background: #17212e;
+  box-shadow: 0 .75rem 2rem rgba(0, 0, 0, .45);
+  color: #fff;
+  font-size: .88rem;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
+}
+
+.sp-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+.sp-toast[data-tone="error"] { border-color: rgba(226, 112, 95, .6); color: #f3c4bb; }
+
+/* ---------- 8. REDUCED MOTION ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .save-btn,
+  .sp-panel__sheet,
+  .sp-panel__scrim,
+  .sp-toast { transition: none; }
+  .save-btn.is-saved svg { animation: none; }
+  .sp-just-changed::after { animation: none; opacity: 0; }
+}

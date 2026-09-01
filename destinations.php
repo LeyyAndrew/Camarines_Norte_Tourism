@@ -280,6 +280,9 @@ $featured = $railPicks[0] ?? ($destinations[0] ?? null);
 $heroSlides = [];
 foreach ($railPicks as $d) {
     $heroSlides[] = [
+        /* the primary key, so the hero's save button can re-point at
+           whichever destination is currently showing */
+        'id'    => $d['id'] ?? null,
         'slug'  => destSlug($d['name']),
         'name'  => $d['name'],
         'town'  => $d['town'],
@@ -730,12 +733,31 @@ $showIntro = true;
         <a class="hero-feature__cta" id="heroCta"
            href="#dest-<?= destSlug($featured['name']) ?>">Explore</a>
 
+        <!-- SIGNED IN this is a working bookmark; signed out it stays
+             the auth gate it has always been.
+
+             data-destination-id starts on the featured destination and
+             is rewritten by assets/js/saved-places.js each time the
+             hero changes slide — the block cycles through 24 places
+             behind one button, so a fixed id would save the wrong one
+             from the second slide onwards. -->
+        <?php if (isset($_SESSION['user_id']) && !empty($featured['id'])): ?>
+        <button type="button" class="hero-feature__save" data-save data-hero-save
+                data-destination-id="<?= (int) $featured['id'] ?>"
+                aria-pressed="false"
+                aria-label="Save this destination">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-4-6.5 4v-16a1 1 0 0 1 1-1z"></path>
+          </svg>
+        </button>
+        <?php else: ?>
         <button type="button" class="hero-feature__save" data-auth-gate
                 aria-label="Save this destination">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-4-6.5 4v-16a1 1 0 0 1 1-1z"></path>
           </svg>
         </button>
+        <?php endif; ?>
       </div>
 
       <!-- ---- previous / next ----
@@ -992,6 +1014,7 @@ $showIntro = true;
           <img class="photo-layer" src="<?= htmlspecialchars($d['image']) ?>" alt="" loading="lazy">
           <span class="dest-card__tag"><?= $d['tag'] ?></span>
 
+
           <!-- THE TOWN MOVED ONTO THE PHOTOGRAPH. It used to sit under
                the name as a third line of grey text, which made the
                body three paragraphs deep before it said anything, and
@@ -1075,6 +1098,44 @@ $showIntro = true;
                 <polyline points="12 6 18 12 12 18"></polyline>
               </svg>
             </a>
+            <!-- ===================================================
+                 SAVE THIS PLACE
+
+                 IN THE ACTIONS ROW, not on the photograph, and that is
+                 the whole point.
+
+                 .dest-card__btn::after stretches the View details link
+                 across the entire card at z-index 3. Anything laid over
+                 the photo has to out-stack it, and inside
+                 .dest-card__media that turned out to be unwinnable —
+                 the wrapper gets its own stacking context during the
+                 GSAP reveal, so the button's z-index stopped being
+                 comparable to the link's and every click went to the
+                 link instead. Raising the number did nothing, because
+                 the numbers were never being compared.
+
+                 .dest-card__map already solved this by living here and
+                 carrying position:relative; z-index:4 (destinations.css
+                 line ~869). Same row, same rule, same result: a button
+                 that receives its own clicks.
+
+                 Rendered for signed-in visitors only. Signed out, the
+                 card's own data-auth-gate on View details is the one
+                 prompt — a second gate button in the same row would be
+                 two ways to ask the same question.
+                 ==================================================== -->
+            <?php if (!empty($d['id']) && isset($_SESSION['user_id'])): ?>
+              <button type="button" class="dest-card__map dest-card__save" data-save
+                      data-destination-id="<?= (int) $d['id'] ?>"
+                      aria-pressed="false"
+                      aria-label="Save <?= htmlspecialchars($d['name']) ?> to your places">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M6 2h12a1 1 0 0 1 1 1v18l-7-4.2L5 21V3a1 1 0 0 1 1-1z" fill="currentColor"></path>
+                </svg>
+                <span class="dest-card__save-label">Save</span>
+              </button>
+            <?php endif; ?>
+
             <?php if ($ll): ?>
             <!-- aria-label carries the destination name because the
                  visible label is the same three words on all 24 cards,

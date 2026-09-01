@@ -221,6 +221,40 @@
   var BY_ID = {};
   DESTS.forEach(function (d) { BY_ID[d.id] = d; });
 
+  /* ---------- SAVED PLACES ----------
+     The ids in saved_destinations are the destinations table's primary
+     keys, while everything here is keyed on the town-name slug, so the
+     match happens through d.dest_id, printed alongside the slug by
+     plan-trip.php.
+
+     Fetched once, on load, rather than each time the Saved chip is
+     pressed: it is a short list of integers and the picker should not
+     wait on the network to redraw. A failure leaves the set empty and
+     the chip simply shows nothing — the other two axes are unaffected,
+     which is the point of keeping this to one variable. */
+  var SAVED = null;   /* null = not loaded yet, Set = loaded */
+
+  function loadSaved(then) {
+    fetch('includes/saved-places.php?action=ids', { headers: { 'X-Requested-With': 'fetch' } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        SAVED = new Set((data && data.ids) || []);
+        paintSavedCount();
+        if (then) then();
+      })
+      .catch(function () { SAVED = new Set(); if (then) then(); });
+  }
+
+  function paintSavedCount() {
+    var n = SAVED ? SAVED.size : 0;
+    [].forEach.call(document.querySelectorAll('[data-saved-count]'), function (el) {
+      el.textContent = n;
+      el.hidden = n === 0;
+    });
+  }
+
+  loadSaved();
+
   /* A colour and a glyph per type, so an entry whose photo is missing
      from uploads/Destination-Photo/ still reads as a waterfall rather
      than as a grey box. Amber goes to the beaches and the surf: it is
@@ -543,6 +577,11 @@
 
   /* ---------- destination picker ---------- */
   function drawChips() {
+    /* Saved is not an axis you subdivide: it is already the narrowest
+       view of the 24. The chip row is emptied rather than hidden with
+       CSS, so nothing is left focusable behind an invisible bar. */
+    if (scope === 'saved') { $('#ptFilters').innerHTML = ''; return; }
+
     var list = scope === 'type' ? TYPES : TOWNS;
     $('#ptFilters').innerHTML = ['All'].concat(list).map(function (c) {
       return '<button type="button" class="pt-f' + (c === chosen ? ' is-on' : '') +
@@ -557,6 +596,12 @@
     chosen = 'All';
     [].forEach.call(this.children, function (x) { x.classList.toggle('is-on', x === b); });
     drawChips();
+
+    /* Bookmarks are made on another page, often in another tab, so the
+       set is re-read every time this axis is opened rather than trusted
+       from page load. drawDests runs either way: stale-then-correct
+       beats an empty grid while the request is in flight. */
+    if (scope === 'saved') loadSaved(drawDests);
     drawDests();
   });
 
@@ -573,6 +618,14 @@
   function drawDests() {
     var q = $('#ptSearch').value.trim().toLowerCase();
     var list = DESTS.filter(function (d) {
+      /* Saved ignores the chips entirely — there are none — and matches
+         on the database key rather than the slug. */
+      if (scope === 'saved') {
+        if (!SAVED || !d.dest_id || !SAVED.has(d.dest_id)) return false;
+        var hs = (d.name + ' ' + d.municipality + ' ' + d.category + ' ' + d.blurb).toLowerCase();
+        return !q || hs.indexOf(q) > -1;
+      }
+
       var okChip = chosen === 'All' ||
         (scope === 'type' ? d.category === chosen : d.municipality === chosen);
       var hay = (d.name + ' ' + d.municipality + ' ' + d.category + ' ' + d.blurb).toLowerCase();
@@ -596,7 +649,9 @@
           '<span class="pt-d">' + esc(d.blurb) + '</span>' +
         '</div></div>';
     }).join('')
-      : '<p class="pt-none">Nothing matches that.<br>Try a municipality — Daet, Mercedes, Vinzons, Labo, Paracale — or clear the filter.</p>';
+      : (scope === 'saved'
+          ? '<p class="pt-none">Nothing saved yet.<br>Tap the bookmark on any destination and it lands here, ready to drop into a day.</p>'
+          : '<p class="pt-none">Nothing matches that.<br>Try a municipality — Daet, Mercedes, Vinzons, Labo, Paracale — or clear the filter.</p>');
   }
   drawChips();
   drawDests();

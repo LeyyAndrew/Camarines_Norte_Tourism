@@ -87,6 +87,15 @@ if ($ptData !== null) {
 
         $destinations[] = [
             'id'           => $slug,
+            /* THE DATABASE KEY, alongside the slug.
+
+               The slug above is what a saved itinerary stores and what
+               BY_ID is keyed on — that does not change. This is the
+               destinations table's primary key, and it is the only
+               thing saved_destinations rows can be matched against, so
+               the Saved filter in the picker needs it. null for a row
+               served from the fallback list, which has no key. */
+            'dest_id'      => $d['id'] ?? null,
             'name'         => $d['name'] ?? '',
             'municipality' => $d['town'] ?? '',
             'category'     => $d['tag'] ?? '',
@@ -170,7 +179,8 @@ $ptSignedIn = isset($_SESSION['user_id']);
     <section class="pt-card">
       <div class="pt-card-h">
         <h2>Trip details</h2>
-        <span class="pt-sub">Start here — the dates build your days for you</span>
+        <span class="pt-sub">Start here &mdash; the dates build your days for you</span>
+
       </div>
       <div class="pt-form">
         <div class="pt-field">
@@ -278,6 +288,13 @@ $ptSignedIn = isset($_SESSION['user_id']);
       <div class="pt-scope" id="ptScope" role="group" aria-label="Filter by">
         <button type="button" data-scope="type" class="is-on">Type</button>
         <button type="button" data-scope="town">Town</button>
+        <!-- The bookmarks made on destinations.php, as a third axis
+             beside Type and Town. It belongs in this group rather than
+             in a panel of its own: it answers the same question the
+             other two do — which of the 24 am I choosing from — and
+             picking one has to go through the same click handler that
+             fills the day. -->
+        <button type="button" data-scope="saved">Saved<span data-saved-count hidden>0</span></button>
       </div>
       <div class="pt-filters" id="ptFilters"></div>
     </div>

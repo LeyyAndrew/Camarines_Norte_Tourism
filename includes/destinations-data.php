@@ -50,7 +50,7 @@ const DEST_PHOTO_DIR = 'uploads/Destination-Photo/';
 
 try {
     $rows = db()->query(
-        'SELECT filename, name, town, tag, quote, descr,
+        'SELECT id, filename, name, town, tag, quote, descr,
                 chip1, chip2, chip3, lat, lng
            FROM destinations
           WHERE is_visible
@@ -75,6 +75,14 @@ try {
         ], static fn($c) => $c !== ''));
 
         $out[] = [
+            /* THE PRIMARY KEY. Nothing on the cards displays it, but
+               saved-places and any table that references a destination
+               needs a stable handle, and the two slug schemes already in
+               use (destSlug() on destinations.php, town-name on
+               plan-trip.php) both change the moment a place is renamed.
+               null in the fallback below, where there is no row. */
+            'id'    => (int) $r['id'],
+
             /* A row with no photo yet returns '' rather than a path
                to nothing. Every page already draws the gradient
                placeholder when the file is missing, and an empty src
@@ -130,6 +138,10 @@ function dest_fallback(): array
     $d = static fn(string $file, string $tag, string $town, string $name,
                    string $quote, string $desc, array $chips,
                    ?float $lat, ?float $lng): array => [
+        /* null: these rows are not in the database, so they have no
+           primary key. Saving is skipped for them — the bookmark button
+           on destinations.php only renders when id is set. */
+        'id'    => null,
         'image' => $file !== '' ? DEST_PHOTO_DIR . $file : '',
         'tag'   => $tag,
         'town'  => $town,

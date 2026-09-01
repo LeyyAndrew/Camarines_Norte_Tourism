@@ -723,5 +723,16 @@ $authPane = in_array($authCode, ['emailtaken', 'missing', 'bademail', 'shortpw',
 <script src="<?= htmlspecialchars(assetUrl('assets/js/auth-gate.js')) ?>"></script>
 
 
+
+<!-- SAVED PLACES. After auth-gate.js on purpose: a signed-out card
+     prints data-auth-gate instead of data-save, so the two never
+     compete for the same click, but if that ever changes the gate
+     should be the one already bound.
+
+     No inline endpoint variable is needed — the script defaults to
+     includes/saved-places.php, relative, which resolves correctly from
+     every page in this project because they all sit at the root. -->
+<script src="<?= htmlspecialchars(assetUrl('assets/js/saved-places.js')) ?>" defer></script>
+
 </body>
 </html>

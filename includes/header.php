@@ -277,6 +277,13 @@ if ($pageCss !== 'assets/css/search.css' && is_file(__DIR__ . '/../' . $pageCss)
 <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl($pageCss)) ?>">
 <?php endif; ?>
 
+<!-- The bookmark button and its picker are opened from a destination
+     card and from plan-trip.php, so the styles have to be on every page
+     that shows a card — which is most of them. Same reasoning as
+     search.css above, and the same shape: everything for the feature
+     lives in files with "saved-places" in the name. -->
+<link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('assets/css/saved-places.css')) ?>">
+
 <!-- LAST, on purpose. responsive.css corrects things the files above
      have already declared, so it has to be able to win against all of
      them. It is the only stylesheet that loads after the page file.
