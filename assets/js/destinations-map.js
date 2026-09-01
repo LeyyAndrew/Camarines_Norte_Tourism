@@ -217,9 +217,55 @@
     guardImages(scroll);
   }
 
+  /* ---------------------------------------------------------------
+     THE SHEET IS BEHIND THE SIGN-IN, AND THE CHECK LIVES HERE.
+
+     assets/js/auth-gate.js gates page content in the capture phase,
+     but step 4 of its rules only matches `a[href]` and `button`. A
+     Leaflet pin is neither — it is a <div class="leaflet-marker-icon">
+     with a handler bound by the library — so pin clicks fell straight
+     past the gate and opened the panel for anyone.
+
+     The card's View details button was never affected: destinations.php
+     prints data-auth-gate on it when there is no session, so it is
+     caught by rule 1. That left one destination reachable two ways
+     with two different answers, which is the inconsistency people
+     notice even when they cannot name it.
+
+     Guarding openSheet rather than the pin handler covers every route
+     in — the pins, and anything carrying data-detail — because they
+     all end up here.
+     --------------------------------------------------------------- */
+  function mapSignedIn() {
+    /* === true, not truthiness: if footer.php's inline script fails to
+       render this is undefined, and undefined has to mean signed out.
+       Same reasoning as auth-gate.js. */
+    return window.isLoggedIn === true;
+  }
+
+  /* Rather than reach into auth-gate.js — which exposes nothing and
+     should not have to — this hands it something it already knows how
+     to gate: a link carrying data-auth-gate. Its capture listener
+     matches on rule 1, swallows the click and opens the modal.
+
+     The href is what auth-gate.js reads for "next", so signing in
+     returns the visitor to this page, scrolled to the card for the
+     destination they were trying to open. */
+  function askToSignIn(slug) {
+    var a = document.createElement('a');
+    a.href = 'destinations.php' + (slug ? '#dest-' + slug : '');
+    a.setAttribute('data-auth-gate', '');
+    a.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { a.remove(); }, 0);
+  }
+
   function openSheet(slug) {
     var p = BY_SLUG[slug];
     if (!p || !sheet) return;
+
+    if (!mapSignedIn()) { askToSignIn(slug); return; }
 
     lastFocus = document.activeElement;
     openSlug  = slug;
