@@ -1,0 +1,555 @@
+/* ===================================================================
+   assets/gallery.css  —  loaded by gallery.php only
+
+   Only what the gallery does differently: the short banner, the three
+   photo sets, the caption plates on the tiles, and the lightbox. The
+   masonry itself is shared with the homepage and lives in base.css.
+
+   Loads AFTER base.css, so anything here wins over base.
+
+   base.css was NOT touched. Everything below is either a new class or
+   a deliberate override of a base rule, and each override says which
+   rule it is arguing with so you can find the other half.
+   =================================================================== */
+
+/* ===================================================================
+   MOVED FROM base.css BY THE SPLIT
+
+   These rules only ever applied to this page. They sit at the TOP, in
+   the order they had in base.css, which keeps the cascade identical.
+   Add new rules BELOW this block, not inside it.
+   =================================================================== */
+
+.gal-set__head{ margin-bottom:2.5rem; max-width:34rem; }
+
+/* the centred "See all 24 destinations" strip on about.php and gallery.php */
+.section--center{ text-align:center; }
+
+/* ============== end of the block moved from base.css =============== */
+
+
+/* ===================================================================
+   1. THE BANNER
+
+   Same machinery as the other interior banners, tuned shorter and
+   given a footer rail of counts. The rail is there because a gallery
+   with no numbers on it makes people scroll to find out how big it
+   is — three figures up front answer that in one glance.
+
+   The counts are hard-coded in the markup. If you add or remove a
+   tile, update them, or they start lying.
+   =================================================================== */
+.page-hero--short{
+  /* clamp rather than a bare vh so the banner cannot collapse on a
+     short laptop window or run away on a tall monitor */
+  min-height:clamp(360px, 52vh, 560px);
+  padding:9.5rem 0 3.25rem;
+}
+
+/* darker at the very bottom than the base scrim, because the rail sits
+   down there in small type and has to survive a bright video frame */
+.page-hero--short .page-hero__scrim{
+  background:
+    radial-gradient(120% 100% at 78% 0%, rgba(22,25,28,0) 35%, rgba(22,25,28,.5) 100%),
+    linear-gradient(to top, rgba(22,25,28,.94) 0%, rgba(22,25,28,.58) 46%, rgba(22,25,28,.3) 100%);
+}
+
+.page-hero--short .page-hero__title{
+  max-width:20ch;
+  letter-spacing:-.032em;
+}
+
+.page-hero--short .page-hero__lead{ max-width:34rem; }
+
+/* --- the counts rail ---------------------------------------------- */
+.gal-meta{
+  display:flex; flex-wrap:wrap; align-items:baseline;
+  gap:1rem 2.25rem;
+  margin-top:2.25rem; padding-top:1.25rem;
+  border-top:1px solid rgba(255,255,255,.2);
+}
+
+.gal-meta__item{
+  display:flex; align-items:baseline; gap:.55rem;
+  color:rgba(255,255,255,.72);
+  font-size:.7rem; letter-spacing:.16em; text-transform:uppercase;
+}
+
+.gal-meta__num{
+  font-family:var(--font-display); font-weight:700;
+  font-size:1.15rem; letter-spacing:0; color:#fff;
+}
+
+
+/* ===================================================================
+   2. THE THREE SETS
+
+   Rhythm: white, grey, white, grey. Set 02 and the closing strip
+   carry a full-bleed --mist band so the page has a pulse instead of
+   twelve photos falling down one white column.
+
+   The band on set 02 is drawn by a pseudo-element rather than a
+   wrapper div, so the markup stays as it was. body already has
+   overflow-x:hidden, so the 100vw width cannot produce a sideways
+   scrollbar. The closing strip no longer uses this technique — see
+   section 4.
+   =================================================================== */
+.gal-set{ padding:4.5rem 0; }
+
+/* OVERRIDES the ".gal-set + .gal-set{ padding-top:0 }" in the moved
+   block above. Sets used to butt together; now each one keeps its own
+   air, which is what makes the grey band read as a band. */
+.gal-set + .gal-set{ padding-top:4.5rem; }
+
+@media (min-width:768px){
+
+   .gal-set{ padding:6rem 0; }
+
+   .gal-set + .gal-set{ padding-top:6rem; }
+}
+
+/* isolation:isolate is load-bearing. Without it the z-index:-1 pseudo
+   below escapes to the nearest ancestor stacking context and paints
+   behind whatever opaque background body/main is carrying, so the band
+   never appears. This traps it in .gal-set--mist's own context, where
+   -1 puts it behind the section's content and nothing else. */
+.gal-set--mist{ position:relative; isolation:isolate; }
+
+.gal-set--mist::before{
+  content:''; position:absolute; z-index:-1;
+  top:0; bottom:0; left:50%;
+  width:100vw; transform:translateX(-50%);
+  background:var(--mist);
+}
+
+/* --- set heading -------------------------------------------------- */
+/* OVERRIDES the max-width:34rem in the moved block: the heading is now
+   two columns on desktop, so it needs the full measure to sit in. */
+.gal-set__head{
+  max-width:none;
+  margin-bottom:2.25rem;
+  padding-top:1.5rem;
+  border-top:1px solid var(--line);
+  display:grid; gap:1rem;
+}
+
+@media (min-width:900px){
+
+   .gal-set__head{
+     grid-template-columns:minmax(0,1fr) minmax(0,20rem);
+     align-items:end; gap:2.5rem;
+     margin-bottom:3rem;
+   }
+}
+
+/* the 01 / 02 / 03 stays because these really are ordered — coast,
+   then inland, then the towns, which is the way you actually cross the
+   province from the water inwards. The amber tick replaces the plain
+   dash so the number reads as a chapter mark, not a bullet. */
+.gal-set .eyebrow{
+  display:flex; align-items:center; gap:.65rem;
+  margin-bottom:.85rem; font-weight:600; letter-spacing:.18em;
+}
+
+.gal-set .eyebrow::before{
+  content:''; flex:none;
+  width:1.75rem; height:2px; border-radius:2px;
+  background:var(--orange);
+}
+
+.gal-set__title{
+  font-weight:800; font-size:clamp(1.7rem,3.6vw,2.4rem);
+  line-height:1.14; letter-spacing:-.025em;
+  max-width:18ch;
+}
+
+.gal-set__note{
+  color:var(--ocean);
+  font-size:.94rem; line-height:1.75;
+}
+
+.gal-set__count{
+  display:block; margin-top:.85rem;
+  font-size:.68rem; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--navy); opacity:.55;
+}
+
+
+/* ===================================================================
+   3. THE TILES
+
+   base.css gives every .masonry a single column, then three at 768px.
+   Three columns at 768px is too tight — the captions wrap to two lines
+   and the tall 3x4 tiles come out the size of a stamp. Two columns on
+   tablets, three only once there is room for them.
+   =================================================================== */
+.gal-set .masonry{ column-gap:1.25rem; }
+
+@media (min-width:640px){
+
+   .gal-set .masonry{ column-count:2; }
+}
+
+@media (min-width:1024px){
+
+   .gal-set .masonry{ column-count:3; column-gap:1.5rem; }
+}
+
+.gal-set .masonry-item{ margin-bottom:1.25rem; }
+
+@media (min-width:1024px){
+
+   .gal-set .masonry-item{ margin-bottom:1.5rem; }
+}
+
+/* The lift on hover is small on purpose. These are big blocks of
+   colour; move them far and the whole column looks unstable. */
+.gal-set .media{
+  border-radius:1.25rem;
+  background:var(--navy);
+  box-shadow:0 1px 2px rgba(22,25,28,.05), 0 20px 44px -34px rgba(22,25,28,.75);
+  transition:transform .5s cubic-bezier(.16,.84,.44,1), box-shadow .5s ease;
+}
+
+.gal-set .media:hover,
+.gal-set .media:focus-within{
+  transform:translateY(-4px);
+  box-shadow:0 1px 2px rgba(22,25,28,.05), 0 34px 64px -34px rgba(22,25,28,.85);
+}
+
+/* OVERRIDES .media::after in base.css. The base scrim starts fading at
+   45% of the tile, which is more darkness than a caption needs and it
+   greys out the middle of the photograph. This one stays low and gets
+   a touch heavier at the very bottom instead. */
+.gal-set .media::after{
+  background:linear-gradient(to top,
+    rgba(10,12,14,.86) 0%,
+    rgba(10,12,14,.4) 34%,
+    rgba(10,12,14,0) 66%);
+}
+
+/* --- the caption plate --------------------------------------------
+   This is the one piece of the page doing real design work, so it is
+   the one place worth spending on: place name in Archivo, the
+   municipality under it in micro caps behind an amber dot. It sits
+   3px low and settles when you point at the tile.
+
+   OVERRIDES .media__label and .media__label::before in base.css — the
+   dot moved from in front of the whole caption to in front of the
+   town line, so the base ::before is switched off here. */
+.gal-set .media__label{
+  left:1.35rem; right:1.35rem; bottom:1.2rem;
+  display:block;
+  font-size:inherit; letter-spacing:normal; text-transform:none;
+  color:#fff;
+  transform:translateY(3px);
+  transition:transform .5s cubic-bezier(.16,.84,.44,1);
+}
+
+.gal-set .media__label::before{ display:none; }
+
+.gal-set .media:hover .media__label,
+.gal-set .media:focus-within .media__label{ transform:none; }
+
+.media__place{
+  display:block;
+  font-family:var(--font-display); font-weight:700;
+  font-size:clamp(1rem,1.5vw,1.15rem); line-height:1.25;
+  letter-spacing:-.01em;
+  text-shadow:0 1px 14px rgba(0,0,0,.4);
+}
+
+.media__town{
+  display:flex; align-items:center; gap:.5rem;
+  margin-top:.4rem;
+  font-size:.64rem; letter-spacing:.18em; text-transform:uppercase;
+  color:rgba(255,255,255,.8);
+}
+
+.media__town::before{
+  content:''; flex:none;
+  width:6px; height:6px; border-radius:999px;
+  background:var(--orange);
+}
+
+/* --- the click target ---------------------------------------------
+   A real <button> filling the tile, not a click handler on the div.
+   That is what gets you the keyboard, the focus ring and the correct
+   announcement in a screen reader for free. It sits above the scrim
+   (z-index 2) and the caption (z-index 3). */
+.media__open{
+  position:absolute; inset:0; z-index:4;
+  -webkit-appearance:none; appearance:none;
+  margin:0; padding:0; border:0; background:transparent;
+  border-radius:inherit; cursor:zoom-in;
+}
+
+.media__open:focus-visible{
+  outline:2px solid var(--orange);
+  outline-offset:3px;
+}
+
+/* the + badge in the corner. Drawn in CSS rather than an SVG because
+   it repeats twelve times and two 1.5px bars is cheaper than twelve
+   copies of an icon. */
+.media__zoom{
+  position:absolute; top:1rem; right:1rem; z-index:3;
+  width:2.25rem; height:2.25rem; border-radius:999px;
+  display:grid; place-items:center;
+  background:rgba(22,25,28,.4);
+  border:1px solid rgba(255,255,255,.24);
+  -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  opacity:0; transform:scale(.88);
+  transition:opacity .4s ease, transform .4s cubic-bezier(.16,.84,.44,1);
+  pointer-events:none;
+}
+
+.gal-set .media:hover .media__zoom,
+.gal-set .media:focus-within .media__zoom{ opacity:1; transform:none; }
+
+.media__zoom::before,
+.media__zoom::after{
+  content:''; position:absolute;
+  background:#fff; border-radius:2px;
+}
+
+.media__zoom::before{ width:12px; height:1.5px; }
+
+.media__zoom::after{ width:1.5px; height:12px; }
+
+/* touch screens have no hover, so the badge would never appear and the
+   lift would fire on tap and stick. Show the badge, drop the lift. */
+@media (hover:none){
+
+   .media__zoom{ opacity:1; transform:none; }
+
+   .gal-set .media:hover{ transform:none; }
+}
+
+
+/* ===================================================================
+   4. THE CLOSING STRIP
+
+   A photograph rather than the flat --mist fill it used to carry. The
+   strip is the last thing on the page and it was reading as an empty
+   white gap with a button lost in the middle of it — a dark band gives
+   the page a floor to land on and echoes the banner at the top.
+
+   .gal-end is already full-bleed (the .wrap is a child, not the
+   section itself), so there is no 100vw trick down here and nothing
+   sits on a negative z-index. Layers, bottom up: photo 0, scrim 1,
+   text 2.
+
+   TO GO BACK TO THE FLAT BAND: drop gal-end--photo and the <img> from
+   the markup. The .gal-end rules below it still stand on their own.
+   =================================================================== */
+.gal-end{
+  position:relative;
+  padding:4.5rem 0 5.5rem;
+  text-align:center;
+}
+
+.gal-end__title{
+  font-weight:800; font-size:clamp(1.5rem,3vw,2rem);
+  line-height:1.2; letter-spacing:-.02em;
+  margin-bottom:.9rem;
+}
+
+.gal-end__note{
+  max-width:32rem; margin:0 auto 2rem;
+  color:var(--ocean); font-size:.95rem; line-height:1.75;
+}
+
+.gal-end .btn:focus-visible{
+  outline:2px solid var(--navy);
+  outline-offset:3px;
+}
+
+
+/* --- the photo variant --------------------------------------------- */
+.gal-end--photo{
+  overflow:hidden;
+  padding:6rem 1.25rem 6.5rem;
+  /* holds the band at the right colour while the photo is still on the
+     wire, so the section does not flash white then go dark */
+  background-color:#161a1c;
+}
+
+.gal-end--photo .gal-end__bg{
+  position:absolute; inset:0; z-index:0;
+  width:100%; height:100%;
+  object-fit:cover;
+  /* biased low: most landscape frames put the horizon high and the
+     interesting ground in the bottom third */
+  object-position:center 60%;
+}
+
+/* the scrim. Same shape as .page-hero--short's, so the two dark bands
+   on this page read as the same material rather than two accidents. */
+.gal-end--photo::after{
+  content:''; position:absolute; inset:0; z-index:1;
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(22,25,28,.32) 0%, rgba(22,25,28,.7) 100%),
+    linear-gradient(to top, rgba(22,25,28,.9) 0%, rgba(22,25,28,.52) 55%, rgba(22,25,28,.66) 100%);
+}
+
+.gal-end--photo .gal-end__inner{ position:relative; z-index:2; }
+
+/* not .gal-set .eyebrow — that one is a flex row with an amber tick in
+   front of a chapter number, and there is no chapter here. */
+.gal-end--photo .eyebrow--light{
+  display:inline-block; margin-bottom:1.15rem;
+  color:rgba(255,255,255,.6);
+  font-size:.7rem; font-weight:600;
+  letter-spacing:.18em; text-transform:uppercase;
+}
+
+/* OVERRIDES .gal-end__title above: white, and larger, because a line
+   this short at 2rem looks stranded in a band this tall. */
+.gal-end--photo .gal-end__title{
+  color:#fff;
+  max-width:22ch; margin:0 auto .9rem;
+  font-size:clamp(1.75rem,3.6vw,2.6rem);
+  letter-spacing:-.03em;
+}
+
+/* OVERRIDES .gal-end__note: var(--ocean) is a mid grey and it dies on
+   a dark photograph. */
+.gal-end--photo .gal-end__note{
+  color:rgba(255,255,255,.74);
+  max-width:34rem;
+}
+
+/* OVERRIDES .gal-end .btn:focus-visible: var(--navy) is very nearly
+   the scrim colour, so the ring was invisible on this band. */
+.gal-end--photo .btn:focus-visible{
+  outline:2px solid #fff;
+  outline-offset:3px;
+}
+
+
+/* ===================================================================
+   5. THE LIGHTBOX
+
+   Opened by the buttons on the tiles. Everything it needs is in this
+   file and the block of script at the foot of gallery.php — no
+   library, nothing else on the site touches it.
+
+   TO REMOVE IT: delete this section, the .lightbox markup and the
+   <script> in gallery.php, and the <button class="media__open"> and
+   <span class="media__zoom"> from each tile. Nothing else depends on
+   it and the page still works.
+   =================================================================== */
+.lightbox{
+  position:fixed; inset:0; z-index:1000;
+  display:none;
+}
+
+.lightbox.is-open{ display:block; }
+
+.lightbox__backdrop{
+  position:absolute; inset:0;
+  background:rgba(10,12,14,.95);
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+  opacity:0; transition:opacity .35s ease;
+}
+
+.lightbox.is-open .lightbox__backdrop{ opacity:1; }
+
+.lightbox__stage{
+  position:absolute; inset:0;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:1.5rem;
+  padding:4.5rem 1.25rem 5.5rem;
+}
+
+.lightbox__img{
+  max-width:min(1100px, 92vw);
+  max-height:70vh;
+  width:auto; height:auto;
+  object-fit:contain;
+  border-radius:.75rem;
+  box-shadow:0 50px 100px -45px rgba(0,0,0,.95);
+  opacity:0; transform:scale(.985);
+  transition:opacity .45s ease, transform .55s cubic-bezier(.16,.84,.44,1);
+}
+
+.lightbox__img.is-ready{ opacity:1; transform:none; }
+
+/* the caption repeats the plate from the tile so the two read as the
+   same object opening up, rather than two different treatments */
+.lightbox__caption{ text-align:center; color:#fff; }
+
+.lightbox__caption .media__place{ font-size:1.25rem; }
+
+.lightbox__caption .media__town{ justify-content:center; margin-top:.5rem; }
+
+.lightbox__counter{
+  position:absolute; left:0; right:0; bottom:1.75rem;
+  text-align:center;
+  font-size:.68rem; letter-spacing:.2em;
+  color:rgba(255,255,255,.55);
+}
+
+/* --- the three controls ------------------------------------------- */
+.lightbox__btn{
+  position:absolute; z-index:2;
+  width:2.9rem; height:2.9rem; border-radius:999px;
+  display:grid; place-items:center;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.24);
+  color:#fff; cursor:pointer;
+  transition:background .3s ease, border-color .3s ease, transform .3s ease;
+}
+
+.lightbox__btn:hover{
+  background:rgba(255,255,255,.16);
+  border-color:rgba(255,255,255,.55);
+}
+
+.lightbox__btn:focus-visible{
+  outline:2px solid var(--orange);
+  outline-offset:3px;
+}
+
+.lightbox__btn:active{ transform:scale(.94); }
+
+.lightbox__btn svg{ width:16px; height:16px; }
+
+.lightbox__btn--close{ top:1.25rem; right:1.25rem; }
+
+.lightbox__btn--prev{ left:1.25rem; top:50%; margin-top:-1.45rem; }
+
+.lightbox__btn--next{ right:1.25rem; top:50%; margin-top:-1.45rem; }
+
+@media (min-width:768px){
+
+   .lightbox__btn--close{ top:2rem; right:2rem; }
+
+   .lightbox__btn--prev{ left:2rem; }
+
+   .lightbox__btn--next{ right:2rem; }
+}
+
+
+/* ===================================================================
+   6. REDUCED MOTION
+
+   base.css already cuts every transition to nothing under this
+   setting. What is left to do is make sure nothing is stranded in its
+   starting position when the transition that was meant to finish it
+   never runs.
+   =================================================================== */
+@media (prefers-reduced-motion: reduce){
+
+   .gal-set .media__label{ transform:none; }
+
+   .gal-set .media:hover{ transform:none; }
+
+   .media__zoom{ opacity:1; transform:none; }
+
+   .lightbox__backdrop{ opacity:1; }
+
+   .lightbox__img{ opacity:1; transform:none; }
+}

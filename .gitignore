@@ -1,0 +1,23 @@
+# Credentials
+/config/database.php
+
+.env
+
+# Large media
+*.mp4
+
+
+
+# User uploads (keep the folder, skip contents)
+/uploads/*
+!/uploads/.gitkeep
+!/uploads/.htaccess
+
+# Editor & OS junk
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+error_log

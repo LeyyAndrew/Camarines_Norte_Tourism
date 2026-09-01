@@ -1,0 +1,754 @@
+/* ===================================================================
+   assets/css/nav.css
+
+   The header, and only the header. Loaded by includes/header.php
+   directly AFTER base.css and BEFORE the page file:
+
+     base.css  ->  nav.css  ->  homepage.css | about.css | ...
+
+   That position is the whole trick. base.css still holds the original
+   nav rules (sections 6, 17, 19 and 23) and nothing there was deleted
+   — this file simply comes later and wins. A page file still comes
+   after this one and can still win over it, exactly as before.
+
+   WHAT CHANGED AND WHY
+
+   The old header was a logo, four links and two icons on one line. It
+   worked, but it was a website's nav, not a tourism site's. Two things
+   were missing:
+
+     1. Nothing asked for the click. A tourism site's nav should have
+        one obvious next step in it; hence .nav__cta.
+
+     2. Destinations is the page everything else exists to feed, and it
+        was one flat link. It is now a panel — six ways in, each with a
+        line saying what is actually down there.
+
+   Below 1080px neither fits, so it becomes a drawer instead.
+
+   ON THE HEIGHT — this header is one line and nothing else. No strip
+   above the logo, and nothing in the bar that is not either a place to
+   go or a thing to press. The hero photo is the reason somebody stayed
+   on the page; every row of chrome above it is a row of that photo
+   they do not get to see. About 70px at rest, 60px once scrolled.
+   =================================================================== */
+
+/* ===================================================================
+   TOKENS
+
+   Local to the header. Everything else on the page reads base.css's
+   --navy / --orange / --mist, and so does this file — these six only
+   describe geometry and the header's own surfaces, so a change here
+   cannot leak into the rest of the site.
+   =================================================================== */
+:root{
+  /* The header's height, in two numbers. It started at .75rem with a
+     2.25rem strip above it — about 116px before the page began — went
+     to .45rem, which turned out to be too tight, and settled here.
+     These are the values to change if it still is not right; nothing
+     else needs touching. */
+  --nav-pad-y:.6rem;         /* main bar, at rest       */
+  --nav-pad-y-sm:.42rem;     /* main bar, once scrolled */
+
+  /* The mega panel is white on a site whose nav is near-black. That is
+     deliberate: it reads as a sheet of paper pulled down over the
+     photo, and it gives the six category rows the contrast they need
+     to be scanned in the second and a half somebody hovers for. */
+  --mega-bg:#fff;
+  --mega-line:rgba(22,25,28,.09);
+  --mega-mute:#5A6570;
+}
+
+/* ===================================================================
+   SKIP LINK
+
+   Invisible until tabbed to. Sits above the nav's z-index so it is not
+   clipped by it.
+   =================================================================== */
+.skip-link{
+  position:fixed; top:.6rem; left:.6rem; z-index:200;
+  padding:.7rem 1.1rem; border-radius:.6rem;
+  background:var(--orange); color:var(--navy);
+  font-family:var(--font-body); font-size:.85rem; font-weight:600;
+  transform:translateY(-160%);
+  transition:transform .2s ease;
+}
+
+.skip-link:focus{ transform:translateY(0); outline:2px solid #fff; outline-offset:2px; }
+
+/* ===================================================================
+   THE BAR
+
+   Still position:fixed and still #mainNav, so whatever JS you already
+   have adding .scrolled keeps working untouched.
+
+   THE BORDER IS THE ONE INDULGENCE. A 1px amber line under the nav,
+   at 55% opacity — it echoes the #horizonLine SVG already sitting over
+   every page, so the header is hemmed by the same horizon the site is
+   named after. It is the only decorative thing in this file.
+   =================================================================== */
+.nav{
+  position:fixed; top:0; left:0; width:100%; z-index:50;
+  background:transparent;
+  border-bottom:1px solid transparent;
+  transition:background .4s ease, box-shadow .4s ease, border-color .4s ease, filter .3s ease;
+}
+
+/* Over a hero photo: nothing at all. No scrim, no gradient, no line —
+   the photo runs edge to edge and the nav floats on it.
+
+   THE SHADOW BELOW IS WHAT MAKES THAT SAFE. A scrim was doing two jobs:
+   darkening the photo, and keeping white text legible on top of it.
+   Take the scrim away and the second job still has to be done by
+   something, or the links vanish the moment the hero cuts to a pale
+   frame — white sand, a bright sky, surf. drop-shadow does it per
+   glyph instead of per rectangle: it darkens the two or three pixels
+   immediately around each letter and touches nothing else, so the
+   photo stays clean and the words stay readable over any part of it.
+
+   drop-shadow rather than text-shadow because it also catches the SVG
+   icons — the search glass, the profile figure, the chevron — which a
+   text-shadow would leave bare.
+
+   It is removed the moment .scrolled lands, since the bar is solid
+   navy by then and a shadow on text over flat colour just looks
+   smudged.
+
+   NOTE THE THREE SELECTORS RATHER THAN ONE ON .nav. Putting the filter
+   on .nav itself would drag the open mega-menu into it — a dark halo
+   around dark text on a white panel, which is just grime. Naming the
+   brand, the top-level links and the icon cluster covers everything
+   that actually sits on the photo and nothing that does not. */
+.nav:not(.scrolled){
+  background:transparent;
+  border-bottom-color:transparent;
+}
+
+.nav:not(.scrolled) .nav__brand,
+.nav:not(.scrolled) .nav__link,
+.nav:not(.scrolled) .nav__icons{
+  filter:drop-shadow(0 1px 3px rgba(0,0,0,.55));
+}
+
+/* The CTA is a filled amber pill, not text — it has its own contrast
+   and does not need the halo. Left at full strength it reads as a
+   muddy second edge around the button, so it gets a soft lift
+   instead. .nav__icons is its parent and already carries a filter;
+   this one replaces it rather than stacking, because filter does not
+   inherit. */
+.nav:not(.scrolled) .nav__cta{ filter:drop-shadow(0 2px 7px rgba(0,0,0,.3)); }
+
+.nav.scrolled{
+  background:var(--navy);
+  border-bottom-color:rgba(240,163,44,.55);
+  box-shadow:0 10px 34px -18px rgba(0,0,0,.75);
+}
+
+/* An open mega-menu forces the solid bar even at the top of the page.
+   Without this the white panel hangs off a transparent strip and looks
+   detached from the thing that opened it.
+
+   :has() is doing the work. nav.js also puts .is-menu-open on the nav
+   as a belt-and-braces fallback, so an old browser that ignores :has()
+   still gets the solid bar. */
+.nav:has(.nav__item--mega:hover) ,
+.nav:has(.nav__item--mega:focus-within),
+.nav.is-menu-open{
+  background:var(--navy);
+  border-bottom-color:rgba(240,163,44,.55);
+}
+
+/* ===================================================================
+   MAIN BAR
+   =================================================================== */
+.nav__inner{
+  display:flex; align-items:center; justify-content:space-between; gap:1.25rem;
+  padding-top:var(--nav-pad-y);
+  padding-bottom:var(--nav-pad-y);
+  transition:padding .35s cubic-bezier(.16,.84,.44,1);
+}
+
+.nav.scrolled .nav__inner{
+  padding-top:var(--nav-pad-y-sm);
+  padding-bottom:var(--nav-pad-y-sm);
+}
+
+/* ---------- the logos ----------
+   The seal sets the height of the whole header, so it is the one
+   number to change if this is still not right. Below about 40px the
+   lettering around its rim stops resolving and it reads as a smudge;
+   above about 60px it starts pushing the header back toward the
+   oversized version this replaced. 50px sits between the two.
+
+   The wordmark is set SMALLER than the seal, not matched to it. It is
+   a busy multi-coloured file, and at equal heights it shouts over
+   everything else in the bar. Held at 38px it reads as a name sitting
+   next to a crest rather than a second logo competing with the first.
+
+   Both shrink on scroll, together — the seal shrinking alone would
+   leave the wordmark looking suddenly oversized beside it. */
+.nav__brand{ display:flex; align-items:center; gap:.8rem; flex-shrink:0; }
+
+.nav__logo-mark{
+  height:50px; width:50px;
+  border-radius:50%;
+  object-fit:cover; display:block; flex-shrink:0;
+  transition:height .3s cubic-bezier(.16,.84,.44,1), width .3s cubic-bezier(.16,.84,.44,1);
+}
+
+.nav__logo-word{
+  height:45px; width:auto;
+  display:block; object-fit:contain; flex-shrink:0;
+  transform:translateY(-3px);
+  transition:height .3s cubic-bezier(.16,.84,.44,1);
+}
+
+.nav.scrolled .nav__logo-mark{ height:43px; width:43px; }
+
+.nav.scrolled .nav__logo-word{ height:39px; }
+
+.nav__brand:focus-visible{ outline:2px solid var(--orange); outline-offset:5px; border-radius:.5rem; }
+
+@media (max-width:1180px){
+  .nav__logo-mark{ height:44px; width:44px; }
+  .nav__logo-word{ height:40px; }
+}
+
+@media (max-width:640px){
+  .nav__logo-word{ display:none; }
+}
+
+/* ===================================================================
+   LINKS
+
+   Now a <ul>. The hidden/flex breakpoint moves from base.css's 768px
+   up to 1080px — four links, a mega-menu, a CTA and three icons need
+   more room than four links and two icons did, and at 800px the old
+   value produced a row that touched at both ends.
+   =================================================================== */
+.nav__links{
+  display:none;
+  align-items:center;
+  gap:1.9rem;
+  margin:0 auto;
+  padding:0;
+  list-style:none;
+  font-family:var(--font-body);
+  font-size:.82rem;
+  font-weight:500;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.78);
+}
+
+@media (max-width:1079px){ .nav__links{ display:none; } }
+
+@media (min-width:1080px){ .nav__links{ display:flex; } }
+
+/* Not position:relative, on purpose. The mega panel is absolutely
+   positioned against .nav so it can span the full width of the bar —
+   a positioned li would trap it at the width of the word
+   "Destinations". */
+.nav__item{ display:flex; align-items:center; }
+
+.nav__link{
+  position:relative;
+  display:inline-flex; align-items:center; gap:.3rem;
+  padding:.4rem 0;
+  color:inherit;
+  transition:color .25s ease;
+}
+
+/* The amber underline from base.css, re-declared here so it measures
+   the new padding rather than the old .3rem. */
+.nav__link::after{
+  content:''; position:absolute; left:0; right:100%; bottom:0; height:2px;
+  background:var(--orange);
+  transition:right .3s cubic-bezier(.16,.84,.44,1);
+}
+
+.nav__link:hover{ color:#fff; }
+
+.nav__link:hover::after,
+.nav__link:focus-visible::after{ right:0; }
+
+.nav__link.is-active{ color:var(--orange); }
+
+.nav__link.is-active::after{ right:0; }
+
+.nav__link:focus-visible{ outline:2px solid rgba(255,255,255,.75); outline-offset:5px; border-radius:2px; }
+
+.nav__chev{
+  width:13px; height:13px;
+  transition:transform .3s cubic-bezier(.16,.84,.44,1);
+}
+
+.nav__item--mega:hover .nav__chev,
+.nav__item--mega:focus-within .nav__chev{ transform:rotate(180deg); }
+
+/* ===================================================================
+   THE MEGA-MENU
+
+   Opens on hover and on keyboard focus. visibility (not display) is
+   what animates, because display cannot be transitioned and a panel
+   that snaps into place feels like a bug rather than a menu.
+
+   THE PADDING-TOP ON .mega IS LOAD-BEARING. The panel starts flush
+   against the bottom of the nav, so there is no dead gap between the
+   link and the panel for the pointer to cross. Without it the menu
+   closes the moment you move down toward the thing you were aiming
+   for, which is the single most common way a hover menu is broken.
+   =================================================================== */
+.mega{
+  position:absolute; top:100%; left:0; right:0;
+  opacity:0; visibility:hidden;
+  transform:translateY(-8px);
+  transition:opacity .22s ease, transform .28s cubic-bezier(.16,.84,.44,1), visibility 0s linear .22s;
+}
+
+.nav__item--mega:hover .mega,
+.nav__item--mega:focus-within .mega{
+  opacity:1; visibility:visible;
+  transform:translateY(0);
+  transition-delay:0s;
+}
+
+.mega__inner{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 300px;
+  gap:2rem;
+  margin-top:0;
+  padding-top:1.6rem; padding-bottom:1.6rem;
+  background:var(--mega-bg);
+  border-radius:0 0 1.25rem 1.25rem;
+  box-shadow:0 30px 60px -28px rgba(22,25,28,.55);
+}
+
+/* .nav__links sets a light colour and uppercase for the bar; neither
+   belongs inside the panel. Reset both at the top so every rule below
+   starts from normal text. */
+.mega, .mega *{ text-transform:none; letter-spacing:normal; }
+
+.mega{ color:var(--navy); font-weight:400; }
+
+/* base.css puts a growing amber underline on every `a` inside
+   .nav__links. In the bar that is the point; in here it would draw a
+   line under all six cards at once. content:none removes the
+   pseudo-element outright rather than just hiding it. */
+.nav__links .mega a::after{ content:none; }
+
+/* Same rule also sets padding-bottom:.3rem on every `a` in the bar.
+   `.nav__links a` (0,2,0) outranks `.mega__card` (0,1,0), so without
+   this line base.css quietly wins the bottom edge of all six cards and
+   they sit lopsided — more space above the icon than below it. */
+.nav__links .mega a{ padding-bottom:0; }
+
+.nav__links .mega .mega__card{ padding:.6rem .8rem; }
+
+.nav__links .mega .mega__feature{ padding:1.25rem; }
+
+.mega__eyebrow{
+  margin:0 0 1rem;
+  font-family:var(--font-body);
+  font-size:.68rem; font-weight:600;
+  letter-spacing:.14em; text-transform:uppercase;
+  color:var(--mega-mute);
+}
+
+.mega__grid{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0,1fr));
+  gap:.35rem 1.5rem;
+}
+
+/* ---------- a category row ----------
+   Icon, label, one line of what is down there. The line is the point:
+   "Food & Delicacies" tells a traveller the category exists, "Bicol
+   Express, laing, pili, pineapple" tells them whether to click. */
+.mega__card{
+  display:flex; align-items:flex-start; gap:.85rem;
+  padding:.6rem .8rem;
+  border-radius:.75rem;
+  border:1px solid transparent;
+  transition:background .2s ease, border-color .2s ease, transform .2s cubic-bezier(.16,.84,.44,1);
+}
+
+.mega__card:hover{
+  background:var(--mist);
+  border-color:var(--mega-line);
+  transform:translateX(3px);
+}
+
+.mega__card:focus-visible{
+  outline:2px solid var(--orange); outline-offset:2px;
+  background:var(--mist);
+}
+
+.mega__icon{
+  flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  width:2.15rem; height:2.15rem;
+  border-radius:.62rem;
+  background:rgba(240,163,44,.14);
+  color:#B47512;              /* amber darkened to pass contrast on white */
+  transition:background .2s ease, color .2s ease;
+}
+
+.mega__icon svg{ width:17px; height:17px; }
+
+.mega__card:hover .mega__icon{ background:var(--orange); color:#fff; }
+
+.mega__text{ display:flex; flex-direction:column; gap:.15rem; min-width:0; }
+
+.mega__text strong{
+  font-family:var(--font-display);
+  font-size:.94rem; font-weight:600;
+  letter-spacing:-.01em;
+  color:var(--navy);
+  line-height:1.3;
+}
+
+.mega__text span{
+  font-size:.78rem;
+  line-height:1.45;
+  color:var(--mega-mute);
+}
+
+/* ---------- the featured card ----------
+   var(--img) is set inline in header.php. The gradient is listed
+   SECOND in background-image, which means it paints underneath — so if
+   the photo path is wrong you get a deep teal card with readable text
+   on it, not a broken-image icon in the middle of your nav. */
+.mega__feature{
+  position:relative;
+  display:flex; flex-direction:column; justify-content:flex-end;
+  min-height:222px;
+  padding:1.25rem;
+  border-radius:1rem;
+  overflow:hidden;
+  background-image:var(--img), linear-gradient(150deg,#1C4A52,#0F272C);
+  background-size:cover;
+  background-position:center;
+  color:#fff;
+  isolation:isolate;
+}
+
+/* the scrim, so the title holds up over any photo you drop in */
+.mega__feature::before{
+  content:'';
+  position:absolute; inset:0; z-index:-1;
+  background:linear-gradient(to top, rgba(10,20,24,.92) 12%, rgba(10,20,24,.35) 62%, rgba(10,20,24,.1) 100%);
+  transition:opacity .3s ease;
+}
+
+.mega__feature:hover::before{ opacity:.82; }
+
+.mega__feature-tag{
+  align-self:flex-start;
+  margin-bottom:auto;
+  padding:.3rem .65rem;
+  border-radius:999px;
+  background:rgba(255,255,255,.16);
+  backdrop-filter:blur(6px);
+  font-size:.64rem; font-weight:600;
+  letter-spacing:.12em; text-transform:uppercase;
+}
+
+.mega__feature-title{
+  font-family:var(--font-display);
+  font-size:1.2rem; font-weight:700;
+  letter-spacing:-.02em; line-height:1.15;
+  margin-top:.9rem;
+}
+
+.mega__feature-sub{
+  margin-top:.4rem;
+  font-size:.78rem; line-height:1.5;
+  color:rgba(255,255,255,.76);
+}
+
+.mega__feature-go{
+  display:inline-flex; align-items:center; gap:.4rem;
+  margin-top:.9rem;
+  font-size:.78rem; font-weight:600;
+  color:var(--orange);
+}
+
+.mega__feature-go svg{ width:15px; height:15px; transition:transform .25s cubic-bezier(.16,.84,.44,1); }
+
+.mega__feature:hover .mega__feature-go svg{ transform:translateX(4px); }
+
+.mega__feature:focus-visible{ outline:3px solid var(--orange); outline-offset:3px; }
+
+/* Between 1080 and 1240 the 300px feature column squeezes the six rows
+   into two cramped columns. Drop the photo rather than the content —
+   the categories are the menu, the photo is the garnish. */
+@media (max-width:1240px){
+  .mega__inner{ grid-template-columns:minmax(0,1fr); }
+  .mega__feature{ display:none; }
+}
+
+/* ===================================================================
+   RIGHT-HAND CLUSTER
+   =================================================================== */
+.nav__icons{ display:flex; align-items:center; gap:.4rem; flex-shrink:0; }
+
+.icon-btn{
+  background:none; border:none; padding:.52rem;
+  color:rgba(255,255,255,.82);
+  cursor:pointer; display:flex; border-radius:999px;
+  transition:background .25s ease, color .25s ease;
+}
+
+.icon-btn:hover{ background:rgba(255,255,255,.12); color:#fff; }
+
+.icon-btn:focus-visible{ outline:2px solid var(--orange); outline-offset:2px; }
+
+.icon-btn svg{ width:18px; height:18px; }
+
+/* ---------- the call to action ----------
+   Amber pill, near-black text. Amber-on-white would fail contrast at
+   this size; amber-on-near-black passes comfortably, and it is the
+   only filled element in the header, so it reads as the one thing to
+   press without needing to be big. */
+.nav__cta{
+  display:inline-flex; align-items:center;
+  margin-left:.5rem;
+  padding:.58rem 1.15rem;
+  border-radius:999px;
+  background:var(--orange);
+  color:var(--navy);
+  font-family:var(--font-body);
+  font-size:.78rem; font-weight:600;
+  letter-spacing:.04em;
+  white-space:nowrap;
+  transition:transform .3s cubic-bezier(.16,.84,.44,1), box-shadow .3s ease, background .25s ease;
+}
+
+.nav__cta:hover{
+  transform:translateY(-2px);
+  background:#FFB443;
+  box-shadow:0 12px 26px -10px rgba(240,163,44,.7);
+}
+
+.nav__cta:active{ transform:translateY(0); }
+
+.nav__cta:focus-visible{ outline:2px solid #fff; outline-offset:3px; }
+
+@media (max-width:1079px){ .nav__cta{ display:none; } }
+
+/* the drawer's copy of it, which is full-width and always shown */
+.nav__cta--block{ display:flex; justify-content:center; margin-left:0; width:100%; padding:.85rem 1rem; }
+
+/* ---------- admin shortcut ---------- */
+.nav__admin{ gap:.45rem; padding-right:.9rem; padding-left:.7rem; }
+
+.nav__admin-text{ display:none; font-size:.76rem; font-weight:600; letter-spacing:.04em; }
+
+@media (min-width:1240px){ .nav__admin-text{ display:inline; } }
+
+/* ---------- the burger ----------
+   Three bars that become an X. The middle one fades while the outer
+   two rotate onto each other — one transition, no extra elements. */
+.nav__burger{
+  display:flex; flex-direction:column; justify-content:center; gap:5px;
+  width:42px; height:42px;
+  padding:0 10px;
+  margin-left:.2rem;
+  background:none; border:none; cursor:pointer;
+  border-radius:.6rem;
+  transition:background .25s ease;
+}
+
+.nav__burger:hover{ background:rgba(255,255,255,.12); }
+
+.nav__burger:focus-visible{ outline:2px solid var(--orange); outline-offset:2px; }
+
+.nav__burger span{
+  display:block; height:2px; width:100%;
+  background:#fff; border-radius:2px;
+  transition:transform .3s cubic-bezier(.16,.84,.44,1), opacity .2s ease;
+}
+
+.nav__burger[aria-expanded="true"] span:nth-child(1){ transform:translateY(7px) rotate(45deg); }
+
+.nav__burger[aria-expanded="true"] span:nth-child(2){ opacity:0; }
+
+.nav__burger[aria-expanded="true"] span:nth-child(3){ transform:translateY(-7px) rotate(-45deg); }
+
+@media (min-width:1080px){ .nav__burger{ display:none; } }
+
+/* ===================================================================
+   THE DRAWER
+
+   [hidden] has to be re-declared: display:flex below would otherwise
+   beat the browser's built-in [hidden]{display:none} and the drawer
+   would sit open on every page load.
+   =================================================================== */
+.nav-drawer{ position:fixed; inset:0; z-index:120; display:block; }
+
+.nav-drawer[hidden]{ display:none; }
+
+.nav-drawer__scrim{
+  position:absolute; inset:0;
+  background:rgba(10,14,17,.55);
+  backdrop-filter:blur(3px);
+  opacity:0;
+  transition:opacity .3s ease;
+}
+
+.nav-drawer.is-open .nav-drawer__scrim{ opacity:1; }
+
+.nav-drawer__panel{
+  position:absolute; top:0; right:0; bottom:0;
+  width:min(360px, 88vw);
+  display:flex; flex-direction:column;
+  background:var(--navy);
+  color:#fff;
+  box-shadow:-20px 0 60px -20px rgba(0,0,0,.7);
+  transform:translateX(100%);
+  transition:transform .38s cubic-bezier(.16,.84,.44,1);
+  overflow-y:auto;
+  overscroll-behavior:contain;   /* scrolling the drawer to its end must
+                                    not start scrolling the page behind */
+}
+
+.nav-drawer.is-open .nav-drawer__panel{ transform:translateX(0); }
+
+.nav-drawer__top{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:1.15rem 1.4rem;
+  border-bottom:1px solid rgba(255,255,255,.1);
+}
+
+.nav-drawer__label{
+  font-size:.68rem; font-weight:600;
+  letter-spacing:.18em; text-transform:uppercase;
+  color:rgba(255,255,255,.45);
+}
+
+.nav-drawer__close{
+  display:flex; padding:.5rem;
+  background:none; border:none; border-radius:999px;
+  color:rgba(255,255,255,.8); cursor:pointer;
+  transition:background .2s ease, color .2s ease;
+}
+
+.nav-drawer__close svg{ width:20px; height:20px; }
+
+.nav-drawer__close:hover{ background:rgba(255,255,255,.12); color:#fff; }
+
+.nav-drawer__close:focus-visible{ outline:2px solid var(--orange); outline-offset:2px; }
+
+.nav-drawer__nav{ padding:.6rem 0; }
+
+/* 48px minimum tap target, which is what the whole drawer exists for */
+.nav-drawer__link{
+  display:flex; align-items:center; justify-content:space-between;
+  width:100%;
+  padding:.95rem 1.4rem;
+  background:none; border:none;
+  font-family:var(--font-display);
+  font-size:1.05rem; font-weight:600;
+  letter-spacing:-.01em;
+  color:rgba(255,255,255,.86);
+  text-align:left; cursor:pointer;
+  transition:background .2s ease, color .2s ease;
+}
+
+.nav-drawer__link:hover{ background:rgba(255,255,255,.06); color:#fff; }
+
+.nav-drawer__link:focus-visible{ outline:2px solid var(--orange); outline-offset:-2px; }
+
+.nav-drawer__link.is-active{ color:var(--orange); box-shadow:inset 3px 0 0 var(--orange); }
+
+.nav-drawer__acc-btn svg{ width:18px; height:18px; transition:transform .3s cubic-bezier(.16,.84,.44,1); }
+
+.nav-drawer__acc.is-open .nav-drawer__acc-btn svg{ transform:rotate(180deg); }
+
+.nav-drawer__acc.is-open .nav-drawer__acc-btn{ color:var(--orange); }
+
+/* grid-template-rows 0fr -> 1fr animates a height nobody had to measure
+   in JS. The child needs overflow:hidden and min-height:0 for it. */
+.nav-drawer__acc-body{
+  display:grid;
+  grid-template-rows:0fr;
+  transition:grid-template-rows .34s cubic-bezier(.16,.84,.44,1);
+}
+
+.nav-drawer__acc.is-open .nav-drawer__acc-body{ grid-template-rows:1fr; }
+
+.nav-drawer__acc-body > *{ min-height:0; }
+
+.nav-drawer__acc-body{ overflow:hidden; }
+
+.nav-drawer__sub{
+  display:flex; align-items:center; gap:.75rem;
+  padding:.72rem 1.4rem .72rem 1.6rem;
+  font-size:.88rem;
+  color:rgba(255,255,255,.62);
+  transition:background .2s ease, color .2s ease, padding-left .2s ease;
+}
+
+.nav-drawer__sub svg{ width:17px; height:17px; color:var(--orange); flex-shrink:0; }
+
+.nav-drawer__sub:hover{ background:rgba(255,255,255,.06); color:#fff; padding-left:1.85rem; }
+
+.nav-drawer__sub:focus-visible{ outline:2px solid var(--orange); outline-offset:-2px; }
+
+.nav-drawer__sub--all{
+  margin-top:.15rem;
+  padding-left:1.6rem;
+  color:var(--orange); font-weight:600;
+}
+
+.nav-drawer__foot{
+  margin-top:auto;
+  padding:1.4rem;
+  border-top:1px solid rgba(255,255,255,.1);
+  display:flex; flex-direction:column; gap:.9rem; align-items:flex-start;
+}
+
+.nav-drawer__who{ margin:0; font-size:.82rem; color:rgba(255,255,255,.55); }
+
+.nav-drawer__who strong{ color:#fff; font-weight:600; }
+
+.nav-drawer__quiet{
+  padding:0; background:none; border:none;
+  font-family:var(--font-body); font-size:.84rem; font-weight:500;
+  color:rgba(255,255,255,.62);
+  text-decoration:underline; text-underline-offset:4px;
+  text-decoration-color:rgba(255,255,255,.25);
+  cursor:pointer;
+  transition:color .2s ease, text-decoration-color .2s ease;
+}
+
+.nav-drawer__quiet:hover{ color:#fff; text-decoration-color:var(--orange); }
+
+.nav-drawer__quiet:focus-visible{ outline:2px solid var(--orange); outline-offset:3px; border-radius:2px; }
+
+/* the page behind the open drawer must not scroll under it */
+body.nav-open{ overflow:hidden; }
+
+/* ===================================================================
+   REDUCED MOTION
+
+   Everything above still happens — the menu still opens, the drawer
+   still slides in — it simply arrives instead of travelling. Nothing
+   is disabled, only de-animated.
+   =================================================================== */
+@media (prefers-reduced-motion: reduce){
+  .nav, .nav__inner, .nav__logo-mark, .nav__logo-word,
+  .mega, .mega__card, .mega__icon, .mega__feature::before,
+  .mega__feature-go svg, .nav__cta, .nav__chev, .nav__link::after,
+  .nav__burger span, .nav-drawer__panel, .nav-drawer__scrim,
+  .nav-drawer__acc-body, .nav-drawer__sub, .skip-link{
+    transition-duration:.01ms !important;
+  }
+
+  .mega{ transform:none; }
+
+  .mega__card:hover{ transform:none; }
+
+  .nav__cta:hover{ transform:none; }
+}

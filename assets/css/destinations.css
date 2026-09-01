@@ -1,0 +1,969 @@
+/* ===================================================================
+   assets/destinations.css  —  the index layout on destinations.php
+
+   THE MAP IS ON TOP AND THE GRID IS FIVE ACROSS.
+
+   WHAT THIS REPLACED, so it does not come back: a 20rem sticky sidebar
+   down the left holding a small map, a column of seven categories and a
+   column of twelve municipalities, with the cards squeezed into three
+   columns beside it.
+
+   Two things were wrong with that and both were about empty space:
+
+     THE COLUMN WAS ALWAYS HALF EMPTY. The filter lists end wherever
+     they end; the grid runs for 24 cards. Every screen taller than the
+     filters showed a stripe of nothing down the left of the page, and
+     it was a fifth of the page's width.
+
+     THE CARDS WERE PAYING FOR IT. Three columns inside the remaining
+     width made each card wide enough to want long copy and tall enough
+     that four rows filled a screen. Twenty-four destinations took six
+     scrolls to see.
+
+   The order now is the order you use them in: the map says where the
+   province is, the chips narrow it down, the grid shows what is left.
+   Nothing is beside anything else, so nothing has to wait for anything
+   else to finish.
+
+     1  the sheet         one column, everything stacks
+     2  the atlas band    full-width map, dark plate, on top
+     3  the filter bar    two rows of chips, not two columns of rows
+     4  the grid          auto-fill from 12.5rem: five across on a
+                          desktop, four on a laptop, two on a phone
+     5  the card          compact — photo, name, one line, two facts
+
+   WHAT BELONGS WHERE, unchanged:
+
+     base.css                 anything shared with another page —
+                              .wrap, .section, .media, .photo-layer,
+                              .btn, the Leaflet pin and popup
+     destinations.css         THIS FILE. The band, the bar, the grid,
+                              the card
+     destinations-hero.css    the banner and its rail, nothing else
+
+   header.php loads base.css then assets/<page>.css automatically, so
+   this file is picked up by name — it must stay called
+   destinations.css or the whole page renders as unstyled text.
+
+   Palette still comes from the tokens in base.css :root. The values in
+   section 0 are all derived from --navy and --orange; no new brand
+   colour is introduced here, so nothing else on the site shifts.
+   =================================================================== */
+
+/* ===================================================================
+   MOVED FROM base.css BY THE SPLIT
+
+   These rules only ever applied to this page, so they were lifted out
+   of the shared file. They sit at the TOP, in the order they had in
+   base.css, which keeps the cascade identical: they used to lose to
+   everything below, and they still do. Add new rules BELOW this block,
+   not inside it.
+   =================================================================== */
+
+/* filter notice on destinations.php */
+.filter-note{
+  display:inline-flex; flex-wrap:wrap; align-items:center; gap:.5rem;
+  padding:.7rem 1.15rem; border-radius:999px;
+  background:rgba(240,163,44,.1); border:1px solid rgba(240,163,44,.28);
+  font-size:.85rem; color:var(--navy);
+}
+
+.filter-note a{ color:var(--ocean); font-weight:600; text-decoration:underline; }
+
+/* ================= end of the block moved from base.css ============ */
+
+
+/* ===================================================================
+   0. LOCAL TOKENS
+
+   Scoped to this section rather than added to :root in base.css,
+   because nothing outside destinations.php uses them and a token in
+   the shared file is a promise to every other page.
+   =================================================================== */
+.dest-layout{
+  --sheet:        #f4f6f9;               /* the chart paper           */
+  --plate:        #ffffff;               /* a panel on the chart      */
+  --ink:          #101a2b;               /* the dark map plate        */
+  --rule:         rgba(16,26,43,.10);    /* hairline on the sheet     */
+  --rule-soft:    rgba(16,26,43,.06);
+  --quiet:        rgba(16,26,43,.55);    /* secondary text            */
+  --quieter:      rgba(16,26,43,.42);    /* labels, counts            */
+
+  /* one shadow, three depths, so every raised thing on the page is
+     lit from the same angle */
+  --lift-1: 0 1px 2px rgba(16,26,43,.04), 0 8px 20px -16px rgba(16,26,43,.5);
+  --lift-2: 0 2px 4px rgba(16,26,43,.05), 0 22px 44px -26px rgba(16,26,43,.55);
+  --lift-3: 0 3px 6px rgba(16,26,43,.06), 0 34px 54px -30px rgba(16,26,43,.6);
+}
+
+
+/* ===================================================================
+   1. THE SHEET
+
+   One column. Everything stacks: the map, then the chips, then the
+   count, then the grid.
+
+   It sits on a pale sea chart — a cool paper tint with hairline depth
+   contours running through it, the same thing a boat out to Calaguas
+   is navigating by. That is the one decorative move on the page and it
+   only ever shows in the gutters between cards.
+
+   It is one background-image, a tiled SVG encoded inline, so there is
+   no extra request and nothing to lose track of in uploads/. To change
+   the contours, edit the stroke colour or the four path curves inside
+   the data URI — it is a plain 180x180 SVG, just percent-encoded.
+
+   IT IS CONTAINED, NOT FULL BLEED. A 100vw pseudo-element is the usual
+   way to break a background out of .wrap, and it is also the usual way
+   to give a page a phantom horizontal scrollbar, because 100vw counts
+   the vertical scrollbar and the wrap does not.
+
+   THE PADDING HERE OVERRIDES .section. Both selectors are one class
+   deep and this file loads after base.css, so this wins. If the band
+   ever loses its air, check whether something below re-declares
+   padding on .dest-layout.
+   =================================================================== */
+.dest-layout{
+  position:relative;
+  display:block;
+  padding:1.6rem 1.4rem 2.4rem;
+  border:1px solid var(--rule);
+  border-radius:1.35rem;
+  background-color:var(--sheet);
+  background-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='180'%20height='180'%20viewBox='0%200%20180%20180'%3E%3Cg%20fill='none'%20stroke='rgba%2820,38,64,0.075%29'%20stroke-width='1'%3E%3Cpath%20d='M0%2025%20C45%205,135%2045,180%2025'/%3E%3Cpath%20d='M0%2070%20C45%2050,135%2090,180%2070'/%3E%3Cpath%20d='M0%20115%20C45%2095,135%20135,180%20115'/%3E%3Cpath%20d='M0%20160%20C45%20140,135%20180,180%20160'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat:repeat;
+  scroll-margin-top:5.5rem;   /* clears the fixed nav on #destList */
+}
+
+/* the amber seam along the top edge — the same accent the cards use on
+   hover, here saying where the section starts */
+.dest-layout::before{
+  content:'';
+  position:absolute; top:-1px; left:1.4rem;
+  width:min(9rem, 30%); height:3px;
+  border-radius:999px;
+  background:linear-gradient(to right, var(--orange), rgba(240,163,44,0));
+}
+
+@media (min-width:980px){
+
+   .dest-layout{ padding:1.9rem 1.9rem 2.75rem; }
+
+   .dest-layout::before{ left:1.9rem; }
+}
+
+@media (max-width:560px){
+
+   .dest-layout{ padding:1.1rem .85rem 1.9rem; border-radius:1.1rem; }
+
+   .dest-layout::before{ left:.85rem; }
+}
+
+/* the grid still has to be allowed to shrink below its content's
+   natural width, or one long destination name widens the whole page */
+.dest-main{ min-width:0; }
+
+
+/* ===================================================================
+   2. THE ATLAS BAND
+
+   The map, full width, on a dark plate with its label and its reset on
+   a bar above it.
+
+   THE PLATE IS DARK ON PURPOSE. OpenStreetMap tiles are pale, and a
+   pale map on a pale page has no edge at all — it read as a picture of
+   a map rather than as something to press. The dark frame is what
+   makes it look like an instrument.
+
+   HEIGHT IS VIEWPORT-RELATIVE, CLAMPED. It has to be tall enough that
+   the twelve municipalities separate, and short enough that the first
+   row of cards is still visible under it on a laptop. If the map fills
+   the screen nobody scrolls past it, and the page becomes a map.
+   =================================================================== */
+.dest-atlas{
+  margin-bottom:1.4rem;
+  padding:1rem;
+  border-radius:1.1rem;
+  background:var(--ink);
+  box-shadow:var(--lift-2);
+}
+
+.dest-atlas__bar{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:.75rem 1.5rem; flex-wrap:wrap;
+  padding:.15rem .3rem .9rem;
+}
+
+.dest-atlas__title{ min-width:0; }
+
+.dest-atlas__label{
+  display:flex; align-items:center; gap:.5rem;
+  font-size:.68rem; font-weight:700;
+  letter-spacing:.16em; text-transform:uppercase;
+  color:rgba(255,255,255,.66);
+}
+
+.dest-atlas__label::before{
+  content:''; width:.9rem; height:2px; border-radius:999px;
+  background:var(--orange); flex-shrink:0;
+}
+
+.dest-atlas__hint{
+  margin:.3rem 0 0;
+  font-size:.78rem; line-height:1.4;
+  color:rgba(255,255,255,.48);
+}
+
+.dest-atlas__tools{
+  display:flex; align-items:center; gap:.6rem; flex-shrink:0;
+}
+
+/* --- the province status ---------------------------------------------
+   It used to be a panel of its own in the sidebar. It is one standing
+   sentence and it does not need a box; on the map bar it sits with the
+   other things that are true of the whole province.
+
+   The dot is the only green on the page, because this is the only
+   thing on the page reporting a state rather than describing a place. */
+.dest-atlas__status{
+  display:inline-flex; align-items:center; gap:.45rem;
+  padding:.4rem .8rem;
+  border-radius:999px;
+  background:rgba(46,163,107,.14);
+  font-size:.72rem; font-weight:600;
+  color:#7fe0b0;
+}
+
+.dest-atlas__status::before{
+  content:'';
+  width:.45rem; height:.45rem; border-radius:999px;
+  background:#2ea36b;
+  box-shadow:0 0 0 3px rgba(46,163,107,.22);
+  animation:destPulse 2.8s ease-in-out infinite;
+}
+
+@keyframes destPulse{
+  0%, 100% { box-shadow:0 0 0 3px rgba(46,163,107,.22); }
+  50%      { box-shadow:0 0 0 6px rgba(46,163,107,.07); }
+}
+
+.dest-atlas__reset{
+  padding:.42rem .9rem;
+  border:1px solid rgba(255,255,255,.22);
+  border-radius:999px;
+  background:transparent;
+  color:rgba(255,255,255,.82);
+  font-size:.72rem; font-weight:600;
+  letter-spacing:.05em;
+  cursor:pointer;
+  transition:background .25s ease, border-color .25s ease, color .25s ease;
+}
+
+.dest-atlas__reset:hover{
+  background:var(--orange); border-color:var(--orange); color:var(--ink);
+}
+
+.dest-atlas__reset:focus-visible{ outline:2px solid var(--orange); outline-offset:2px; }
+
+
+/* ===================================================================
+   3. THE MAP
+   =================================================================== */
+.dest-map{
+  height:clamp(17rem, 38vh, 25rem);
+  border-radius:.75rem;
+  overflow:hidden;
+  background:#0a1320;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);
+  z-index:0;   /* Leaflet paints its own panes; this shapes the hole */
+}
+
+@media (max-width:560px){
+   .dest-map{ height:15rem; }
+}
+
+/* Leaflet's own furniture, tuned to the dark plate. The defaults are
+   white on white and vanish against the tiles. */
+.dest-map .leaflet-control-zoom a{
+  background:rgba(16,26,43,.9);
+  color:#fff;
+  border-color:rgba(255,255,255,.16);
+}
+
+.dest-map .leaflet-control-zoom a:hover{ background:var(--orange); color:var(--ink); }
+
+.dest-map .leaflet-control-attribution{
+  background:rgba(16,26,43,.72);
+  color:rgba(255,255,255,.62);
+}
+
+.dest-map .leaflet-control-attribution a{ color:rgba(255,255,255,.85); }
+
+/* written into the map host by destinations-map.js when Leaflet does
+   not load, or when a filter leaves nothing to pin */
+.dest-map__fail{
+  display:flex; align-items:center; justify-content:center;
+  height:100%; padding:1.5rem;
+  text-align:center;
+  font-size:.85rem; line-height:1.5;
+  color:rgba(255,255,255,.7);
+}
+
+/* kept for older copies of the markup that still print the hint as a
+   separate paragraph under the map */
+.dest-map__hint{
+  margin:.75rem 0 0;
+  font-size:.76rem;
+  color:rgba(255,255,255,.5);
+}
+
+
+/* ===================================================================
+   4. THE FILTER BAR
+
+   Two rows of chips where there used to be two columns of rows. Seven
+   categories and twelve municipalities is nineteen filters: down a
+   sidebar that is nineteen lines of vertical space, across a bar it is
+   two.
+
+   Each row is a label and then its chips on one line, so the bar reads
+   as two sentences rather than as a control panel.
+   =================================================================== */
+.dest-filters{
+  scroll-margin-top:6.5rem;   /* clears the fixed nav on #destFilters */
+  display:flex; flex-direction:column; gap:.65rem;
+  padding:1rem 1.1rem;
+  margin-bottom:1.5rem;
+  border:1px solid var(--rule);
+  border-radius:1.1rem;
+  background:var(--plate);
+  box-shadow:var(--lift-1);
+}
+
+.dest-filters__row{
+  display:flex; align-items:flex-start; gap:.9rem;
+  min-width:0;
+}
+
+/* the width is fixed so the two rows of chips start on the same
+   vertical line — a ragged left edge on a two-row control bar reads as
+   a mistake. 11rem is what "What kind of place" needs at this size
+   without wrapping; if you rename a label to something longer, widen
+   this rather than letting it wrap. */
+.dest-filters__label{
+  flex-shrink:0;
+  width:11rem;
+  padding-top:.55rem;
+  font-size:.66rem; font-weight:700;
+  letter-spacing:.12em; text-transform:uppercase;
+  color:var(--quieter);
+}
+
+/* --- the chips -------------------------------------------------------
+   They WRAP on a desktop and SCROLL on a phone. Wrapping is right when
+   there is room for two lines; on a 390px screen twelve municipalities
+   wrap to five lines and push the cards off the bottom, which is the
+   problem this whole layout exists to solve. */
+.dest-chips{
+  display:flex; flex-wrap:wrap; gap:.4rem;
+  margin:0; padding:0; list-style:none;
+  min-width:0;
+}
+
+.dest-chips a{
+  display:inline-flex; align-items:center; gap:.4rem;
+  padding:.42rem .75rem;
+  border:1px solid var(--rule);
+  border-radius:999px;
+  background:transparent;
+  font-size:.8rem; font-weight:500;
+  white-space:nowrap;
+  color:var(--quiet);
+  transition:background .22s ease, color .22s ease, border-color .22s ease;
+}
+
+.dest-chips a:hover{
+  border-color:rgba(16,26,43,.28);
+  background:rgba(16,26,43,.04);
+  color:var(--navy);
+}
+
+.dest-chips em{
+  font-style:normal;
+  font-size:.7rem; font-weight:700;
+  font-variant-numeric:tabular-nums;
+  color:var(--quieter);
+  transition:color .22s ease;
+}
+
+/* the filter that is on. Filled navy — it used to be a slightly darker
+   grey row, which on a list of twelve was almost impossible to spot,
+   and the whole job of the chip is to answer "what am I looking at". */
+.dest-chips a.is-on{
+  background:var(--ink);
+  border-color:var(--ink);
+  color:#fff;
+  font-weight:600;
+  box-shadow:var(--lift-1);
+}
+
+.dest-chips a.is-on em{ color:rgba(255,255,255,.6); }
+
+.dest-chips a:focus-visible{ outline:2px solid var(--orange); outline-offset:2px; }
+
+.dest-filters__note{
+  margin:.2rem 0 0;
+  padding-top:.7rem;
+  border-top:1px solid var(--rule-soft);
+  font-size:.78rem; line-height:1.5;
+  color:var(--quiet);
+}
+
+.dest-filters__note strong{ color:var(--navy); }
+
+.dest-filters__note a{
+  color:var(--ocean); font-weight:600;
+  text-decoration:underline; text-underline-offset:2px;
+}
+
+/* --- the bar on a phone ----------------------------------------------
+   The label goes above its chips and the chips become one sideways
+   scrolling line. Nineteen filters cost two short rows of height
+   instead of seven, and a sideways row is a thumb gesture rather than
+   a scroll past everything you did not want. */
+@media (max-width:760px){
+
+   .dest-filters{ padding:.9rem .75rem; gap:.9rem; }
+
+   .dest-filters__row{ display:block; }
+
+   .dest-filters__label{
+     display:block; width:auto;
+     padding-top:0; margin-bottom:.5rem;
+   }
+
+   .dest-chips{
+     flex-wrap:nowrap;
+     overflow-x:auto;
+     overscroll-behavior-x:contain;
+     -webkit-overflow-scrolling:touch;
+     scrollbar-width:none;
+     /* the row bleeds to both edges of the panel, so the last chip on
+        screen does not look like the last chip there is */
+     margin:0 -.75rem; padding:.15rem .75rem;
+   }
+
+   .dest-chips::-webkit-scrollbar{ display:none; }
+}
+
+
+/* ===================================================================
+   5. WHAT IS ON SCREEN
+
+   One line above the grid: how many, why, and the way back to all 24.
+   =================================================================== */
+.dest-result{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:1rem; flex-wrap:wrap;
+  padding-bottom:.9rem;
+  margin-bottom:1.4rem;
+  border-bottom:1px solid var(--rule);
+}
+
+.dest-result__count{
+  display:flex; align-items:baseline; flex-wrap:wrap; gap:.5rem;
+  margin:0;
+  font-size:.95rem;
+  color:var(--quiet);
+}
+
+/* the number is the answer to the filter you just set, so it is set at
+   headline size and in the display face — everything after it is the
+   caption to it */
+.dest-result__count strong{
+  font-family:var(--font-display);
+  font-size:1.9rem; font-weight:800;
+  line-height:1;
+  letter-spacing:-.03em;
+  color:var(--navy);
+}
+
+.dest-result__clear{
+  display:inline-flex; align-items:center; gap:.45rem;
+  padding:.45rem .95rem;
+  border:1px solid var(--rule);
+  border-radius:999px;
+  background:var(--plate);
+  font-size:.73rem; font-weight:600;
+  letter-spacing:.06em; text-transform:uppercase;
+  color:var(--quiet);
+  transition:color .25s ease, border-color .25s ease, background .25s ease;
+}
+
+.dest-result__clear::before{
+  content:'\00d7';               /* a real multiplication sign, not an x */
+  font-size:1rem; line-height:0;
+  margin-top:-1px;
+}
+
+.dest-result__clear:hover{
+  color:var(--navy); border-color:var(--orange); background:rgba(240,163,44,.14);
+}
+
+.dest-result__clear:focus-visible{ outline:2px solid var(--orange); outline-offset:2px; }
+
+
+/* nothing matched. An empty screen is a place to act from, so the way
+   out is the loudest thing in it. */
+.dest-empty{
+  padding:3rem 1.5rem;
+  margin-bottom:1.5rem;
+  border:1px dashed var(--rule);
+  border-radius:1.1rem;
+  background:var(--plate);
+  text-align:center;
+  font-size:.95rem;
+  color:var(--quiet);
+}
+
+.dest-empty a{
+  display:inline-block; margin-top:.9rem;
+  padding:.6rem 1.3rem;
+  border-radius:999px;
+  background:var(--ink);
+  color:#fff;
+  font-size:.82rem; font-weight:600;
+  text-decoration:none;
+  transition:background .25s ease;
+}
+
+.dest-empty a:hover{ background:var(--orange); color:var(--ink); }
+
+
+/* ===================================================================
+   6. THE GRID
+
+   FIVE ACROSS on a desktop, four on a laptop, three on a tablet, two
+   on a phone. auto-fill against a 12.5rem minimum does all four
+   without a breakpoint for each — the browser fits as many 200px
+   columns as the row will take.
+
+   TWO ON A PHONE, NOT ONE. A single column of 24 cards is 24 screens
+   of scrolling. Two columns of small cards is what every travel app
+   does, and it is the whole reason the card below is compact.
+   =================================================================== */
+.dest-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(12.5rem, 1fr));
+  gap:1.1rem;
+}
+
+@media (max-width:560px){
+
+   .dest-grid{
+     grid-template-columns:repeat(2, minmax(0, 1fr));
+     gap:.75rem;
+   }
+}
+
+
+/* ===================================================================
+   7. THE CARD
+
+   COMPACT. Five fit in a row, so everything on it is sized for a 200px
+   column: a photograph, the name, the one-line quote, two facts, and a
+   footer.
+
+   THE QUOTE AND THE FACTS COME FROM includes/destinations-data.php as
+   'quote' and 'chips'. This page used to drop both, which left every
+   card as a name and a sentence. The quote is the only voice on the
+   card and it costs one line.
+
+   THE DESCRIPTION IS NOT ON THE CARD ANY MORE. At this width two lines
+   of it is four lines of type, and it is largely the same information
+   the quote gives in eight words. It is still in the data file and
+   still on the banner. To bring it back, un-hide .dest-card__desc
+   below — but look at the grid at 1280 first, because it adds about
+   2.6rem to all 24 cards at once.
+   =================================================================== */
+.dest-card{
+  position:relative;
+  display:flex; flex-direction:column;
+  border:1px solid var(--rule);
+  border-radius:.85rem;
+  overflow:hidden;
+  background:var(--plate);
+  box-shadow:var(--lift-1);
+  scroll-margin-top:7rem;   /* an #anchor jump has to clear the fixed nav */
+  transition:transform .4s cubic-bezier(.16,.84,.44,1),
+             box-shadow .4s ease,
+             border-color .4s ease;
+}
+
+.dest-card:hover{
+  transform:translateY(-4px);
+  border-color:rgba(16,26,43,.06);
+  box-shadow:var(--lift-3);
+}
+
+/* --- the amber edge on hover -----------------------------------------
+   A 3px line across the top, drawn from the left. It is the only
+   colour on the card and it appears only when the card is being
+   considered, which is the one moment an accent is not decoration.
+
+   transform rather than width: a width transition on a 3px bar
+   repaints the layout on every frame, a transform does not. */
+.dest-card::before{
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:3px; z-index:5;
+  background:linear-gradient(to right, var(--orange), rgba(240,163,44,.2));
+  transform:scaleX(0);
+  transform-origin:left center;
+  transition:transform .4s cubic-bezier(.16,.84,.44,1);
+}
+
+.dest-card:hover::before,
+.dest-card:focus-within::before{ transform:scaleX(1); }
+
+/* --- the photo -------------------------------------------------------
+   .media in base.css already handles the frame, the crop, the slow
+   zoom on hover and the dark gradient across the bottom that the town
+   sits on. This only sets the shape. */
+.dest-card__media{
+  aspect-ratio:4 / 3;
+  border-radius:0;
+  flex-shrink:0;
+}
+
+/* the tag pill and the town both sit above .media::after, which is
+   z-index 2 */
+.dest-card__tag{
+  position:absolute; top:.55rem; left:.55rem; z-index:3;
+  display:inline-flex; align-items:center; gap:.35rem;
+  max-width:calc(100% - 1.1rem);
+  padding:.26rem .55rem;
+  border-radius:999px;
+  background:rgba(10,19,32,.62);
+  -webkit-backdrop-filter:blur(10px) saturate(1.3);
+          backdrop-filter:blur(10px) saturate(1.3);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);
+  color:#fff;
+  font-size:.56rem; font-weight:700;
+  letter-spacing:.1em; text-transform:uppercase;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+.dest-card__tag::before{
+  content:''; width:4px; height:4px; border-radius:999px;
+  background:var(--orange); flex-shrink:0;
+}
+
+/* --- the town, on the photograph ------------------------------------- */
+.dest-card__loc{
+  position:absolute; left:.65rem; right:.65rem; bottom:.55rem; z-index:3;
+  display:flex; align-items:center; gap:.3rem;
+  margin:0;
+  font-size:.62rem; font-weight:700;
+  letter-spacing:.11em; text-transform:uppercase;
+  color:rgba(255,255,255,.95);
+  text-shadow:0 1px 12px rgba(6,10,16,.75);
+  /* a long municipality name should not climb into the picture */
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+.dest-card__loc svg{
+  width:.75rem; height:.75rem;
+  fill:var(--orange);
+  flex-shrink:0;
+}
+
+/* --- the words -------------------------------------------------------
+   flex:1 on the body and margin-top:auto on the footer keep the
+   footers on a common baseline across a row, however long the names
+   run. */
+.dest-card__body{
+  display:flex; flex-direction:column; flex:1;
+  padding:.8rem .85rem .85rem;
+}
+
+/* --- TWO LINES, ALWAYS -----------------------------------------------
+   Names run from two words to five, and a row of cards whose quotes
+   start at different heights reads as a broken layout. The clamp cuts
+   the long ones; min-height holds the short ones open.
+
+   Both numbers come from the line-height: 2 lines at .95rem/1.25 is
+   2.38rem. Change one and change the other. */
+.dest-card__name{
+  font-size:.95rem; font-weight:700; line-height:1.25;
+  letter-spacing:-.015em;
+  color:var(--navy);
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  min-height:2.38rem;
+  transition:color .3s ease;
+}
+
+.dest-card:hover .dest-card__name{ color:#000; }
+
+/* --- the pull quote --------------------------------------------------
+   The one line of writing on the card, in italic body face — not the
+   display face, which the name already owns, and two display faces
+   stacked read as two headings.
+
+   Same clamp-and-hold as the name, for the same reason. */
+.dest-card__quote{
+  margin:.4rem 0 .7rem;
+  padding-left:.5rem;
+  border-left:2px solid var(--orange);
+  font-style:italic;
+  font-size:.78rem; line-height:1.4;
+  color:rgba(16,26,43,.72);
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  min-height:2.18rem;
+}
+
+/* the long description is off at this card size — read the note in the
+   section header above before turning it back on */
+.dest-card__desc{ display:none; }
+
+/* --- the facts -------------------------------------------------------
+   'chips' out of destinations-data.php. Deliberately quiet: they are
+   the specifics, and specifics are read after the picture and the
+   name, never before them.
+
+   TWO OF THE THREE. The third is hidden rather than dropped from the
+   markup, because a 200px column only ever holds about that much and
+   which two fit depends on how long the words are. The data file still
+   carries all three and the banner still shows all three.
+
+   NOT .dest-card__chips. base.css already carries a rule of that name
+   from the homepage carousel, and reusing it would inherit a layout
+   built for a different card. */
+.dest-card__facts{
+  display:flex; flex-wrap:wrap; gap:.25rem;
+  margin:0 0 .8rem;
+  padding:0; list-style:none;
+  max-height:1.35rem; overflow:hidden;
+}
+
+.dest-card__facts li{
+  padding:.18rem .45rem;
+  border:1px solid var(--rule);
+  border-radius:.3rem;
+  background:rgba(16,26,43,.02);
+  font-size:.6rem; font-weight:500;
+  color:var(--quieter);
+  white-space:nowrap;
+}
+
+.dest-card__facts li:nth-child(n+3){ display:none; }
+
+/* --- the footer ------------------------------------------------------
+   margin-top:auto is what pins this to the bottom of the body, and it
+   is the reason every card in a row puts its footer on the same line
+   however long the name above it ran.
+
+   DO NOT GIVE THIS A margin-top FOR SPACING. A second margin-top rule
+   anywhere below this one silently replaces the auto and the cards go
+   back to ragged. */
+.dest-card__actions{
+  display:flex; align-items:center; gap:.4rem;
+  margin-top:auto;
+  padding-top:.7rem;
+  border-top:1px solid var(--rule-soft);
+}
+
+/* --- the way in ------------------------------------------------------
+   A text link with an arrow. At 200px wide there is no room for a
+   filled pill and a map button side by side, and the whole card is
+   already the link — see the ::after below. */
+.dest-card__btn{
+  display:inline-flex; align-items:center; gap:.35rem;
+  padding:.2rem 0;
+  color:var(--navy);
+  font-size:.76rem; font-weight:700;
+  background:none;
+  transition:color .3s ease;
+}
+
+.dest-card__btn svg{
+  width:.95rem; height:.95rem;
+  fill:none; stroke:currentColor;
+  stroke-width:2; stroke-linecap:round; stroke-linejoin:round;
+  transition:transform .3s cubic-bezier(.16,.84,.44,1);
+}
+
+.dest-card:hover .dest-card__btn{ color:var(--orange); }
+
+.dest-card:hover .dest-card__btn svg,
+.dest-card__btn:hover svg{ transform:translateX(3px); }
+
+/* --- show on map -----------------------------------------------------
+   Reduced to a round icon button. "Map" spelled out was as wide as the
+   primary link beside it, and the aria-label already in the markup
+   carries the destination name for a screen reader.
+
+   The <span>Map</span> inside it is hidden visually rather than
+   deleted, so nothing in the markup has to change and a browser with
+   no CSS still shows a labelled button. */
+.dest-card__map{
+  display:inline-flex; align-items:center; justify-content:center;
+  margin-left:auto;
+  width:1.85rem; height:1.85rem;
+  padding:0;
+  border:1px solid var(--rule);
+  border-radius:999px;
+  background:transparent;
+  color:var(--quiet);
+  cursor:pointer;
+  flex-shrink:0;
+  transition:border-color .25s ease, color .25s ease,
+             background .25s ease, transform .25s ease;
+}
+
+.dest-card__map span{
+  position:absolute; width:1px; height:1px;
+  padding:0; margin:-1px; overflow:hidden;
+  clip:rect(0 0 0 0); white-space:nowrap; border:0;
+}
+
+.dest-card__map svg{
+  width:.85rem; height:.85rem;
+  fill:currentColor;
+  flex-shrink:0;
+}
+
+.dest-card__map:hover{
+  border-color:var(--orange);
+  background:rgba(240,163,44,.14);
+  color:var(--navy);
+  transform:translateY(-1px);
+}
+
+.dest-card__map:active{ transform:translateY(0) scale(.95); }
+
+/* --- THE WHOLE CARD IS THE LINK --------------------------------------
+   The ::after stretches the View details link over the entire card, so
+   the photograph, the name and the quote are all the same click rather
+   than three inert things next to one small link. Nothing moves in the
+   markup and there is still exactly one link per card in the
+   accessibility tree — a second wrapping <a> would announce every card
+   twice and put the same destination in the tab order twice over.
+
+   THE MAP BUTTON HAS TO CLIMB ABOVE IT. It sits inside the area the
+   ::after covers, so without its own stacking position the stretched
+   link swallows every click meant for it. That is the one thing to
+   check if "Map" ever stops responding. */
+.dest-card__btn::after{
+  content:'';
+  position:absolute; inset:0; z-index:3;
+}
+
+.dest-card{ cursor:pointer; }
+
+.dest-card__map{ position:relative; z-index:4; }
+
+/* the pointer belongs to the card, but text is still text */
+.dest-card__name,
+.dest-card__quote,
+.dest-card__facts{ position:relative; z-index:4; cursor:auto; }
+
+.dest-card__btn:focus-visible,
+.dest-card__map:focus-visible{
+  outline:2px solid var(--orange); outline-offset:3px;
+  border-radius:999px;
+}
+
+/* the stretched link means focus lands on a card-sized target, so the
+   ring belongs on the card rather than on two words at the bottom */
+.dest-card:focus-within{
+  box-shadow:var(--lift-3), 0 0 0 2px var(--orange);
+}
+
+
+/* --- found from the map ----------------------------------------------
+   Set by destinations-map.js when a pin is clicked, and removed 2.6s
+   later. The card is already scrolled to the middle of the screen by
+   then, so this only has to answer "which one" — a ring rather than a
+   movement, because a card that jumps after the scroll settles reads
+   as the page still loading. */
+.dest-card.is-located{
+  border-color:var(--orange);
+  box-shadow:0 0 0 3px rgba(240,163,44,.28);
+  animation:destFound 2.6s ease;
+}
+
+@keyframes destFound{
+  0%   { box-shadow:0 0 0 0   rgba(240,163,44,.5); }
+  18%  { box-shadow:0 0 0 8px rgba(240,163,44,.22); }
+  100% { box-shadow:0 0 0 3px rgba(240,163,44,.28); }
+}
+
+
+/* ===================================================================
+   8. THE CLOSING BAND
+   =================================================================== */
+.dest-outro{
+  margin-top:1rem;
+  padding:5rem 0;
+  background:var(--mist);
+  text-align:center;
+}
+
+.dest-outro .eyebrow--muted{ color:rgba(22,25,28,.45); }
+
+.dest-outro__title{
+  max-width:34ch;
+  margin:0 auto;
+  font-size:clamp(1.6rem, 4vw, 2.4rem);
+  font-weight:700; line-height:1.2;
+}
+
+.dest-outro__text{
+  max-width:44ch;
+  margin:1rem auto 1.75rem;
+  font-size:.95rem;
+  color:rgba(22,25,28,.62);
+}
+
+
+/* ===================================================================
+   9. QUIETER MOTION
+
+   Nothing here is load-bearing — every state that uses a transform
+   also changes a colour, so removing the movement loses no meaning.
+   =================================================================== */
+@media (prefers-reduced-motion: reduce){
+
+   .dest-card,
+   .dest-card::before,
+   .dest-card__btn,
+   .dest-card__btn svg,
+   .dest-card__map,
+   .dest-card__name,
+   .dest-chips a,
+   .dest-atlas__reset{ transition:none; }
+
+   .dest-card:hover{ transform:none; }
+
+   .dest-card__map:hover{ transform:none; }
+
+   .dest-card:hover .dest-card__btn svg,
+   .dest-card__btn:hover svg{ transform:none; }
+
+  /* the amber edge still marks the hovered card, it just does not draw
+     itself across to get there */
+   .dest-card::before{ transform:scaleX(1); opacity:0; }
+
+   .dest-card:hover::before,
+   .dest-card:focus-within::before{ opacity:1; }
+
+   .dest-card.is-located{ animation:none; }
+
+   .dest-atlas__status::before{ animation:none; }
+}

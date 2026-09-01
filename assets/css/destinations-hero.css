@@ -1,0 +1,2481 @@
+/* ===================================================================
+   assets/destinations-hero.css  —  the featured place on destinations.php
+
+   Pairs with assets/destinations-hero.js. No class name or id in here
+   differs from the markup already in destinations.php, so neither that
+   file nor the JS needs touching.
+
+
+   WHY THIS FILE FIGHTS, AND WHEN TO STOP IT FIGHTING
+   ---------------------------------------------------------------
+
+   Every rule that BUILDS THE OVERLAY is written twice over: the class
+   is doubled (.hero-feature.hero-feature) and the structural
+   declarations carry !important. That is deliberate and it is ugly, and
+   the reason is worth writing down because the day it stops being
+   necessary you should take it out.
+
+   The symptom it was written against: the rail rendering in the page
+   flow at the bottom of the DOCUMENT instead of pinned to the bottom
+   right of the section, with the text block stranded on white above it
+   — while other rules from this same file were plainly working. Two
+   rules from one stylesheet cannot half-apply. Something later in the
+   cascade was re-declaring .hero-feature and .hero-rail and winning.
+
+   The giveaway was the ring on the current card coming out ORANGE. No
+   version of this file sets orange. A second, older copy of it was
+   being served from somewhere — a leftover <link>, a build step, or
+   just a hard browser cache.
+
+   FIND IT AND DELETE IT. Then this file can go back to plain single
+   classes with no !important anywhere:
+
+     1. View source on destinations.php in the browser and search for
+        "destinations-hero.css". If it appears more than once, the
+        duplicate is the problem — the second one wins.
+     2. Check includes/header.php for a <link> to this file. It should
+        not be there; only destinations.php should load it.
+     3. Ctrl+Shift+R. A hard refresh, not F5 — a normal reload will
+        happily serve a cached stylesheet.
+
+
+   LOAD ORDER: header.php pulls base.css then destinations.css, and
+   this file's tag sits in the body below both.
+
+   THIS IS NOT THE PAGE BANNER. The banner is .page-hero from section
+   15 of base.css. Nothing in this file touches it.
+
+
+   THE STACK, bottom to top:
+
+     .hero-feature             the dark fill — the crossfade floor only
+     .hero-feature__photo      z-1   — the destination, and the whole
+                                       background. Swapped on every step.
+     .hero-feature__scrim      z-2   — dark left, dark bottom
+     .hero-feature__inner      z-4   — name, buttons, stepper
+     .hero-search              z-5   — search
+     .hero-rail                z-5   — the cards
+
+   THE RAIL BLEED: the rail is pinned bottom RIGHT and is narrower than
+   the section, so its last card is cut by the right edge of the screen.
+   That trimmed card is what tells you the row scrolls — it does an
+   arrow's job without adding an arrow. Width is a % of the section, NOT
+   vw: vw counts the scrollbar and would hang the row 15px off the edge.
+   =================================================================== */
+
+
+/* ===================================================================
+   THE SECTION
+
+   THE HEIGHT is one number, --hero-h, and it is the only line here
+   worth touching when the page around it changes:
+
+     100svh              the section IS the landing view — what the
+                         reference shows, and what you want if the
+                         .page-hero banner above has been removed
+     min(88svh, 46rem)   the section sits UNDER the banner. Two
+                         full-height blocks stacked means scrolling
+                         twice to reach one destination card.
+
+   The plain px min-height on the line above it is a floor for browsers
+   that do not know svh — without it they drop the whole declaration and
+   the section collapses to the height of its text.
+   =================================================================== */
+.hero-feature.hero-feature{
+  --hero-h: 100svh;
+
+  position:relative !important;   /* the containing block EVERYTHING
+                                     else in this file is measured from.
+                                     Lose this one rule and the rail
+                                     lands at the foot of the page. */
+  isolation:isolate !important;   /* keeps these z-indexes out of the
+                                     page's stacking context */
+  overflow:hidden !important;
+  display:flex !important;
+  align-items:flex-end !important;  /* the name sits low, like a caption */
+  min-height:640px !important;
+  min-height:var(--hero-h) !important;
+  /* the crossfade floor, NOT a background image. See the photo layer
+     below before removing it. */
+  background:var(--navy, #0b1622) !important;
+  color:#fff !important;
+}
+
+/* --- the photo layer -------------------------------------------------
+   THE DESTINATION PHOTO IS THE BACKGROUND. There is nothing else in
+   this section's picture — no video, no poster, no image set in CSS.
+   destinations-hero.js swaps this <img>'s src on every step, so the
+   background changes with the place, which is the whole point.
+
+   THE DARK FILL ON THE SECTION IS NOT A BACKGROUND. Do not remove it
+   thinking it is one. The JS fades this <img> to opacity:0 for 260ms
+   before it swaps the src, so for that quarter second the photo is
+   genuinely transparent and whatever is behind it shows. With nothing
+   behind it, that is the white page — a white flash on every single
+   prev/next click. The fill is the floor for the crossfade and is
+   invisible at every other moment.
+
+   THE VIDEO IS GONE. .hero-feature__fallback used to sit at z-0 as a
+   fallback for a missing photo. It is hidden here so a stale <video>
+   tag in the markup costs nothing, but DELETE THE TAG ITSELF from
+   destinations.php — hidden or not, the browser still fetches
+   uploads/bg.mp4. It is the <video class="hero-feature__fallback">
+   block just inside <section class="hero-feature">. */
+.hero-feature .hero-feature__fallback{ display:none !important; }
+
+.hero-feature .hero-feature__photo{
+  position:absolute !important;
+  inset:0 !important;
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover !important;
+  z-index:1 !important;
+
+  /* THE DEFAULT IS VISIBLE, and that is what makes the pair safe with
+     JavaScript off: the first layer is rendered by PHP with no class on
+     it at all and simply shows. Hiding is opt-in, via .is-idle, and
+     only the script ever asks for it. */
+  opacity:1;
+  transform:scale(1.02);
+  transform-origin:50% 50%;
+
+  /* Two durations doing two different jobs. The .8s is the crossfade.
+     The 14s is the drift — a still photograph that holds perfectly
+     still for a minute reads as a stalled page, and a very slow scale
+     is the cheapest way to say the section is alive. It is slow enough
+     that you cannot catch it moving, only notice afterwards that it
+     has. */
+  transition:opacity .8s cubic-bezier(.4,0,.2,1),
+             transform 14s linear;
+  will-change:opacity, transform;
+  backface-visibility:hidden;   /* stops the 1px shimmer some browsers
+                                   show while scaling a covered image */
+}
+
+/* --- the crossfade, in two layers ------------------------------------
+   THE SECTION HAS TWO <img>s, not one, and they take turns. The old
+   photo holds at full opacity while the new one fades UP over the top
+   of it, so at no point is the section showing neither.
+
+   The single-layer version faded the one photo to opacity:0, swapped
+   its src, and faded it back — which meant a quarter second of looking
+   at the flat dark fill on every step. Against a set of bright beach
+   and waterfall photographs that reads as the page blinking.
+
+   .is-live   the one you are looking at. Also the one drifting.
+   .is-idle   the one waiting with the next photo already decoded in it.
+
+   The idle layer's transform has a 0s duration DELAYED by .8s: it snaps
+   back to its starting scale only once it is fully invisible, so the
+   reset is never seen. Without the delay the outgoing photo visibly
+   jumps back as it fades. */
+.hero-feature .hero-feature__photo.is-live{
+  opacity:1;
+  transform:scale(1.085);
+}
+
+.hero-feature .hero-feature__photo.is-idle{
+  opacity:0;
+  transform:scale(1.02);
+  transition:opacity .8s cubic-bezier(.4,0,.2,1),
+             transform 0s linear .8s;
+}
+
+/* kept for compatibility. Nothing sets this any more — the two-layer
+   crossfade above replaced it. Delete once you are sure no other script
+   on the site reaches for it. */
+.hero-feature .hero-feature__photo.is-fading{ opacity:0; }
+
+/* --- the scrim -------------------------------------------------------
+   Three gradients, each doing one job, each as light as it can be while
+   still carrying its text. The reference is a bright photo you read
+   THROUGH, not a photo behind a dark sheet.
+
+     to right    carries the text block
+     to top      carries the rail captions
+     to bottom   carries the search box, which floats on open sky in
+                 most of the set and had nothing under it at all
+
+   If you add a very bright photo, raise the FIRST stop of each rather
+   than darkening the whole thing — the mid stops are what keep the
+   middle of the picture clear. */
+.hero-feature .hero-feature__scrim{
+  position:absolute !important;
+  inset:0 !important;
+  z-index:2 !important;
+  background:
+    /* 1. a cool highlight over the top right, where the sky usually is.
+          It is the only thing in this stack that ADDS light rather than
+          taking it away, and it is what stops the section reading as a
+          flat sheet when a photo is dark — or missing entirely. Very
+          low opacity on purpose: on a bright photo you should not be
+          able to find it. */
+    radial-gradient(105% 80% at 76% 14%,
+      rgba(120,158,205,.20) 0%,
+      rgba(120,158,205,.06) 42%,
+      transparent 68%),
+
+    linear-gradient(to right,
+      rgba(6,10,16,.74) 0%,
+      rgba(6,10,16,.42) 30%,
+      rgba(6,10,16,.06) 58%,
+      rgba(6,10,16,.24) 100%),
+    linear-gradient(to top,
+      rgba(6,10,16,.58) 0%,
+      rgba(6,10,16,.08) 42%,
+      transparent 62%),
+    linear-gradient(to bottom,
+      rgba(6,10,16,.34) 0%,
+      transparent 20%),
+
+    /* 5. the vignette, last so it sits under all of them. It pulls the
+          four corners down a step, which is what keeps the eye in the
+          middle of the picture instead of at the edges of the browser
+          window. */
+    radial-gradient(120% 105% at 50% 46%,
+      transparent 52%,
+      rgba(6,10,16,.42) 100%);
+}
+
+/* the search box is NOT in here — it is a direct child of the section.
+   Nested inside, its absolute top would measure from this block, which
+   sits at the BOTTOM, and the box would land halfway down.
+
+   1280px and 1.5rem are .wrap's max-width and padding: the text has to
+   start on the same gutter as everything else on the page. */
+.hero-feature .hero-feature__inner{
+  position:relative !important;
+  z-index:4 !important;
+  width:100% !important;
+  max-width:1280px !important;
+  margin:0 auto !important;
+  padding:8rem 1.5rem 3rem !important;
+}
+
+
+/* ---------------------------------------------------------------------
+   THE SEARCH BOX
+
+   A GET form, so a search is a URL. Centred at the top rather than sat
+   above the title: it searches the whole province, and putting it in
+   the text column would read as searching within that one destination.
+
+   IF YOU REMOVE THE BANNER ABOVE and the site header is fixed and
+   opaque, `top` is the value that needs raising — the pill is the
+   highest thing in the section and the first to go under it.
+   --------------------------------------------------------------------- */
+/* --- GLASS, NOT A WHITE PILL -----------------------------------------
+   It used to be a near-solid white lozenge. On a dark photograph that
+   is the brightest object in the section by a wide margin, which puts
+   the first thing the eye lands on at the top of a block whose whole
+   job is to show you a place. Worse, it belonged to no other element:
+   nothing else in the section is a white rounded rectangle.
+
+   Tinted glass instead. It reads as part of the photograph rather than
+   as a control dropped on top of one, and it stops competing with the
+   Explore button — which IS solid white, and which is the thing that
+   should be winning that contest.
+
+   THE BORDER IS DOING THE REAL WORK. Glass on a dark photo has almost
+   no edge of its own, so the hairline is what makes it a box. It is
+   brighter at the top than the bottom, the way a lit edge would be.
+
+   NO BACKDROP-FILTER? Safari before 15.4 and Firefox with the pref off
+   both ignore it, and the fallback is a plain translucent dark pill —
+   still perfectly readable, just flatter. Nothing depends on the blur.
+   --------------------------------------------------------------------- */
+.hero-feature .hero-search{
+  position:absolute !important;
+  z-index:5 !important;
+  top:clamp(2rem, 6vh, 3.75rem) !important;
+  left:50% !important;
+  transform:translateX(-50%) !important;
+  width:min(30rem, calc(100% - 3rem)) !important;
+
+  display:flex !important;
+  align-items:center;
+  gap:.5rem;
+  padding:.32rem .32rem .32rem 1.45rem;
+  border-radius:999px;
+  background:linear-gradient(to bottom,
+    rgba(18,24,33,.60),
+    rgba(10,14,20,.52));
+  border:1px solid rgba(255,255,255,.20);
+  -webkit-backdrop-filter:blur(18px) saturate(1.2);
+  backdrop-filter:blur(18px) saturate(1.2);
+  box-shadow:
+    0 24px 54px -26px rgba(6,10,16,.95),
+    inset 0 1px 0 rgba(255,255,255,.14);   /* the lit top edge */
+  transition:border-color .3s ease, box-shadow .3s ease,
+             background .3s ease;
+}
+
+.hero-feature .hero-search__field{
+  flex:1;
+  min-width:0;
+  border:0;
+  background:none;
+  padding:.74rem 0;
+  font:inherit;
+  font-size:.95rem;
+  letter-spacing:.005em;
+  color:#fff;
+}
+
+.hero-feature .hero-search__field::placeholder{
+  color:rgba(255,255,255,.55);
+}
+
+.hero-feature .hero-search__field:focus{ outline:none; }
+
+/* the browser's own clear button on type=search is drawn in the UA's
+   dark-on-light colours and is invisible on this now — recolour it */
+.hero-feature .hero-search__field::-webkit-search-cancel-button{
+  -webkit-appearance:none;
+  width:.85rem; height:.85rem;
+  border-radius:50%;
+  background:rgba(255,255,255,.35);
+  cursor:pointer;
+}
+
+/* --- focus ------------------------------------------------------------
+   The box is the visible control, so the state belongs on the box. It
+   brightens rather than growing a separate ring: an offset ring on a
+   pill floating over a photograph reads as a second, larger pill.
+
+   Amber, because this is the one moment the section has a single
+   unambiguous focus and the accent is free to be used on it. */
+.hero-feature .hero-search:focus-within{
+  background:linear-gradient(to bottom,
+    rgba(22,29,40,.74),
+    rgba(12,17,24,.66));
+  border-color:rgba(240,163,44,.75);
+  box-shadow:
+    0 24px 54px -26px rgba(6,10,16,.95),
+    inset 0 1px 0 rgba(255,255,255,.18),
+    0 0 0 4px rgba(240,163,44,.18);
+}
+
+.hero-feature .hero-search__go{
+  flex-shrink:0;
+  width:2.55rem;
+  height:2.55rem;
+  border:0;
+  border-radius:50%;
+  background:rgba(255,255,255,.12);
+  color:rgba(255,255,255,.85);
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+  transition:background .25s ease, color .25s ease, transform .25s ease;
+}
+
+.hero-feature .hero-search__go:hover{
+  background:var(--orange, #F0A32C);
+  color:#16191C;
+}
+
+.hero-feature .hero-search__go:active{ transform:scale(.93); }
+
+/* once there is something to search FOR, the button stops being a
+   decoration and starts being the way out of the box */
+.hero-feature .hero-search:focus-within .hero-search__go{
+  background:var(--orange, #F0A32C);
+  color:#16191C;
+}
+
+.hero-feature .hero-search__go:focus-visible{
+  outline:2px solid #fff;
+  outline-offset:2px;
+}
+
+.hero-feature .hero-search__go svg{
+  width:1.3rem; height:1.3rem;
+  fill:none; stroke:currentColor;
+  stroke-width:1.9; stroke-linecap:round;
+}
+
+
+/* ---------------------------------------------------------------------
+   THE TEXT
+
+   Capped at 38rem so it can never run under the rail on a wide screen.
+   The rail takes 52% of the section from the right; this takes rather
+   less than the remainder, which leaves the photo a clear middle.
+   --------------------------------------------------------------------- */
+.hero-feature .hero-feature__text{ max-width:38rem; }
+
+/* --- the staggered swap ----------------------------------------------
+   destinations-hero.js puts .is-swapping on this block while it is
+   rewriting the contents, and takes it off once the new words are in.
+   The children lift back in one after another rather than all at once.
+
+   WHY BOTHER: the photograph now takes .8s to crossfade. Text that
+   changes instantly in the middle of that reads as two unrelated
+   events — the picture doing one thing, the words doing another. The
+   stagger makes the block arrive as one movement.
+
+   THE STEPPER IS EXCLUDED, deliberately. It is a control, not content.
+   A button that fades out from under the pointer while you are
+   clicking it a second time is a button that drops clicks.
+
+   The delays run in DOM order and are short: .05s apart, five items,
+   so the whole entrance is over in a quarter second after the last
+   one starts. Any slower and stepping quickly through the set feels
+   like waiting for an animation to finish. */
+.hero-feature .hero-feature__text > *{
+  transition:opacity .42s ease,
+             transform .42s cubic-bezier(.16,.84,.44,1);
+}
+
+.hero-feature .hero-feature__text > *:nth-child(1){ transition-delay:.02s; }
+.hero-feature .hero-feature__text > *:nth-child(2){ transition-delay:.07s; }
+.hero-feature .hero-feature__text > *:nth-child(3){ transition-delay:.12s; }
+.hero-feature .hero-feature__text > *:nth-child(4){ transition-delay:.17s; }
+.hero-feature .hero-feature__text > *:nth-child(5){ transition-delay:.22s; }
+
+.hero-feature .hero-feature__text.is-swapping > *:not(.hero-stepper){
+  opacity:0;
+  transform:translateY(14px);
+  /* going out is faster than coming in, and everything leaves together
+     — a staggered exit is a queue, and nobody wants to watch one */
+  transition-duration:.2s;
+  transition-delay:0s;
+}
+
+/* --- the tag ----------------------------------------------------------
+   A waterfall, an island, a church. It is the one thing the block was
+   not saying: you could read the name, the town and the description and
+   still not know what KIND of place you were being shown until the
+   description got round to it.
+
+   It is also where the amber goes. The accent appears exactly twice in
+   this section — here and on the map pin below it — and both times it
+   is labelling rather than decorating. */
+.hero-feature .hero-feature__tag{
+  display:inline-flex;
+  align-items:center;
+  height:1.9rem;
+  padding:0 .95rem;
+  margin:0 0 1.1rem;
+  border-radius:999px;
+  border:1px solid rgba(240,163,44,.5);
+  background:rgba(240,163,44,.13);
+  -webkit-backdrop-filter:blur(8px);
+  backdrop-filter:blur(8px);
+  font-size:.68rem;
+  font-weight:600;
+  letter-spacing:.17em;
+  text-transform:uppercase;
+  color:#F7CE86;
+  white-space:nowrap;
+}
+
+/* --- the town ---------------------------------------------------------
+   WAS 1.05rem REGULAR WHITE, which is body-copy weight sitting directly
+   above 92px of display caps. Two sizes of ordinary text with nothing
+   between them reads as a paragraph that lost its heading.
+
+   Set as a label instead — small, tracked, uppercase, and dimmer than
+   the name. It now looks like what it is: a caption line, not a
+   sentence. The pin is the amber. */
+.hero-feature .hero-feature__loc{
+  display:flex;
+  align-items:center;
+  gap:.55rem;
+  font-size:.8rem;
+  font-weight:600;
+  letter-spacing:.15em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.76);
+  margin:0;
+}
+
+.hero-feature .hero-feature__loc svg{
+  width:1rem; height:1rem;
+  fill:var(--orange, #F0A32C);
+  flex-shrink:0;
+}
+
+/* THE NAME IS THE SECTION. It is the largest type anywhere on the site
+   and that is deliberate — the block is a photograph with a place name
+   on it, and a place name set at heading size reads as a caption.
+
+   6.6vw puts a two-word name at roughly 92px on a laptop, which is
+   where the reference sits. Caps plus .95 leading let it run to two
+   lines without the lines drifting apart; the clamp floor keeps the
+   longest name in the set inside two lines on a phone. */
+.hero-feature .hero-feature__title{
+  margin:.55rem 0 1.3rem;
+  font-weight:800;
+  font-size:clamp(2.6rem, 6.6vw, 5.9rem);
+  line-height:.95;
+  letter-spacing:-.025em;
+  text-transform:uppercase;
+  text-wrap:balance;
+  color:#fff;
+  /* Not a drop shadow — a very wide, very soft one, which is closer to
+     the photograph being darkened behind the letters than to the
+     letters casting anything. It is what lets the scrim stay as light
+     as it is: without it the first stop of the left gradient has to go
+     up to about .85 to carry white type over a bright sky, and at that
+     point you are reading the words on a dark sheet rather than on a
+     picture. */
+  text-shadow:0 2px 34px rgba(6,10,16,.55);
+}
+
+.hero-feature .hero-feature__desc{
+  /* 34rem, not 37: at 1rem/1.8 that is a little over 70 characters,
+     which is the top of the comfortable measure. The old width ran to
+     nearly 80 and the block read as a paragraph rather than a caption. */
+  max-width:34rem;
+  margin:0 0 2.1rem;
+  font-size:1rem;
+  line-height:1.8;
+  color:rgba(255,255,255,.82);
+  text-shadow:0 1px 20px rgba(6,10,16,.5);
+}
+
+.hero-feature .hero-feature__actions{
+  display:flex;
+  align-items:center;
+  gap:1.25rem;
+  flex-wrap:wrap;
+}
+
+/* --- Explore, and save -----------------------------------------------
+   SOLID WHITE, not frosted and not dark. This is the only thing in the
+   section asking to be clicked, and a translucent panel on a photo
+   changes contrast with every destination — on the pale island shots
+   the frosted version very nearly vanished. White is white on all of
+   them.
+
+   The save button is the inverse rather than a second white pill, so
+   the two never compete for the same weight and the pair reads as one
+   primary action and one afterthought. Being dark, it also holds its
+   own on the pale shots.
+
+   IF THESE COME OUT THE WRONG WAY ROUND — a black Explore and a white
+   save — you are looking at the old stylesheet. See the note at the top
+   of this file. */
+.hero-feature .hero-feature__cta{
+  display:inline-flex !important;
+  align-items:center;
+  justify-content:center;
+  min-width:14.5rem;
+  height:3.1rem;
+  padding:0 2rem;
+  border:0;
+  border-radius:999px;
+  background:#fff !important;
+  color:var(--navy, #0b1622) !important;
+  font-size:.98rem;
+  font-weight:600;
+  letter-spacing:.005em;
+  text-decoration:none;
+  box-shadow:0 18px 40px -24px rgba(6,10,16,.95);
+  transition:transform .3s cubic-bezier(.16,.84,.44,1), box-shadow .3s ease;
+}
+
+.hero-feature .hero-feature__cta:hover{
+  transform:translateY(-2px);
+  box-shadow:0 26px 50px -22px rgba(6,10,16,1);
+}
+
+.hero-feature .hero-feature__save{
+  width:3.1rem !important;
+  height:3.1rem !important;
+  flex-shrink:0;
+  border:0;
+  border-radius:50%;
+  background:rgba(10,14,20,.92) !important;
+  color:#fff !important;
+  display:grid !important;
+  place-items:center;
+  cursor:pointer;
+  box-shadow:0 18px 40px -24px rgba(6,10,16,.95);
+  transition:transform .3s cubic-bezier(.16,.84,.44,1), background .3s ease;
+}
+
+.hero-feature .hero-feature__save:hover{
+  transform:translateY(-2px);
+  background:rgba(10,14,20,1) !important;
+}
+
+.hero-feature .hero-feature__save svg{
+  width:1.25rem; height:1.25rem;
+  fill:currentColor;
+}
+
+.hero-feature .hero-feature__cta:focus-visible,
+.hero-feature .hero-feature__save:focus-visible,
+.hero-feature .hero-feature__down:focus-visible{
+  outline:2px solid #fff;
+  outline-offset:3px;
+}
+
+
+/* ---------------------------------------------------------------------
+   THE STEPPER
+
+   Previous, next, and where you are in the set.
+
+   NOT IN THE REFERENCE. It is here anyway, quieter than it was, because
+   the reference gets away without it by showing three cards out of
+   three. This set is twenty-four behind a row with a hidden scrollbar,
+   and "07 / 24" is the only thing that says how much is left.
+
+   The buttons need explicit width AND height AND padding:0 — base.css
+   sizes buttons by their padding, and these have none of their own. If
+   they render as two small flat bars with the arrows collapsed, these
+   rules are not reaching them; see the note at the top of this file.
+
+   One line at the very bottom turns the stepper off if you want the
+   reference exactly. Read the note there first — the arrow keys go
+   with it.
+   --------------------------------------------------------------------- */
+.hero-feature .hero-stepper{
+  display:flex !important;
+  align-items:center;
+  gap:.6rem;
+  margin-top:2rem;
+}
+
+.hero-feature .hero-stepper__btn{
+  width:2.5rem !important;
+  height:2.5rem !important;
+  min-width:0 !important;
+  flex-shrink:0;
+  padding:0 !important;
+  border-radius:50% !important;
+  border:1px solid rgba(255,255,255,.35) !important;
+  background:rgba(255,255,255,.1) !important;
+  -webkit-backdrop-filter:blur(6px);
+  backdrop-filter:blur(6px);
+  color:#fff !important;
+  display:grid !important;
+  place-items:center;
+  cursor:pointer;
+  transition:background .25s ease, border-color .25s ease, transform .25s ease;
+}
+
+.hero-feature .hero-stepper__btn:hover{
+  background:rgba(255,255,255,.24) !important;
+  border-color:rgba(255,255,255,.6) !important;
+}
+
+.hero-feature .hero-stepper__btn:active{ transform:scale(.94); }
+
+.hero-feature .hero-stepper__btn:focus-visible{
+  outline:2px solid #fff;
+  outline-offset:3px;
+}
+
+.hero-feature .hero-stepper__btn svg{
+  width:1rem !important;
+  height:1rem !important;
+  fill:none; stroke:currentColor;
+  stroke-width:2; stroke-linecap:round; stroke-linejoin:round;
+}
+
+/* --- the progress track ----------------------------------------------
+   "07 / 24" tells you where you are, but you have to read it and do the
+   arithmetic. The bar is the same fact in a form you take in without
+   reading — how far along the set you are, and how much of it is left.
+
+   It fills rather than sliding, because the rail behind it is a
+   continuous row you scroll through and not a set of discrete slots.
+   The width is set from JavaScript; with the script off the stepper is
+   dead anyway, and the track sits at the one-of-N it was printed with. */
+.hero-feature .hero-stepper__track{
+  display:block;
+  width:4.5rem;
+  height:2px;
+  margin-left:.75rem;
+  border-radius:2px;
+  background:rgba(255,255,255,.22);
+  overflow:hidden;
+  flex-shrink:0;
+}
+
+.hero-feature .hero-stepper__fill{
+  display:block;
+  height:100%;
+  width:0;
+  border-radius:2px;
+  background:var(--orange, #F0A32C);
+  transition:width .55s cubic-bezier(.16,.84,.44,1);
+}
+
+/* tabular figures, or the row twitches sideways every time the number
+   changes width — 11 is narrower than 08 in most proportional faces */
+.hero-feature .hero-stepper__count{
+  margin:0 0 0 .55rem;
+  font-size:.8rem;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:.08em;
+  color:rgba(255,255,255,.55) !important;
+}
+
+.hero-feature .hero-stepper__count strong{
+  font-weight:700;
+  color:#fff !important;
+}
+
+
+/* ---------------------------------------------------------------------
+   THE SCROLL CUE
+
+   Pinned to the right edge at just under half height, clear of both the
+   text column and the rail. Dark rather than frosted-light: it sits on
+   sky in most of the set, and a pale disc on a pale sky is invisible
+   exactly when the picture is at its most inviting to scroll past.
+   --------------------------------------------------------------------- */
+.hero-feature .hero-feature__down{
+  position:absolute !important;
+  z-index:5 !important;
+  right:1.4rem !important;
+  top:47% !important;
+  width:2.6rem;
+  height:2.6rem;
+  border-radius:50%;
+  border:0;
+  background:rgba(10,14,20,.45);
+  -webkit-backdrop-filter:blur(8px);
+  backdrop-filter:blur(8px);
+  color:#fff;
+  display:grid;
+  place-items:center;
+  transition:background .25s ease, transform .25s ease;
+}
+
+.hero-feature .hero-feature__down:hover{
+  background:rgba(10,14,20,.72);
+  transform:translateY(3px);
+}
+
+.hero-feature .hero-feature__down svg{
+  width:1.1rem; height:1.1rem;
+  fill:none; stroke:currentColor;
+  stroke-width:2; stroke-linecap:round; stroke-linejoin:round;
+}
+
+
+/* ---------------------------------------------------------------------
+   THE RAIL — one card per destination
+
+   FLUSH TO THE BOTTOM EDGE, with no padding under it. The cards are
+   meant to look like they are being dealt into the section from off
+   screen: cut on the right because the row scrolls, sitting hard on the
+   bottom because the section ends there. A gap underneath turns them
+   back into a row of thumbnails placed in a corner.
+
+   position:absolute here is measured from .hero-feature. If that rule
+   ever loses, this row drops to the bottom of the whole document and
+   the section falls apart — which is exactly the failure the note at
+   the top of this file describes.
+   --------------------------------------------------------------------- */
+.hero-feature .hero-rail{
+  position:absolute !important;
+  z-index:5 !important;
+  right:0 !important;
+  bottom:0 !important;
+  left:auto !important;
+  top:auto !important;
+  width:min(46rem, 52%) !important;
+
+  margin:0 !important;
+  list-style:none;
+
+  /* --- THE ROW SITS OFF THE EDGE NOW ------------------------------
+     It used to be flush: no bottom padding, square bottom corners,
+     cards hard against the section edge. The idea was cards being
+     dealt in from off screen, and it worked as a drawing — but it
+     also meant every card was a rectangle welded to the bottom of the
+     browser window, and the row read as a filmstrip bolted on rather
+     than as the pick of the set.
+
+     Lifted, rounded on all four corners and given a shadow with room
+     to fall, the cards read as objects sitting ON the photograph.
+
+     THE TOP PADDING IS NOT SPACING, it is clearance. This is an
+     overflow scroller, so anything a card does outside its own box
+     gets clipped — the hover lift and the ring's scale-in were both
+     being cut off against the top edge. 1rem is enough for both.
+
+     STILL NO PADDING-RIGHT, deliberately: the last card runs to the
+     screen edge and gets cut, and that trimmed card is what tells you
+     the row scrolls. It does an arrow's job without adding an arrow. */
+  padding:1rem 0 2.25rem 1.5rem !important;
+
+  display:grid !important;
+  grid-auto-flow:column !important;
+  grid-auto-columns:12.3rem !important;
+  gap:1.1rem !important;
+
+  overflow-x:auto !important;
+  overflow-y:hidden !important;
+
+  /* --- NO SCROLL SNAPPING, and it was here before ------------------
+     scroll-snap-type:x proximity came off for two reasons.
+
+     It contradicts the row's own design. The last card is cut by the
+     screen edge on purpose, because a trimmed card is what tells you
+     there is more of the row; snapping to card boundaries is an
+     attempt to never show a partial card. Both cannot be true.
+
+     And it fights a drag. Snapping re-runs at the end of every scroll,
+     so a drag that leaves the row between two cards is pulled back
+     while the pointer is still moving, which reads as the row
+     resisting you.
+
+     A snapping row is for a set of pages you step through one at a
+     time. This is a strip you browse. */
+  scrollbar-width:none;
+  overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;
+
+  /* --- AUTO, NOT SMOOTH, AND THIS ONE IS A TRAP --------------------
+     It used to be scroll-behavior:smooth, and that quietly broke every
+     scroll driven from JavaScript.
+
+     A per-call behavior:'auto' does NOT override this property. It is
+     the other way round — the CSS wins, and every scrollBy starts a
+     fresh eased animation that the next one cancels. Measured: a 200px
+     scrollBy moved the row 8px. Wheeling it crawled, and dragging it
+     lagged a long way behind the pointer.
+
+     Auto here. The one place that genuinely wants easing —
+     scrollIntoView when the destination changes, in
+     assets/destinations-hero.js — passes behavior:'smooth' explicitly,
+     and an explicit option IS honoured when the property is auto. That
+     animation is unaffected. */
+  scroll-behavior:auto;
+
+  /* the row is draggable, so it should say so before it is touched */
+  cursor:grab;
+}
+
+.hero-feature .hero-rail::-webkit-scrollbar{ display:none; }
+
+/* --- while a drag is in progress ------------------------------------- */
+.hero-feature .hero-rail.is-dragging{
+  cursor:grabbing;
+  user-select:none;
+}
+
+.hero-feature .hero-rail > li{
+  display:block;
+  min-width:0;
+}
+
+/* --- cards arriving as you scroll ------------------------------------
+   The reveal is on the <li>, NOT on the card. The card's transform is
+   already spoken for by the hover lift, and two rules animating one
+   transform means whichever loses the cascade silently does nothing.
+   The list item is free, so the reveal goes there and the two never
+   meet.
+
+   .has-reveal IS ADDED BY JAVASCRIPT, and that is the whole safety
+   net: with the script off, or an observer unavailable, this class
+   never lands and every card renders plainly visible. Hiding is opt-in
+   by something that has already proven it can un-hide them. */
+.hero-feature .hero-rail.has-reveal > li{
+  opacity:0;
+  transform:translateY(26px);
+  transition:opacity .55s ease,
+             transform .55s cubic-bezier(.16,.84,.44,1);
+}
+
+.hero-feature .hero-rail.has-reveal > li.is-in{
+  opacity:1;
+  transform:none;
+}
+
+.hero-feature .hero-rail__card{
+  position:relative !important;
+  display:block !important;
+  aspect-ratio:5/6.6;
+
+  /* rounded on all four now that the card is off the section edge. It
+     used to be square at the bottom because a curve against the edge
+     left two dark notches under every card — lift the row and that
+     stops being true. */
+  border-radius:1rem;
+  overflow:hidden;
+  text-decoration:none;
+  color:#fff;
+  background:var(--navy, #0b1622);
+
+  /* two shadows: a wide soft one for the drop, and a 1px inset ring
+     that gives the card an edge of its own. Without the ring a dark
+     photograph on a dark section has no boundary at all and the card
+     dissolves into the picture behind it. */
+  box-shadow:0 26px 50px -24px rgba(6,10,16,.95),
+             inset 0 0 0 1px rgba(255,255,255,.07);
+  transition:transform .4s cubic-bezier(.16,.84,.44,1),
+             box-shadow .4s ease;
+}
+
+/* the rail does not use .media, so the photo rules live here rather
+   than being inherited from base.css */
+.hero-feature .hero-rail__card .photo-layer{
+  position:absolute !important;
+  inset:0 !important;
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover !important;
+
+  /* --- HELD BACK UNTIL IT MATTERS ---------------------------------
+     Every card except the current one is dimmed and pulled towards
+     grey. The white ring alone had to carry the whole job of saying
+     which card the block on the left belongs to, and a 3px line on
+     one of twenty-four cards is a small signal in a row that scrolls.
+
+     This is the same signal at the scale of the whole card: the
+     current one is the only photograph in the row in full colour.
+     You see it without looking for it, and it survives the ring being
+     scrolled off the edge.
+
+     It also stops the row competing with the section behind it —
+     twenty-four bright thumbnails along the bottom of a photograph is
+     twenty-four things arguing with the one you are meant to be
+     looking at. */
+  filter:saturate(.75) brightness(.72);
+  transition:transform .6s cubic-bezier(.16,.84,.44,1),
+             filter .45s ease;
+}
+
+.hero-feature .hero-rail__card:hover .photo-layer{
+  transform:scale(1.06);
+  filter:saturate(1) brightness(.92);
+}
+
+.hero-feature .hero-rail__card.is-current .photo-layer{
+  filter:none;
+}
+
+/* clear at the top, dark only where the caption is — the card is a
+   photograph first and a label second */
+.hero-feature .hero-rail__shade{
+  position:absolute !important;
+  inset:0 !important;
+  z-index:2 !important;
+  background:linear-gradient(to top,
+    rgba(6,10,16,.88) 0%,
+    rgba(6,10,16,.42) 34%,
+    rgba(6,10,16,0) 62%);
+}
+
+.hero-feature .hero-rail__card:hover{
+  transform:translateY(-8px);
+  box-shadow:0 40px 64px -22px rgba(6,10,16,1),
+             inset 0 0 0 1px rgba(255,255,255,.16);
+}
+
+/* a card is a link, and a drag is not a click. Killing pointer events
+   on the children during a drag stops the browser starting its own
+   image-drag on the photo, which is what leaves a ghost thumbnail
+   stuck to the cursor halfway through the gesture. */
+.hero-feature .hero-rail.is-dragging .hero-rail__card{
+  pointer-events:none;
+}
+
+.hero-feature .hero-rail__card img{
+  -webkit-user-drag:none;
+  user-select:none;
+}
+
+/* --- which one is showing --------------------------------------------
+   The featured place is IN the rail, so something has to say which card
+   the block on the left belongs to.
+
+   A WHITE RING SET INSIDE THE CARD. White, because the accent colour
+   has to hold against twenty-four different photographs and orange
+   loses on the sunset shots. Inside, for two reasons: the rail is an
+   overflow:auto scroller with no padding, so anything drawn OUTSIDE a
+   card is clipped on all four edges, and these cards sit on the section
+   edge where there is nothing below to draw on.
+
+   IT IS A PSEUDO-ELEMENT, NOT AN OUTLINE, and that is not a style
+   preference. .hero-rail__shade and .photo-layer are positioned
+   children, so they paint after their parent's outline and cover it —
+   an outline here is invisible on every card that has a photo, which is
+   meant to be all of them. The ring needs its own layer above the
+   shade.
+
+   IF THIS RING IS ORANGE, you are looking at the old stylesheet. The
+   reset below kills that outline so the two rings cannot both draw —
+   without it the old orange one leaks out past the card edges as four
+   thin slivers, which is worse than either ring on its own. */
+.hero-feature .hero-rail__card.is-current{
+  outline:0 !important;
+  outline-offset:0 !important;
+}
+
+.hero-feature .hero-rail__card.is-current::after,
+.hero-feature .hero-rail__card:focus-visible::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:4;
+  border:3px solid #fff;
+  border-radius:inherit;
+  pointer-events:none;
+  /* the ring arrives with the card rather than snapping on. It is the
+     acknowledgement of the click, so it moves at click speed — .25s,
+     well ahead of the .8s crossfade behind it. */
+  animation:heroRing .25s cubic-bezier(.16,.84,.44,1);
+}
+
+@keyframes heroRing{
+  from{ opacity:0; transform:scale(1.04); }
+  to  { opacity:1; transform:scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .hero-feature .hero-rail__card.is-current::after,
+  .hero-feature .hero-rail__card:focus-visible::after{ animation:none; }
+}
+
+/* focus has to be tellable from current, since the current card can
+   also be the focused one — a dark inner line, so the ring reads as
+   double rather than as the same ring */
+.hero-feature .hero-rail__card:focus-visible::after{
+  box-shadow:inset 0 0 0 3px rgba(6,10,16,.75);
+}
+
+/* transparent, so Windows high-contrast still draws it: forced colours
+   repaint transparent outlines and ignore borders on pseudo-elements */
+.hero-feature .hero-rail__card:focus-visible{
+  outline:2px solid transparent;
+  outline-offset:2px;
+}
+
+@media (forced-colors: active){
+  .hero-feature .hero-rail__card.is-current::after{ border-color:Highlight; }
+}
+
+.hero-feature .hero-rail__body{
+  position:absolute !important;
+  left:0; right:0; bottom:0;
+  z-index:3 !important;
+  display:grid;
+  gap:.2rem;
+  padding:1rem .85rem 1rem;
+}
+
+.hero-feature .hero-rail__loc{
+  font-size:.75rem;
+  color:rgba(255,255,255,.85);
+  /* one line: a long municipality name wrapping here pushes the place
+     name up over the photo */
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.hero-feature .hero-rail__name{
+  font-weight:800;
+  font-size:1.18rem;
+  line-height:1.08;
+  letter-spacing:-.01em;
+  text-transform:uppercase;
+  /* two lines maximum: some names are long enough to climb the card and
+     cover the photo entirely */
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+
+
+/* ---------------------------------------------------------------------
+   TABLET AND PHONE
+
+   Below 1100px the section stops trying to be the reference. The
+   reference is a wide photograph with a corner of cards on it, and a
+   corner needs a wide picture to be a corner OF — on a narrow screen
+   the rail simply covers the name it is meant to be introducing.
+
+   1100, not 900: the break is set by where the 92px title and the rail
+   start fighting for the same middle, and that happens well before the
+   layout is anywhere near a tablet.
+
+   These carry !important only because the rules they undo do. Both go
+   together when the duplicate stylesheet is found.
+   --------------------------------------------------------------------- */
+@media (max-width:1100px){
+
+    .hero-feature.hero-feature{
+      display:block !important;
+      min-height:0 !important;
+      align-items:stretch !important;
+    }
+
+    .hero-feature .hero-feature__inner{
+      padding:9rem 1.5rem 2.25rem !important;
+    }
+
+    .hero-feature .hero-feature__text{ max-width:none; }
+
+    .hero-feature .hero-feature__title{ font-size:clamp(2.6rem, 9vw, 4.6rem); }
+
+    .hero-feature .hero-feature__tag{ margin-bottom:.9rem; }
+
+    .hero-feature .hero-feature__desc{ margin-bottom:1.75rem; }
+
+    /* left-to-right does nothing once the text is full width */
+    .hero-feature .hero-feature__scrim{
+      background:linear-gradient(to top,
+        rgba(6,10,16,.9) 0%,
+        rgba(6,10,16,.6) 48%,
+        rgba(6,10,16,.5) 100%);
+    }
+
+    .hero-feature .hero-stepper{ margin-top:1.75rem; }
+
+  /* out of the corner, into the flow */
+    .hero-feature .hero-rail{
+      position:static !important;
+      width:auto !important;
+      padding:.75rem 0 2rem 1.5rem !important;
+      grid-auto-columns:10rem !important;
+      gap:.8rem !important;
+    }
+
+    .hero-feature .hero-rail__card{
+      aspect-ratio:5/6.2;
+      border-radius:.9rem;
+    }
+
+    .hero-feature .hero-rail__name{ font-size:.98rem; }
+
+    .hero-feature .hero-feature__down{ display:none !important; }
+}
+
+@media (max-width:560px){
+
+    .hero-feature .hero-search{ top:2rem !important; padding-left:1.15rem; }
+
+  /* 4.5rem of track next to a two-digit counter and two round buttons
+     is more row than a 360px screen has. The counter still says it. */
+    .hero-feature .hero-stepper__track{ display:none; }
+
+    .hero-feature .hero-feature__inner{ padding-top:7.5rem !important; }
+
+    .hero-feature .hero-feature__actions{ gap:.9rem; }
+
+    .hero-feature .hero-feature__cta{ min-width:0; flex:1; }
+}
+
+
+/* ---------------------------------------------------------------------
+   WHEN A PHOTO IS NOT THERE
+
+   destinations-hero.js catches the load error and puts .is-photoless on
+   the frame, which hides the <img> and leaves a plain graded panel, so
+   the caption stays readable and the block still looks finished rather
+   than showing a broken-image glyph.
+
+   THIS IS A SAFETY NET, NOT A LOOK. If the cards are navy-blue
+   gradients with names on them and no photographs, every image is
+   404ing and no amount of CSS will fix it — the paths in
+   includes/destinations-data.php do not match what is in uploads/.
+   Drop this into destinations.php for a moment to list the misses:
+
+       foreach ($destinations as $d)
+           if (!is_file(__DIR__ . '/' . $d['image']))
+               echo $d['image'], '<br>';
+
+   The section itself now has no video behind the photo, so a missing
+   featured photo leaves the flat dark fill rather than something
+   moving. That is the correct outcome — the fix is the file, not a
+   fallback picture.
+   --------------------------------------------------------------------- */
+.is-photoless > .photo-layer,
+.is-photoless > .hero-feature__photo{ display:none !important; }
+
+.hero-rail__card.is-photoless,
+.dest-card__media.is-photoless,
+.media.is-photoless{
+  background:linear-gradient(155deg, #1d2a38 0%, #33495f 55%, #212f3d 100%);
+}
+
+/* the section keeps the video underneath, so it needs no panel of its
+   own — just get the broken glyph off the screen */
+.hero-feature.is-photoless .hero-feature__photo{ display:none !important; }
+
+
+/* ---------------------------------------------------------------------
+   ODDS AND ENDS
+   --------------------------------------------------------------------- */
+
+/* the rail's links are plain #anchors, so a card has to clear the fixed
+   header when one is followed — scrollIntoView in destinations-map.js
+   centres the card and never needed this, an anchor jump does */
+.dest-card{ scroll-margin-top:7rem; }
+
+/* the scroll cue lands here */
+.dest-layout{ scroll-margin-top:5.5rem; }
+
+.visually-hidden{
+  position:absolute;
+  width:1px; height:1px;
+  padding:0; margin:-1px;
+  overflow:hidden;
+  clip:rect(0 0 0 0);
+  clip-path:inset(50%);
+  white-space:nowrap;
+  border:0;
+}
+
+@media (prefers-reduced-motion: reduce){
+
+    .hero-feature .hero-rail__card,
+    .hero-feature .hero-rail__card .photo-layer,
+    .hero-feature .hero-feature__cta,
+    .hero-feature .hero-feature__save,
+    .hero-feature .hero-feature__down,
+    .hero-feature .hero-stepper__btn,
+    .hero-feature .hero-stepper__fill,
+    .hero-feature .hero-search,
+    .hero-feature .hero-search__go,
+    .hero-feature .hero-feature__text > *,
+    .hero-feature .hero-feature__photo{ transition:none; }
+
+  /* the drift is the one piece of motion in here that nobody asked
+     for, so it is the first thing to go */
+    .hero-feature .hero-feature__photo.is-live{ transform:scale(1.02); }
+
+  /* the staggered swap becomes a straight swap: the words still
+     change, they just do not travel to get there */
+    .hero-feature .hero-feature__text.is-swapping > *:not(.hero-stepper){
+      opacity:1;
+      transform:none;
+    }
+
+    .hero-feature .hero-rail__card:hover{ transform:none; }
+
+    .hero-feature .hero-rail__card:hover .photo-layer{ transform:none; }
+
+    .hero-feature .hero-feature__cta:hover,
+    .hero-feature .hero-feature__save:hover,
+    .hero-feature .hero-feature__down:hover{ transform:none; }
+
+    .hero-feature .hero-rail{ scroll-behavior:auto; }
+
+  /* the cards still appear, they just do not fly in to do it */
+    .hero-feature .hero-rail.has-reveal > li{
+      opacity:1;
+      transform:none;
+      transition:none;
+    }
+}
+
+.dest-outro--photo{
+  position: relative;
+  overflow: hidden;
+  background-color: #1b1b1b; /* holds the space while the photo loads */
+}
+.dest-outro--photo .dest-outro__bg{
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+.dest-outro--photo::after{           /* scrim, keeps the text readable */
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg,
+              rgba(12,12,12,.70),
+              rgba(12,12,12,.55) 45%,
+              rgba(12,12,12,.78));
+}
+.dest-outro--photo .dest-outro__inner{ position: relative; z-index: 2; }
+
+.dest-outro--photo .eyebrow--muted{ color: rgba(255,255,255,.72); }
+.dest-outro--photo .dest-outro__title{ color: #fff; }
+.dest-outro--photo .dest-outro__text{ color: rgba(255,255,255,.82); }
+
+
+/* ---------------------------------------------------------------------
+   THE ONE LINE THAT MATCHES THE REFERENCE EXACTLY
+
+   Uncomment to drop the prev/next arrows and the counter, which is what
+   the reference has under the buttons: nothing.
+
+   READ THIS FIRST. destinations-hero.js binds the left and right arrow
+   KEYS to the rail and to these two buttons, and to nothing else — the
+   comment there explains why not to the document. Hiding the buttons
+   takes two of those three bindings with them. The rail keeps its own,
+   so arrow keys still work once a card has focus, but someone who
+   tabbed to Explore no longer has a way to step. The counter is also
+   the only thing on the page saying the set has twenty-four places in
+   it rather than the three you can see.
+
+   .hero-feature .hero-stepper{ display:none !important; }
+   --------------------------------------------------------------------- */
+
+
+/* ===================================================================
+   ===================================================================
+   SECTION 16 — THE FEATURED BLOCK, REFINED
+   ===================================================================
+
+   PASTE THIS AT THE VERY END OF assets/css/destinations-hero.css.
+
+   NOT destinations.css. header.php loads that file, then
+   destinations.php loads this one below it, so anything written there
+   loses to the rules above. This block has to sit after the rules it
+   changes, which means the bottom of this file.
+
+   It changes no class name and no markup. Its partner is one small
+   function in destinations-hero.js — see fitTitle() there.
+
+   FOUR THINGS:
+
+     1  Sizes the name to its length. The one real bug.
+     2  Fixes the type: leading, tracking, and the caps treatment that
+        made a 92px name read as a wall.
+     3  Puts the brand colour in as warmth rather than as two small
+        amber accents on a dark photograph.
+     4  Closes the bright seam down the right edge of the photo.
+
+   WHERE IT REVERSES A DECISION MADE ABOVE, the comment says so and says
+   how to go back. The reasoning above is left intact rather than
+   overwritten, because most of it is still correct.
+
+   ON SPECIFICITY: these are plain single-class selectors, the same
+   shape as the rules above. They win on position, not weight. Do not
+   double the class — the @media block at line 1108 uses single
+   classes too, and raising the weight here would beat it and break the
+   phone layout. Section 16.11 handles the phone deliberately.
+   =================================================================== */
+
+
+/* -------------------------------------------------------------------
+   16.1  TOKENS
+
+   --orange in base.css is #F0A32C, one flat amber, and every warm
+   surface in this section was that single value. Which is why the
+   block reads as correct but cold.
+
+   Two values instead, and they are a sunrise rather than a gradient
+   for the sake of one: --sun-deep is the low end, --sun the high, and
+   every warm surface here is lit bottom-left to top-right — the
+   direction of the light in most of the photographs in the set.
+
+   --sea is Calaguas shallow water and it appears EXACTLY ONCE, at the
+   far end of the progress bar, so "how far through the twenty-four am
+   I" is answered by a colour and not only by a length.
+   ------------------------------------------------------------------- */
+.hero-feature.hero-feature{
+  --sun:      #FFB63F;
+  --sun-deep: #F0782C;
+  --sea:      #37CFC6;
+  --hero-ink: #070D16;
+}
+
+
+/* -------------------------------------------------------------------
+   16.2  THE NAME
+
+   THE FIX. Section 8 above sets clamp(2.6rem, 6.6vw, 5.9rem) on every
+   destination regardless of length. The names run 14 to 35 characters
+   — a 2.5x spread through one fixed size. "Bagasbas Beach" gets one
+   line at 92px. "St. Francis of Assisi Parish Church" gets four at
+   92px, which is 350px of heading, and the block grows up through the
+   search box.
+
+   THE SIZE IS NOT WHAT SHOULD STAY CONSTANT. THE LINE COUNT IS. Every
+   name now sets on one or two lines, because two is what the space
+   between the search box and the buttons actually holds.
+
+   fitTitle() in destinations-hero.js writes data-fit from the
+   character count. The rule directly below is the fallback for a page
+   where the script has not run: a middle size, correct on every name
+   and optimal on none.
+   ------------------------------------------------------------------- */
+.hero-feature .hero-feature__title{
+  margin:.7rem 0 1.15rem;
+  font-size:clamp(2.4rem, 5vw, 4.4rem);
+  line-height:1;
+
+  /* WAS -.025em ON CAPS, and that is most of what read as awkward.
+     Negative tracking is for lowercase display type, where the
+     sidebearings are already tight. Capitals are drawn with wide
+     sidebearings on purpose, and pulling them together jams the stems
+     into each other — worst on the runs of narrow letters this set is
+     full of: FRANCIS, ASSISI, MONUMENT. Slightly OPEN, not closed. */
+  letter-spacing:.005em;
+
+  /* evens the two lines rather than leaving a full line and an
+     orphan. It gives up above four lines, which nothing reaches now. */
+  text-wrap:balance;
+
+  /* the hard guard. Add a 60-character name and it is set small AND
+     capped, rather than allowed to take the section. */
+  display:-webkit-box;
+  -webkit-line-clamp:3;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+
+  /* a tight shadow for edge contrast against a bright sky, and a wide
+     soft one that is really the photograph being darkened behind the
+     letters. Lets the scrim stay light, which is the point section 4
+     makes and this keeps. */
+  text-shadow:0 1px 2px rgba(6,10,16,.35),
+              0 4px 40px rgba(6,10,16,.6);
+}
+
+/* --- the scale ------------------------------------------------------
+   Five steps. LEADING AND TRACKING MOVE WITH THE SIZE, which is the
+   part one clamp cannot do: 92px caps want .92 leading and tight
+   tracking, 40px caps want 1.06 and open tracking, and driving both
+   from a single value is why the small end looked cramped and the
+   large end looked loose.
+
+   The buckets are the real name lengths in destinations-data.php:
+
+     14  Bagasbas Beach                        xxl
+     20  First Rizal Monument                  xl
+     29  La Maestra Campsite and Falls         lg
+     35  St. Francis of Assisi Parish Church   md
+   -------------------------------------------------------------------- */
+.hero-feature .hero-feature__title[data-fit="xxl"]{      /* to 14 characters */
+  font-size:clamp(3.1rem, 7.4vw, 6rem);
+  line-height:.92;
+  letter-spacing:-.012em;
+}
+
+.hero-feature .hero-feature__title[data-fit="xl"]{       /* to 20 */
+  font-size:clamp(2.9rem, 6.2vw, 5.2rem);
+  line-height:.94;
+  letter-spacing:-.006em;
+}
+
+.hero-feature .hero-feature__title[data-fit="lg"]{       /* to 30 */
+  font-size:clamp(2.6rem, 5.1vw, 4.3rem);
+  line-height:.98;
+  letter-spacing:.004em;
+}
+
+.hero-feature .hero-feature__title[data-fit="md"]{       /* to 42 */
+  font-size:clamp(2.2rem, 3.9vw, 3.3rem);
+  line-height:1.04;
+  letter-spacing:.012em;
+  text-wrap:pretty;
+}
+
+.hero-feature .hero-feature__title[data-fit="sm"]{       /* the floor */
+  font-size:clamp(1.95rem, 3.2vw, 2.8rem);
+  line-height:1.08;
+  letter-spacing:.016em;
+  text-wrap:pretty;
+}
+
+
+/* -------------------------------------------------------------------
+   16.3  THE SUNRISE MARK
+
+   A short gradient rule above the tag, and the one piece of decoration
+   in the section.
+
+   IT IS ON .hero-feature__text, NOT ON A CHILD, and that is the whole
+   idea. Every child of that block fades out and lifts back in when the
+   destination changes — see the stagger in section 7. This does not.
+   It is a fixed mark that the content changes underneath, which is
+   what stops the swap reading as the entire block being rebuilt.
+
+   Same device as .dest-sheet__label::before and .dest-atlas__label
+   further down the page: a short amber rule introducing a label. Same
+   vocabulary, larger.
+   ------------------------------------------------------------------- */
+.hero-feature .hero-feature__text{
+  position:relative;
+  padding-top:1.5rem;
+}
+
+.hero-feature .hero-feature__text::before{
+  content:'';
+  position:absolute;
+  top:0;
+  left:0;
+  width:3.25rem;
+  height:3px;
+  border-radius:999px;
+  background:linear-gradient(90deg, var(--sun-deep), var(--sun) 55%, var(--sea));
+  box-shadow:0 0 18px rgba(255,182,63,.45);
+}
+
+
+/* -------------------------------------------------------------------
+   16.4  THE TAG AND THE TOWN
+
+   The tag was an amber ghost outline at .68rem — the smallest, faintest
+   thing in a block whose largest element is 92px. It carries "this is a
+   church, not a beach", which is the one fact neither the name nor the
+   photograph gives you, and it was the least visible thing on screen.
+
+   Solid now, and warm. It is the first thing you read, it is one word,
+   and it earns being solid because nothing else in the block is.
+   ------------------------------------------------------------------- */
+.hero-feature .hero-feature__tag{
+  height:2.05rem;
+  padding:0 1rem;
+  margin:0 0 1rem;
+  border:0;
+  background:linear-gradient(135deg, var(--sun-deep), var(--sun));
+  -webkit-backdrop-filter:none;
+  backdrop-filter:none;
+  font-size:.7rem;
+  font-weight:700;
+  letter-spacing:.15em;
+  color:var(--hero-ink);
+  box-shadow:0 10px 26px -12px rgba(240,120,44,.9);
+}
+
+/* the town line sat at .8rem white directly under the tag with nothing
+   between them. Dimmer and tracked wider, so the reading order is tag,
+   name, town — largest to smallest, rather than simply top to bottom. */
+.hero-feature .hero-feature__loc{
+  font-size:.76rem;
+  letter-spacing:.19em;
+  color:rgba(255,255,255,.68);
+}
+
+/* the pin gets a disc, so it reads as an icon rather than a small
+   orange shape floating beside text at a different optical size */
+.hero-feature .hero-feature__loc svg{
+  width:1.45rem;
+  height:1.45rem;
+  padding:.32rem;
+  border-radius:999px;
+  background:rgba(255,255,255,.1);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);
+  box-sizing:border-box;
+}
+
+
+/* -------------------------------------------------------------------
+   16.5  THE DESCRIPTION
+
+   CLAMPED TO TWO LINES, and this is the second half of the sizing fix.
+   The descriptions run from ten words to forty. Unclamped, the
+   paragraph is a different height on every destination — and since the
+   block is bottom-anchored, that difference moves the name and the tag
+   up and down on every step.
+
+   Two lines is a caption. Anything longer belongs in the detail sheet,
+   which is where the visitor is going next anyway.
+   ------------------------------------------------------------------- */
+.hero-feature .hero-feature__desc{
+  max-width:33rem;
+  margin:0 0 1.9rem;
+  font-size:1.02rem;
+  line-height:1.75;
+  color:rgba(255,255,255,.85);
+
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+
+  /* reserved whether or not the text fills it, so a one-line
+     description and a two-line one occupy the same space */
+  min-height:calc(2 * 1.75em);
+}
+
+
+/* -------------------------------------------------------------------
+   16.6  EXPLORE
+
+   REVERSES SECTION 9 DELIBERATELY, and the reasoning there is still
+   correct as far as it goes: solid white holds its contrast against all
+   twenty-four photographs, and a frosted button does not.
+
+   But white is also the colour of the name, the description and the
+   search field. The one thing in the section asking to be clicked was
+   drawn in the same colour as everything that is only asking to be
+   read, and it was winning on weight alone.
+
+   Sunrise gradient with ink text. It holds on the dark shots for the
+   obvious reason, and on the pale ones because of the inset ring and
+   the warm shadow beneath it, which is what separates it from a bright
+   sky.
+
+   TO GO BACK: delete this sub-section. The white button in section 9
+   is intact underneath it.
+   ------------------------------------------------------------------- */
+.hero-feature .hero-feature__cta{
+  min-width:0 !important;
+  height:3.35rem;
+  padding:0 1.9rem;
+  background:linear-gradient(135deg, var(--sun-deep), var(--sun)) !important;
+  color:var(--hero-ink) !important;
+  font-size:1rem;
+  font-weight:700;
+  letter-spacing:.01em;
+  box-shadow:0 16px 34px -16px rgba(240,120,44,.95),
+             inset 0 0 0 1px rgba(255,255,255,.28);
+}
+
+/* a chevron drawn from two borders rather than added to the markup. It
+   moves on hover instead of the button growing a shadow, because the
+   button's job is to send you somewhere and the arrow is the only part
+   of it that can say which way. */
+.hero-feature .hero-feature__cta::after{
+  content:'';
+  width:.44rem;
+  height:.44rem;
+  margin-left:.8rem;
+  border-right:2px solid currentColor;
+  border-top:2px solid currentColor;
+  transform:rotate(45deg);
+  transition:margin-left .28s cubic-bezier(.16,.84,.44,1);
+}
+
+.hero-feature .hero-feature__cta:hover{
+  transform:translateY(-2px);
+  box-shadow:0 24px 44px -16px rgba(240,120,44,1),
+             inset 0 0 0 1px rgba(255,255,255,.4);
+}
+
+.hero-feature .hero-feature__cta:hover::after{ margin-left:1.15rem; }
+
+/* the save button stays dark and stays the afterthought. Two warm pills
+   side by side is two primary actions. */
+.hero-feature .hero-feature__save{
+  width:3.35rem !important;
+  height:3.35rem !important;
+  background:rgba(10,14,20,.5) !important;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.22),
+             0 16px 34px -20px rgba(6,10,16,.95);
+  -webkit-backdrop-filter:blur(10px);
+  backdrop-filter:blur(10px);
+}
+
+.hero-feature .hero-feature__save:hover{
+  background:rgba(10,14,20,.72) !important;
+  box-shadow:inset 0 0 0 1px rgba(255,182,63,.6),
+             0 16px 34px -20px rgba(6,10,16,.95);
+}
+
+
+/* -------------------------------------------------------------------
+   16.7  THE STEPPER
+
+   The track was 4.5rem of flat amber at 2px — a bar you had to be
+   looking for. It is the only thing on screen saying the set is
+   twenty-four places rather than the three you can see, so it is worth
+   more than that.
+
+   Wider, thicker, and it runs sun to sea across its length, so the far
+   end of the set is a different colour from the near end.
+   ------------------------------------------------------------------- */
+.hero-feature .hero-stepper{ margin-top:1.9rem; }
+
+.hero-feature .hero-stepper__btn{
+  width:2.7rem !important;
+  height:2.7rem !important;
+  border-color:rgba(255,255,255,.28) !important;
+  background:rgba(10,14,20,.4) !important;
+}
+
+.hero-feature .hero-stepper__btn:hover{
+  background:rgba(255,182,63,.95) !important;
+  border-color:transparent !important;
+  color:var(--hero-ink) !important;
+}
+
+.hero-feature .hero-stepper__track{
+  width:7rem;
+  height:4px;
+  margin-left:1rem;
+  background:rgba(255,255,255,.18);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);
+}
+
+/* the fill is a window onto a full-width gradient, not a growing bar of
+   one colour. background-size is pinned to the TRACK width, so the
+   colour at the leading edge says where in the set you are. */
+.hero-feature .hero-stepper__fill{
+  background:linear-gradient(90deg, var(--sun-deep), var(--sun) 50%, var(--sea));
+  background-size:7rem 100%;
+  box-shadow:0 0 14px rgba(255,182,63,.5);
+}
+
+.hero-feature .hero-stepper__count{
+  font-size:.82rem;
+  letter-spacing:.1em;
+  color:rgba(255,255,255,.5) !important;
+}
+
+.hero-feature .hero-stepper__count strong{
+  font-size:1.05rem;
+  color:var(--sun) !important;
+}
+
+
+/* -------------------------------------------------------------------
+   16.8  THE SEAM DOWN THE RIGHT EDGE
+
+   THE SYMPTOM: a vertical line about 22px in from the right edge of
+   the section, the photograph noticeably brighter to the right of it,
+   running the full height.
+
+   THE MEASUREMENT IS THE DIAGNOSIS. The strip is 1.31x brighter than
+   the picture beside it, on all three channels. 1 / (1 - .24) = 1.316,
+   and .24 is the alpha of the last stop of the scrim's left-to-right
+   gradient in section 4. The strip is not a seam in the image, a
+   different photo, or a compression artifact. It is the same
+   photograph WITH NO SCRIM OVER IT.
+
+   THE CAUSE: .hero-feature__photo and .hero-feature__scrim are both
+   absolutely positioned at inset:0 inside the same element, so they
+   cannot resolve to different widths — unless they are measuring from
+   different containing blocks. Something is taking position:relative
+   off .hero-feature for the scrim, which sends it up the tree to the
+   next positioned ancestor and leaves it short.
+
+   THE REAL FIX IS UPSTREAM, and it is almost certainly the duplicate
+   stylesheet described at the top of this file. To confirm, in
+   devtools:
+
+       s = document.querySelector('.hero-feature__scrim');
+       p = document.querySelector('.hero-feature__photo');
+       console.log(s.offsetParent, s.getBoundingClientRect().width,
+                   p.offsetParent, p.getBoundingClientRect().width);
+
+   Two different offsetParents, or two different widths, and that is it.
+
+   WHAT THIS DOES MEANWHILE: bleeds the scrim past all four edges so it
+   cannot come up short whatever it is measuring from. The section is
+   overflow:hidden, so the overhang is clipped and costs nothing.
+
+   IT HAS TO BE NEGATIVE INSETS. If inset:0 is already landing 22px
+   short, a second rule saying inset:0 lands in exactly the same place.
+   Only bleeding past the edge covers it.
+
+   The longhands are separate on purpose: the rule being overridden
+   uses the inset shorthand, and four longhands later in the cascade
+   beat it one edge at a time.
+   ------------------------------------------------------------------- */
+.hero-feature .hero-feature__scrim{
+  position:absolute !important;
+  top:-2px !important;
+  bottom:-2px !important;
+  left:-2px !important;
+  right:-3rem !important;   /* 22px was the measured gap; 48px is that
+                               with room to spare, and it is clipped
+                               either way */
+  width:auto !important;    /* an explicit width would re-constrain the
+                               box and undo the right bleed */
+  height:auto !important;
+}
+
+/* The bleed pushes the gradients' 100% stops off the visible edge,
+   which lightens the far right of the picture by a hair. Restated here
+   with the stops nudged so the corner lands where it did before: the
+   last stop goes to .26 to cover the 3rem now hanging outside the
+   frame.
+
+   WARMTH IS ADDED IN THE SAME PASS. One radial glow low on the left,
+   under the text, at very low opacity. It is the difference between
+   white text on a darkened photograph and white text on a photograph
+   that has a light source in it. On the beach and sunset shots it
+   reads as the picture's own light; on the church it stops the
+   bottom-left corner going flat grey. */
+.hero-feature .hero-feature__scrim{
+  background:
+    /* the warm one. First, so it sits above the rest of the stack. */
+    radial-gradient(72% 62% at 8% 96%,
+      rgba(255,150,60,.2) 0%,
+      rgba(255,150,60,.07) 42%,
+      rgba(255,150,60,0) 72%),
+
+    radial-gradient(105% 80% at 74% 14%,
+      rgba(120,158,205,.20) 0%,
+      rgba(120,158,205,.06) 42%,
+      transparent 68%),
+
+    linear-gradient(to right,
+      rgba(6,10,16,.74) 0%,
+      rgba(6,10,16,.42) 29%,
+      rgba(6,10,16,.06) 56%,
+      rgba(6,10,16,.26) 100%),
+    linear-gradient(to top,
+      rgba(6,10,16,.58) 0%,
+      rgba(6,10,16,.08) 42%,
+      transparent 62%),
+    linear-gradient(to bottom,
+      rgba(6,10,16,.34) 0%,
+      transparent 20%),
+
+    radial-gradient(120% 105% at 49% 46%,
+      transparent 52%,
+      rgba(6,10,16,.42) 100%);
+}
+
+/* NO RULE FOR .hero-feature__photo, AND THAT IS THE POINT.
+
+   Two attempts at a 1px bleed on the photo layers both broke the
+   section, and the guard was speculative to begin with — the hairline
+   it was written against was never actually observed.
+
+   IT ALSO CANNOT HAPPEN. Section 3 gives the live layer
+   transform:scale(1.085) and the idle layer scale(1.02), both from a
+   50% 50% origin, so the picture already overhangs its own box on
+   every side before anything else runs. There is no edge to leak.
+
+   The first attempt used width:auto with left and right set. That
+   stretches a <div>, but an <img> is a REPLACED element, and for those
+   auto resolves to the file's INTRINSIC width — so every destination
+   painted at its own natural size against the section's dark fill,
+   cut off at a different x for every photo in the set: 1049px on one,
+   1396px on another, 1487px on a third.
+
+   The second used calc(100% + 2px). Correct in principle, still a
+   patch on a problem that did not exist.
+
+   Section 3's inset:0 with width:100% and height:100% is right, and it
+   is demonstrably right: in the screenshot that first showed the scrim
+   seam, the photograph was painting to the section's last pixel. It
+   was the scrim that stopped short, and 16.8 above is the fix for
+   that. Leave the photo alone. */
+
+
+/* -------------------------------------------------------------------
+   16.9  THE RAIL
+
+   Small corrections only. The cards work — the ring, the desaturation
+   of everything except the current card, the trimmed last card, all of
+   it is doing what its comments say it does.
+
+   The names had the same tracking problem as the title, at a size
+   where it hurts more.
+   ------------------------------------------------------------------- */
+.hero-feature .hero-rail__name{
+  font-size:1.1rem;
+  line-height:1.14;
+  letter-spacing:.008em;    /* was -.01em, on uppercase, at 19px */
+}
+
+.hero-feature .hero-rail__loc{
+  font-size:.72rem;
+  letter-spacing:.02em;
+  color:rgba(255,255,255,.7);
+}
+
+/* the current card says so in the caption as well as with the ring. The
+   ring is white because amber loses on sunset photographs — still true,
+   still white. This is a second, smaller signal that survives the ring
+   being scrolled off the edge. */
+.hero-feature .hero-rail__card.is-current .hero-rail__loc{
+  color:var(--sun);
+  font-weight:600;
+}
+
+/* the shade reaches a little further, so a two-line name stays legible
+   without darkening the top of the photo any further */
+.hero-feature .hero-rail__shade{
+  background:linear-gradient(to top,
+    rgba(6,10,16,.9) 0%,
+    rgba(6,10,16,.48) 38%,
+    rgba(6,10,16,0) 66%);
+}
+
+
+/* -------------------------------------------------------------------
+   16.10  THE SEARCH BOX
+
+   Left alone except for its weight. It is centred at the top of a
+   section whose subject is a photograph, and it was bright enough to be
+   the first thing the eye found. Slightly darker glass, dimmer
+   placeholder.
+   ------------------------------------------------------------------- */
+.hero-feature .hero-search{
+  background:linear-gradient(to bottom,
+    rgba(14,19,27,.52),
+    rgba(8,12,18,.46));
+  border-color:rgba(255,255,255,.16);
+}
+
+.hero-feature .hero-search__field::placeholder{
+  color:rgba(255,255,255,.46);
+}
+
+.hero-feature .hero-search:focus-within{
+  border-color:rgba(255,182,63,.8);
+  box-shadow:0 24px 54px -26px rgba(6,10,16,.95),
+             inset 0 1px 0 rgba(255,255,255,.18),
+             0 0 0 4px rgba(255,182,63,.16);
+}
+
+.hero-feature .hero-search__go:hover,
+.hero-feature .hero-search:focus-within .hero-search__go{
+  background:linear-gradient(135deg, var(--sun-deep), var(--sun));
+  color:var(--hero-ink);
+}
+
+
+/* -------------------------------------------------------------------
+   16.11  TABLET AND PHONE
+
+   READ THIS BEFORE EDITING ANYTHING ABOVE.
+
+   This block sits AFTER the @media (max-width:1100px) rules at line
+   1108, and every selector here has the same weight as the ones there.
+   At equal specificity the later rule wins REGARDLESS OF THE MEDIA
+   QUERY — a media query is a condition, not a weight.
+
+   So five of the rules above would silently override their own phone
+   versions. Each is restated here. If you add a rule to 16.1–16.10
+   that also appears in the 1100px block above, restate it here too or
+   you will break the phone without touching the phone:
+
+     __title      re-declared per data-fit step
+     __tag        margin-bottom .9rem
+     __desc       margin-bottom 1.75rem
+     __scrim      a plain to-top gradient, not the left-weighted stack
+     .hero-stepper margin-top 1.75rem
+     __rail-name  .98rem
+   ------------------------------------------------------------------- */
+@media (max-width:1100px){
+
+  /* the fallback, and then the five steps again. The rule at line 1122
+     has no attribute selector, so without these the name would go back
+     to one size for every length on a tablet. */
+  .hero-feature .hero-feature__title{ font-size:clamp(2.4rem, 6.4vw, 4rem); }
+
+  .hero-feature .hero-feature__title[data-fit="xxl"]{ font-size:clamp(2.9rem, 9vw, 4.6rem); }
+  .hero-feature .hero-feature__title[data-fit="xl"] { font-size:clamp(2.7rem, 8vw, 4.2rem); }
+  .hero-feature .hero-feature__title[data-fit="lg"] { font-size:clamp(2.4rem, 6.6vw, 3.6rem); }
+  .hero-feature .hero-feature__title[data-fit="md"] { font-size:clamp(2rem, 5.2vw, 2.9rem); }
+  .hero-feature .hero-feature__title[data-fit="sm"] { font-size:clamp(1.8rem, 4.6vw, 2.5rem); }
+
+  .hero-feature .hero-feature__tag{ margin-bottom:.9rem; }
+
+  .hero-feature .hero-feature__desc{ margin-bottom:1.75rem; }
+
+  .hero-feature .hero-stepper{ margin-top:1.75rem; }
+
+  .hero-feature .hero-rail__name{ font-size:.98rem; }
+
+  /* the phone scrim, restated. Left-to-right does nothing once the text
+     is full width, so it is a plain to-top wash — plus the warm glow,
+     moved to the bottom centre to match. The bleed from 16.8 still
+     applies; only the background is replaced. */
+  .hero-feature .hero-feature__scrim{
+    background:
+      radial-gradient(90% 46% at 50% 100%,
+        rgba(255,150,60,.16) 0%,
+        rgba(255,150,60,0) 70%),
+      linear-gradient(to top,
+        rgba(6,10,16,.9) 0%,
+        rgba(6,10,16,.6) 48%,
+        rgba(6,10,16,.5) 100%);
+  }
+}
+
+@media (max-width:560px){
+
+  .hero-feature .hero-feature__text{ padding-top:1.15rem; }
+
+  .hero-feature .hero-feature__text::before{ width:2.5rem; }
+
+  .hero-feature .hero-feature__desc{
+    font-size:.95rem;
+    -webkit-line-clamp:3;
+    min-height:0;            /* reserved height is a desktop concern */
+  }
+
+  /* full-width primary action, save button beside it */
+  .hero-feature .hero-feature__cta{ flex:1; }
+}
+
+
+/* -------------------------------------------------------------------
+   16.12  REDUCED MOTION
+   ------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce){
+  .hero-feature .hero-feature__cta::after{ transition:none; }
+  .hero-feature .hero-feature__cta:hover{ transform:none; }
+  .hero-feature .hero-feature__cta:hover::after{ margin-left:.8rem; }
+}
+
+/* ===================================================================
+   17.  THE THREE THINGS IN THE SCREENSHOT
+        added after 16, so these win on position, not on weight
+
+   Same rules as section 16: plain single classes, appended at the end,
+   nothing renamed, no markup required. Its partner is one small block
+   in assets/js/destinations-hero.js — see fitRail() there.
+
+     17.1  the dark strip down the right edge of the photo
+     17.2  card names that are too long for the card
+     17.3  the featured name: smaller, and cut harder against the photo
+     17.4  the card with no photograph
+     17.5  the same, on a narrow screen
+   =================================================================== */
+
+
+/* -------------------------------------------------------------------
+   17.1  THE DARK STRIP DOWN THE RIGHT EDGE
+
+   THE SYMPTOM: a band of flat navy roughly 33px wide down the right
+   edge of the section, full height, with the photograph stopping dead
+   at its left edge.
+
+   THIS IS 16.8 AGAIN, ON THE OTHER LAYER. That section found the
+   scrim landing about 22px short of the section's right edge and bled
+   it past the edge to cover the gap. The scrim is now correct — the
+   band has the scrim's own blue highlight in it, which is how you can
+   tell — and it is the PHOTO that is coming up short instead.
+
+   The note under 16.8 says to leave the photo alone, and at the time
+   it was written that was right: the photograph was painting to the
+   last pixel and only the scrim was short. That is no longer what the
+   page does, so the same treatment applies here.
+
+   IT IS width, NOT right:-3rem. An <img> is a replaced element: give
+   it left and right and leave width auto and it falls back to the
+   file's INTRINSIC width, which is the failure described under 16.8 —
+   every photo painting at its own natural size and cutting off at a
+   different x. An explicit calc() width has no such fallback.
+
+   The section is overflow:hidden, so the extra 3rem is clipped and
+   costs nothing. object-fit:cover keeps the crop centred.
+
+   THE REAL FIX IS STILL UPSTREAM. Both this and 16.8 are covering for
+   something that takes position:relative off .hero-feature — almost
+   certainly the duplicate stylesheet described at the top of this
+   file. In devtools:
+
+       p = document.querySelector('.hero-feature__photo');
+       console.log(p.offsetParent, p.getBoundingClientRect().width,
+                   document.querySelector('.hero-feature').getBoundingClientRect().width);
+
+   Two different widths, and that is it. Find the duplicate <link>,
+   delete it, and 16.8 and 17.1 can both come out.
+   ------------------------------------------------------------------- */
+.hero-feature .hero-feature__photo{
+  left:0 !important;
+  top:0 !important;
+  right:auto !important;
+  bottom:auto !important;
+  width:calc(100% + 3rem) !important;   /* 33px measured; 48px with room */
+  height:100% !important;
+  object-fit:cover !important;
+  object-position:50% 50% !important;
+}
+
+
+/* -------------------------------------------------------------------
+   17.2  THE CARD NAMES
+
+   THE SYMPTOM: "Tulis Peak, Mt. Bagacay" and "First Rizal Monument"
+   set at the same 1.1rem as "Parola Island", wrap to two lines, and
+   climb up the card until the caption is most of the photograph.
+
+   SAME PRINCIPLE AS 16.2, ONE SIZE DOWN. The line count is what
+   should stay constant, not the size. fitRail() in
+   destinations-hero.js writes data-fit onto each name from its
+   character count and the steps below pick the size, the leading and
+   the tracking off it.
+
+   The rule directly below is the fallback for a page where the script
+   has not run — it is the size the longest name in the set needs, so
+   with no JavaScript every card is a little small and none of them
+   overflow. Hiding is opt-in; overflowing never is.
+
+   THE SHADOW IS THE "SHARPER" PART. A caption sits on a photograph,
+   and against a bright sky white type on a soft shadow goes soft with
+   it. A tight 1px shadow puts a hard edge back on the letterforms and
+   the wide one behind it stays as the darkening. Two shadows, two
+   jobs — the same pair 16.2 uses on the featured name.
+   ------------------------------------------------------------------- */
+.hero-feature .hero-rail__name{
+  font-size:.95rem;
+  line-height:1.18;
+  letter-spacing:.012em;
+  text-wrap:balance;
+  overflow-wrap:break-word;      /* "Mananap" beats the card; it breaks */
+  -webkit-line-clamp:3;          /* was 2. Three lines of a small size is
+                                    less card than two of a large one. */
+  text-shadow:0 1px 2px rgba(6,10,16,.6),
+              0 2px 14px rgba(6,10,16,.5);
+}
+
+/* --- the scale ------------------------------------------------------
+   Four steps, and the buckets are the real name lengths:
+
+     13  Parola Island                    lg
+     20  First Rizal Monument             md
+     23  Tulis Peak, Mt. Bagacay          sm
+     35  St. Francis of Assisi Parish     xs
+   -------------------------------------------------------------------- */
+.hero-feature .hero-rail__name[data-fit="lg"]{        /* to 15 characters */
+  font-size:1.1rem;
+  line-height:1.12;
+  letter-spacing:.004em;
+}
+
+.hero-feature .hero-rail__name[data-fit="md"]{        /* to 22 */
+  font-size:1rem;
+  line-height:1.15;
+  letter-spacing:.01em;
+}
+
+.hero-feature .hero-rail__name[data-fit="sm"]{        /* to 30 */
+  font-size:.9rem;
+  line-height:1.2;
+  letter-spacing:.014em;
+}
+
+.hero-feature .hero-rail__name[data-fit="xs"]{        /* the floor */
+  font-size:.82rem;
+  line-height:1.24;
+  letter-spacing:.02em;
+  -webkit-line-clamp:4;
+}
+
+/* the town line loses ", Camarines Norte" in fitRail() — every one of
+   the twenty-four is in Camarines Norte, so the only thing the words
+   were doing was pushing the town itself into an ellipsis. With the
+   town alone it fits, so it can be tracked like the label it is. */
+.hero-feature .hero-rail__loc{
+  font-size:.7rem;
+  font-weight:600;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.72);
+  text-shadow:0 1px 2px rgba(6,10,16,.55);
+}
+
+.hero-feature .hero-rail__card.is-current .hero-rail__loc{
+  color:var(--sun);
+}
+
+/* a hair more room under the caption now that it can run to three
+   lines, and a hair less above it */
+.hero-feature .hero-rail__body{
+  padding:.9rem .8rem .95rem;
+  gap:.25rem;
+}
+
+
+/* -------------------------------------------------------------------
+   17.3  THE FEATURED NAME, SMALLER
+
+   16.2 sized the name to its length, which fixed the overflow. It is
+   still the largest type on the site by a long way, and at 92px a
+   two-word name is a wall across the middle of the photograph.
+
+   Every step comes down roughly one notch. The proportions between
+   them — the leading and the tracking moving with the size — are
+   16.2's and are left alone; only the numbers change.
+
+   TO GO BACK, delete this block. 16.2 is intact above it.
+
+   The shadow is restated with a tight pair in front of the wide one,
+   for the same reason as the card names: edge contrast against a
+   bright sky. It is what "sharper" actually is on white type over a
+   photograph — the letterform edges, not the weight.
+   ------------------------------------------------------------------- */
+.hero-feature .hero-feature__title{
+  text-shadow:0 1px 1px rgba(6,10,16,.55),
+              0 2px 4px rgba(6,10,16,.4),
+              0 6px 40px rgba(6,10,16,.55);
+}
+
+.hero-feature .hero-feature__title[data-fit="xxl"]{ font-size:clamp(2.8rem, 6.2vw, 5rem); }
+.hero-feature .hero-feature__title[data-fit="xl"] { font-size:clamp(2.6rem, 5.3vw, 4.4rem); }
+.hero-feature .hero-feature__title[data-fit="lg"] { font-size:clamp(2.35rem, 4.4vw, 3.7rem); }
+.hero-feature .hero-feature__title[data-fit="md"] { font-size:clamp(2rem, 3.4vw, 2.9rem); }
+.hero-feature .hero-feature__title[data-fit="sm"] { font-size:clamp(1.8rem, 2.8vw, 2.5rem); }
+
+
+/* -------------------------------------------------------------------
+   17.4  THE CARD WITH NO PHOTOGRAPH
+
+   "First Rizal Monument" in the screenshot: a flat dark rectangle in a
+   row of pictures. That is .is-photoless doing its job — the image
+   404s and the panel underneath is what you are looking at.
+
+   THE FIX IS THE FILE PATH, NOT THIS. The note above section
+   "WHEN A PHOTO IS NOT THERE" has the loop that lists the misses.
+   Until they are fixed, this at least makes the panel read as a card
+   whose picture is missing rather than as a card that failed to draw:
+   lighter, with the section's own warm light across the top of it and
+   a faint weave so it is plainly a placeholder surface.
+
+   z-index:1 puts the weave above the panel and below .hero-rail__shade
+   at 2, so the caption is unaffected.
+   ------------------------------------------------------------------- */
+.hero-rail__card.is-photoless{
+  background:
+    radial-gradient(120% 85% at 50% 8%, rgba(255,182,63,.14) 0%, rgba(255,182,63,0) 62%),
+    linear-gradient(155deg, #24334a 0%, #3b5573 55%, #26364b 100%);
+}
+
+.hero-rail__card.is-photoless::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  z-index:1;
+  background:repeating-linear-gradient(135deg,
+    rgba(255,255,255,.045) 0 1px,
+    transparent 1px 9px);
+  pointer-events:none;
+}
+
+
+/* -------------------------------------------------------------------
+   17.5  THE SAME, ON A NARROW SCREEN
+
+   The @media block at line 1108 sets .hero-rail__name once, and both
+   16.9 and 17.2 are written after it, so it no longer reaches the
+   name. Restated here at the bottom, where it can.
+
+   The cards are 10rem wide below 1100px rather than 12.3rem, so every
+   step comes down again in proportion.
+   ------------------------------------------------------------------- */
+@media (max-width:1100px){
+  .hero-feature .hero-rail__name{ font-size:.86rem; line-height:1.2; }
+
+  .hero-feature .hero-rail__name[data-fit="lg"]{ font-size:.98rem; }
+  .hero-feature .hero-rail__name[data-fit="md"]{ font-size:.9rem; }
+  .hero-feature .hero-rail__name[data-fit="sm"]{ font-size:.82rem; }
+  .hero-feature .hero-rail__name[data-fit="xs"]{ font-size:.76rem; }
+
+  .hero-feature .hero-rail__loc{ font-size:.66rem; letter-spacing:.05em; }
+
+  .hero-feature .hero-rail__body{ padding:.75rem .65rem .8rem; }
+}
+
+
+/* ===================================================================
+   18.  AFTER THE FIRST ATTEMPT
+
+     18.1  the right edge again, measured this time
+     18.2  the crossfade: no dip in the middle of it
+   =================================================================== */
+
+
+/* -------------------------------------------------------------------
+   18.1  THE RIGHT EDGE, MEASURED
+
+   17.1 GUESSED 3rem AND THE BAND IS STILL THERE, so the guess is not
+   the problem — something else is. Two candidates, and CSS alone
+   cannot tell them apart from inside this file:
+
+     a  a second, older copy of this stylesheet loading AFTER it, in
+        which case 17.1 never applied at all. The title in the
+        screenshot measures about 118px, and NOTHING in this file can
+        produce that — section 8 caps at 5.9rem and 16.2 at 6rem. So
+        there is almost certainly an older set of rules winning.
+
+     b  the section, or something above it, genuinely being narrower
+        than the window, in which case widening the photo inside it
+        changes nothing because the clip is further out.
+
+   SO THE WIDTH IS MEASURED AT RUNTIME NOW. sealRight() in
+   destinations-hero.js compares the boxes, works out how far short the
+   photo actually falls, and writes the answer into --hero-bleed. The
+   3rem below is only the value used before it runs.
+
+   AND IT SETS THE WIDTH INLINE, WITH !important, which is the one
+   declaration a stale stylesheet cannot outrank. If the band survives
+   that, it is not the photo — run __heroSeal() in the console and the
+   table it prints names the element that is short.
+   ------------------------------------------------------------------- */
+.hero-feature .hero-feature__photo{
+  width:calc(100% + var(--hero-bleed, 3rem)) !important;
+}
+
+
+/* -------------------------------------------------------------------
+   18.2  THE CROSSFADE
+
+   THE DIP. Two layers, and until now both moved at once: the incoming
+   one fading up while the outgoing one faded down. At the halfway
+   point neither is opaque, so for about a tenth of a second you are
+   looking through both of them at the flat navy fill underneath, and
+   the whole section darkens and comes back. That is the pulse in the
+   middle of the transition.
+
+   IT IS ALSO ASYMMETRIC, which is the part that makes it look like a
+   fault rather than an effect. The two layers are siblings, so the
+   second one in the markup paints above the first: going A to B the
+   new photo genuinely crosses over the old one, and going B to A it
+   has to come up UNDERNEATH it. Every other step looked different from
+   the one before it.
+
+   THE FIX IS ORDER, NOT TIMING. The incoming layer is lifted above the
+   outgoing one, so it always fades up on top. The outgoing one then
+   has nothing to do — it holds at full opacity underneath, completely
+   covered, and is snapped invisible only once the fade has finished.
+   Nothing is ever semi-transparent over the fill, so there is no dip
+   in either direction.
+
+   THE DELAY IS THE WHOLE TRICK: opacity 0s AFTER .9s. Not a fade —
+   an instant change, timed to happen behind a picture that is by then
+   completely opaque. Match the .9s if you change the fade length, or
+   the old photo will vanish while it is still being looked at.
+
+   swapPhoto() in the JS resets the incoming layer to opacity 0 with
+   transitions off before it hands it back, so a second click landing
+   mid-fade still starts from nothing rather than snapping in.
+   ------------------------------------------------------------------- */
+.hero-feature .hero-feature__photo.is-live{
+  z-index:1 !important;
+  opacity:1;
+  transform:scale(1.075);
+  transition:opacity .9s cubic-bezier(.37,0,.2,1),
+             transform 18s linear;
+}
+
+.hero-feature .hero-feature__photo.is-idle{
+  z-index:0 !important;      /* under the incoming layer, not over it */
+  opacity:0;
+  transform:scale(1.02);
+  transition:opacity 0s linear .9s,
+             transform 0s linear .9s;
+}
+
+/* the words leave a little later and come back a little slower, so
+   the block settles WITH the picture rather than a half second ahead
+   of it. FADE in the JS moves with these. */
+.hero-feature .hero-feature__text > *{
+  transition:opacity .5s ease,
+             transform .5s cubic-bezier(.16,.84,.44,1);
+}
+
+.hero-feature .hero-feature__text.is-swapping > *:not(.hero-stepper){
+  transform:translateY(10px);
+  transition-duration:.24s;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .hero-feature .hero-feature__photo.is-live,
+  .hero-feature .hero-feature__photo.is-idle{
+    transition:none;
+    transform:scale(1.02);
+  }
+}
+
+
+/* ===================================================================
+   19.  THE SEARCH PILL, LOWER
+
+   It was sitting at clamp(2rem, 6vh, 3.75rem) from the top of the
+   section, which on a laptop is about 57px — and the site header above
+   it is fixed, opaque and roughly 8rem tall. The pill was tucked into
+   the header's bottom edge with no air between them, and at the top of
+   the page it goes under it entirely.
+
+   About 2rem lower. It still clears the tag and the sunrise mark below
+   it, and it now reads as an object floating on the photograph rather
+   than as something hanging off the navigation.
+
+   THE TWO MEDIA BLOCKS ARE NOT OPTIONAL. The 560px rule at line 1159
+   sets top with !important, and this rule is written after it, so it
+   would otherwise reach the phone as well and push the pill down a
+   screen that has far less room for it. Both narrow sizes are restated
+   here, where they can win.
+   ------------------------------------------------------------------- */
+.hero-feature .hero-search{
+  top:clamp(4.25rem, 9vh, 6rem) !important;
+}
+
+@media (max-width:1100px){
+  .hero-feature .hero-search{ top:clamp(3.5rem, 7vh, 5rem) !important; }
+}
+
+@media (max-width:560px){
+  .hero-feature .hero-search{ top:3.25rem !important; }
+}
+
+
+/* ===================================================================
+   20.  THE PHOTOGRAPH HOLDS STILL
+
+   Section 3 gives the live layer a 14s scale and 18.2 stretched it to
+   18s. It is the "the page is alive" drift — slow enough that you
+   cannot catch it moving, only notice afterwards that it has. On a
+   section this size, with a rail of cards and a stepper already
+   moving, it is one thing too many.
+
+   OFF. Both layers hold at a fixed scale and only opacity is allowed
+   to transition, so THE CROSSFADE IS UNTOUCHED — switching destination
+   still dissolves, it just does not creep while you read.
+
+   scale(1.02) RATHER THAN none, and the 2% is not decoration. It is
+   the overscan that guarantees no hairline of the section's dark fill
+   can show along an edge if the photo's box is a pixel short of the
+   section — which, on this page, it demonstrably has been. Section
+   18.1 and sealRight() cover the right edge; this covers the other
+   three for free.
+
+   TO PUT THE DRIFT BACK, delete this block. Sections 3 and 18.2 are
+   intact above it.
+   ------------------------------------------------------------------- */
+.hero-feature .hero-feature__photo,
+.hero-feature .hero-feature__photo.is-live,
+.hero-feature .hero-feature__photo.is-idle{
+  transform:scale(1.02) !important;
+  will-change:opacity;
+}
+
+.hero-feature .hero-feature__photo.is-live{
+  transition:opacity .9s cubic-bezier(.37,0,.2,1) !important;
+}
+
+.hero-feature .hero-feature__photo.is-idle{
+  transition:opacity 0s linear .9s !important;   /* holds under the
+                                                    incoming layer, then
+                                                    snaps out of sight */
+}
+
+
+/* ===================================================================
+   21.  THE BAND, ACTUALLY
+
+   base.css line 112:
+
+       img,video{ display:block; max-width:100%; }
+
+   THAT IS THE WHOLE BUG, and it is why every attempt at this so far
+   has done nothing. max-width caps the USED width of a box. Setting
+   width — in a rule, with !important, or inline from JavaScript — does
+   not beat it, because they are different properties: the used width
+   is min(width, max-width), and max-width says 100% of the containing
+   block. The photo has been physically incapable of painting past that
+   line since the day base.css was written.
+
+   THE PROOF IS ALREADY ON THE PAGE. Section 16.8 bleeds the scrim
+   3rem past the same edge and it works — the band in the screenshot
+   is scrimmed, it has the scrim's blue highlight in it, and it is
+   sitting on the section's own --navy fill. The scrim reaches; the
+   photo does not. The only difference between them is that the scrim
+   is a <div> and the photo is an <img>, so only one of the two is
+   caught by that rule.
+
+   So the fix is one declaration, and every widening rule already
+   written above starts working the moment it lands.
+
+   SCOPED TO THESE TWO IMAGES ONLY. max-width:100% is doing real work
+   everywhere else on the site — it is what stops an oversized upload
+   blowing out a card — so this must not be loosened globally.
+   ------------------------------------------------------------------- */
+.hero-feature .hero-feature__photo{
+  max-width:none !important;
+  min-width:0 !important;
+}

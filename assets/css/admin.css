@@ -1,0 +1,2455 @@
+/* ===================================================================
+   assets/css/admin.css — Explore Camarines Norte, back office
+
+   WHO THIS IS FOR: a provincial tourism officer and a student admin,
+   on a laptop, correcting content. Not a SaaS dashboard for analysts.
+   The job is to add a place, fix a caption, and be confident nothing
+   was destroyed on the way.
+
+   ---------------------------------------------------------------
+   WHAT CHANGED FROM THE PREVIOUS VERSION, AND WHY
+
+   Every class name is the same, so users.php, testimonials.php and
+   index.php keep working untouched. What changed is the treatment.
+
+   1. NO MORE TRACKED-OUT CAPITALS. Field labels, stat labels and the
+      eyebrow were all uppercase with letter-spacing. That treatment
+      on every small piece of text is the commonest tell of a
+      generated interface, and it costs real legibility — capitals
+      remove the word-shape a reader uses to skim. Hierarchy is now
+      carried by weight and size, which is what they are for.
+
+   2. RADIUS VARIES BY HIERARCHY. One radius on everything flattens
+      the difference between a page-level panel and a 20px badge.
+      Panels 10px, controls 7px, nav rows 6px, badges a pill, the
+      drawer square where it meets the screen edge.
+
+   3. THE SIDEBAR PHOTOGRAPH IS GONE. A photo behind a gradient wash
+      is the default move for making a sidebar look considered, and it
+      spends the most valuable column on the screen on decoration.
+      That space now carries a live count of everything on the site.
+      (.adm-side__photo is still styled below — drop the file back in
+      and it returns, at a fraction of the old opacity.)
+
+   4. TWO FACES, SPLIT BY ROLE NOT SIZE. Archivo for interface chrome
+      and every number; Inter for prose. A number in a table and a
+      number in the sidebar are the same kind of thing and should look
+      it, whatever their size.
+
+   ---------------------------------------------------------------
+   THE ONE BOLD THING is the sidebar inventory: the current contents
+   of the site, readable from any page, in tabular figures. Everything
+   else is deliberately quiet so that it stays the thing you notice.
+   =================================================================== */
+
+
+/* ===================================================================
+   1. TOKENS
+   =================================================================== */
+:root{
+  /* --- surfaces --- */
+  --adm-bg:#F6F7F4;          /* the canvas behind the panels           */
+  --adm-panel:#FFFFFF;
+  --adm-sunk:#F1F3EF;        /* inputs, and rows that are switched off */
+
+  /* --- ink --- */
+  --adm-ink:#10201A;         /* near-black, green cast                 */
+  --adm-ink-2:#3D4F46;       /* secondary prose                        */
+  --adm-muted:#66746C;       /* help text, captions                    */
+  --adm-line:#DFE4DE;
+  --adm-line-soft:#EDF0EC;
+
+  /* --- accents ---
+     leaf is the only colour that means "do this".
+     gold means "there is a quantity here" or "this wants attention".
+     Gold rather than the old amber because Paracale has worked gold
+     for three centuries and it is the province's own colour; the old
+     #F0A32C read closer to a warning triangle. */
+  --adm-leaf:#2E8A66;
+  --adm-leaf-deep:#1F6A4F;
+  --adm-leaf-wash:rgba(46,138,102,.09);
+  --adm-gold:#C6892F;
+  --adm-gold-wash:rgba(198,137,47,.12);
+  --adm-danger:#A8372C;
+  --adm-danger-wash:rgba(168,55,44,.08);
+
+  /* --- the sidebar --- */
+  --adm-forest:#0B1F16;      /* deeper than before, so white sits calm */
+  --adm-forest-2:#122B1F;
+
+  /* --- radius, by hierarchy --- */
+  --adm-r-panel:10px;
+  --adm-r-control:7px;
+  --adm-r-nav:6px;
+
+  /* --- type ---
+     Archivo: every piece of interface furniture and every number.
+     Inter:   prose a human wrote and a human reads. */
+  --adm-font-display:'Archivo','Arial Narrow',Arial,sans-serif;
+  --adm-font-body:'Inter',-apple-system,'Segoe UI',Arial,sans-serif;
+
+  /* --- motion ---
+     Two curves and two durations, and everything that moves uses one
+     of them. A panel easing differently from the scrim behind it is
+     the difference between "animated" and "smooth".
+
+     ease-out is a strong decelerate: the panel arrives quickly and
+     settles slowly, which reads as the thing coming to rest rather
+     than stopping. ease-in is its opposite, for leaving.
+
+     THINGS LEAVE FASTER THAN THEY ARRIVE. 180ms out against 260ms in.
+     Arriving is information — you want to watch it land. Leaving is
+     just getting out of the way, and a slow exit feels like lag. */
+  --adm-ease-out:cubic-bezier(.16, 1, .3, 1);
+  --adm-ease-in:cubic-bezier(.4, 0, .9, 1);
+  --adm-in:260ms;
+  --adm-out:180ms;
+
+  /* Depth is carried by one soft shadow, used on exactly two things:
+     the drawer and the toast. Panels use a border instead, because a
+     shadow under every card is how everything ends up looking the
+     same weight. */
+  --adm-lift:0 1px 2px rgba(16,32,26,.04), 0 24px 48px -24px rgba(16,32,26,.35);
+}
+
+*{ box-sizing:border-box; }
+
+body{
+  margin:0;
+  background:var(--adm-bg);
+  color:var(--adm-ink);
+  font-family:var(--adm-font-body);
+  font-size:15px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+/* Tabular figures everywhere a number is compared to another number.
+   Without it, a column of counts wobbles as the digits change. */
+.adm-stat__num,
+.adm-nav__count,
+.adm-count,
+.adm-table td,
+.adm-meta__value{ font-variant-numeric:tabular-nums; }
+
+
+/* ===================================================================
+   2. SHELL AND SIDEBAR
+
+   THE INVENTORY. Each nav row ends in the number of things behind it.
+   That is the idea this design is built on: from any page you can see
+   that there are 24 destinations, 12 photographs, and 3 comments
+   nobody has published. The sidebar stops being a menu and becomes a
+   status board that happens to be clickable.
+
+   Counts are gold. A count that needs a decision — unpublished
+   comments — is filled gold instead of just coloured, so the one
+   actionable number is the one that carries weight.
+   =================================================================== */
+.adm{ display:flex; min-height:100vh; }
+
+.adm-side{
+  position:relative; isolation:isolate;
+  flex:0 0 276px;
+  /* The collapse used to jump from 264px to 74px in one frame. Width
+     is expensive to animate — it reflows the whole page beside it —
+     but this is one element, once, on a deliberate click, and the
+     jump was the least polished thing in the panel. */
+  transition:flex-basis var(--adm-in) var(--adm-ease-out);
+  display:flex; flex-direction:column;
+  padding:1.5rem 1rem 1.25rem;
+  background:var(--adm-forest);
+  color:#fff;
+  font-family:var(--adm-font-display);
+}
+
+/* If uploads/admin-side.jpg exists it comes back as a faint texture
+   at the foot of the panel only — never behind the nav, where it used
+   to fight the text it sat under. */
+.adm-side__photo{
+  position:absolute; inset:auto 0 0 0; height:44%; z-index:-2;
+  background-position:center; background-size:cover;
+  filter:saturate(.4) contrast(1.05);
+  opacity:.13;
+  mask-image:linear-gradient(to bottom, transparent, #000 70%);
+  -webkit-mask-image:linear-gradient(to bottom, transparent, #000 70%);
+}
+
+/* A single hairline of leaf down the inner edge — the seam between
+   the two halves of the screen, not a decoration. */
+.adm-side::after{
+  content:''; position:absolute; top:0; right:0; bottom:0; width:1px;
+  background:linear-gradient(180deg, rgba(46,138,102,.55), rgba(46,138,102,.08));
+}
+
+.adm-main{
+  flex:1; min-width:0;
+  padding:2rem 2.25rem 5rem;
+}
+
+/* ---------- brand ----------
+
+   The provincial seal and the Lakbai wordmark, side by side, the same
+   pairing the public nav uses. Previously the wordmark sat alone with
+   two lines of text stacked beneath it, which gave a wide coloured
+   mark nothing to sit against — it read as floating rather than
+   placed.
+
+   THE SEAL GETS A PALE DISC. It is a detailed full-colour crest and
+   its own outline disappears against deep forest green. The disc is
+   not decoration; without it the seal loses its edge.
+   ------------------------------------------------------------------- */
+.adm-brand{
+  /* A THREE-COLUMN GRID, and the third column is empty on purpose.
+
+     [ seal 52px ][ marks 1fr ][ 52px of nothing ]
+
+     That empty column is what centres the wordmark. With the seal on
+     one side and nothing balancing it, the middle column is off by
+     half the seal's width — the wordmark then centres perfectly
+     inside a box that is itself off-centre, which is exactly what it
+     looked like.
+
+     This replaces an absolutely-positioned seal and a hand-tuned
+     symmetric padding. Same result, but the browser does the
+     arithmetic, so changing the seal size no longer means
+     recalculating a padding to match.
+
+     align-items:center puts the seal on the same axis as the
+     wordmark, rather than pinning it to the top while the marks
+     column grows downward past it. */
+  display:grid;
+  grid-template-columns:52px 1fr 52px;
+  align-items:center;
+  gap:0 .5rem;
+  padding:.35rem 0 1.2rem;
+  margin-bottom:1.1rem;
+  border-bottom:1px solid rgba(255,255,255,.09);
+  text-decoration:none;
+}
+
+.adm-brand__seal{
+  width:52px; height:52px;
+  padding:3px;
+  border-radius:50%;
+  /* A near-white disc. The crest is a detailed full-colour mark and
+     its own outline vanishes against deep forest — the disc gives it
+     an edge, it is not decoration. */
+  background:rgba(255,255,255,.94);
+  object-fit:contain;
+}
+
+.adm-brand__marks{
+  display:block;
+  min-width:0;
+  text-align:center;
+}
+
+/* width:100% with object-fit:contain, not a fixed height and auto
+   width: it takes the whole middle column and scales itself down if
+   40px would be too tall for that width. Always as large as the space
+   allows, and it can never grow into the seal. */
+.adm-brand__logo{
+  display:block;
+  width:100%; height:40px;
+  object-fit:contain; object-position:center;
+}
+
+/* the fallback when no seal file is present */
+.adm-brand__mark{
+  display:grid; place-items:center;
+  width:52px; height:52px;
+  border-radius:50%;
+  background:var(--adm-leaf);
+  color:#fff;
+  font-family:var(--adm-font-display);
+  font-size:1.05rem; font-weight:700; letter-spacing:-.02em;
+}
+
+.adm-brand__text{
+  display:block;
+  margin-top:.15rem;
+  font-size:.67rem; font-weight:500;
+  letter-spacing:.01em;
+  color:rgba(255,255,255,.34);
+  text-align:center;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+.adm-brand__text b{
+  display:block;
+  font-size:.84rem; font-weight:600;
+  color:rgba(255,255,255,.8);
+}
+
+
+/* ---------- the collapse toggle ----------
+
+   Narrows the sidebar to its icons. On a 1366x768 laptop — which is
+   what a school machine usually is — the destinations table is wide
+   and 264px of nav is a real cost when you are not navigating.
+
+   The choice is remembered in localStorage, so it survives every save
+   and redirect. Nothing else depends on it; if storage is blocked the
+   panel simply opens wide each time.
+   ------------------------------------------------------------------- */
+.adm-mini{
+  display:flex; align-items:center; gap:.55rem;
+  width:100%;
+  margin-bottom:.5rem;
+  padding:.45rem .6rem;
+  border:0; border-radius:var(--adm-r-nav);
+  background:transparent;
+  color:rgba(255,255,255,.5);
+  font-family:var(--adm-font-display);
+  font-size:.8rem; font-weight:500;
+  text-align:left;
+  cursor:pointer;
+  transition:background .15s ease, color .15s ease;
+}
+.adm-mini:hover{ background:rgba(255,255,255,.05); color:#fff; }
+.adm-mini svg{
+  width:.95rem; height:.95rem; flex:none;
+  transition:transform .2s ease;
+}
+
+/* --- the collapsed state --- */
+@media (min-width:901px){
+  .adm-side--mini{ flex-basis:74px; padding-left:.65rem; padding-right:.65rem; }
+
+  /* Collapsed, the wordmark goes and the seal centres on its own —
+     it is the half of the pair that still reads at 38px.
+
+     The seal is absolutely positioned for the expanded layout, so
+     centring it here means releasing that, not overriding a flex
+     property that no longer applies. */
+  /* Collapsed: one column, the seal alone. 42px, because 52 in a
+     74px column leaves it no air at all. */
+  .adm-side--mini .adm-brand{
+    grid-template-columns:1fr;
+    justify-items:center;
+    padding-bottom:1rem;
+  }
+  .adm-side--mini .adm-brand__marks{ display:none; }
+  .adm-side--mini .adm-brand__seal,
+  .adm-side--mini .adm-brand__mark{ width:42px; height:42px; }
+  .adm-side--mini .adm-brand__mark{ font-size:.9rem; }
+
+  .adm-side--mini .adm-nav__link,
+  .adm-side--mini .adm-side__link,
+  .adm-side--mini .adm-mini{ justify-content:center; padding-left:0; padding-right:0; }
+
+  /* The labels go, the icons stay. font-size:0 rather than
+     display:none on the text nodes, because the labels are bare text
+     inside the link and there is no element to hide. */
+  .adm-side--mini .adm-nav__link,
+  .adm-side--mini .adm-side__link,
+  .adm-side--mini .adm-mini{ font-size:0; gap:0; }
+
+  .adm-side--mini .adm-nav__link svg,
+  .adm-side--mini .adm-side__link svg,
+  .adm-side--mini .adm-mini svg{ font-size:1rem; }
+
+  .adm-side--mini .adm-nav__count{ display:none; }
+
+  /* The waiting count survives, because the whole point of it is to
+     be visible from anywhere. It shrinks to a dot on the icon. */
+  .adm-side--mini .adm-nav__flag{
+    position:absolute; top:.3rem; right:.5rem;
+    min-width:.5rem; width:.5rem; height:.5rem; padding:0;
+    font-size:0;
+  }
+  .adm-side--mini .adm-nav__link{ position:relative; }
+
+  .adm-side--mini .adm-who{ justify-content:center; padding:0; }
+  .adm-side--mini .adm-who__body{ display:none; }
+
+  .adm-side--mini .adm-mini svg{ transform:rotate(180deg); }
+}
+
+/* The toggle is meaningless once the sidebar is a horizontal strip. */
+@media (max-width:900px){
+  .adm-mini{ display:none; }
+}
+
+/* ---------- nav ---------- */
+.adm-nav{ display:flex; flex-direction:column; gap:1px; }
+
+.adm-nav__link{
+  display:flex; align-items:center; gap:.65rem;
+  padding:.62rem .6rem;
+  border-radius:var(--adm-r-nav);
+  color:rgba(255,255,255,.68);
+  font-size:.875rem; font-weight:500;
+  text-decoration:none;
+  transition:background .15s ease, color .15s ease;
+}
+
+.adm-nav__link svg{
+  width:1.05rem; height:1.05rem; flex:none;
+  opacity:.75;
+}
+
+.adm-nav__link:hover{
+  background:rgba(255,255,255,.05);
+  color:#fff;
+}
+
+/* The active row is marked by a leaf bar at its left edge, not by a
+   filled block. A filled block competes with the count on the right;
+   a bar says "you are here" and then gets out of the way. */
+.adm-nav__link.is-active{
+  position:relative;
+  background:rgba(255,255,255,.07);
+  color:#fff;
+  font-weight:600;
+}
+
+.adm-nav__link.is-active::before{
+  content:'';
+  position:absolute; left:0; top:.5rem; bottom:.5rem;
+  width:2px; border-radius:2px;
+  background:var(--adm-leaf);
+}
+
+.adm-nav__link.is-active svg{ opacity:1; color:var(--adm-leaf); }
+
+/* the inventory number */
+.adm-nav__count{
+  margin-left:auto;
+  font-size:.78rem; font-weight:600;
+  color:rgba(255,255,255,.34);
+}
+
+.adm-nav__link:hover .adm-nav__count,
+.adm-nav__link.is-active .adm-nav__count{ color:rgba(255,255,255,.6); }
+
+/* A count that is waiting on a decision. Filled, not just tinted —
+   there is one of these at most, and it should be the only thing in
+   the sidebar that looks urgent. */
+.adm-nav__flag{
+  margin-left:auto;
+  display:inline-grid; place-items:center;
+  min-width:1.3rem; height:1.3rem; padding:0 .38rem;
+  border-radius:999px;
+  background:var(--adm-gold);
+  color:#231603;
+  font-size:.72rem; font-weight:700; line-height:1;
+}
+
+/* ---------- foot ---------- */
+.adm-side__foot{
+  margin-top:auto;
+  padding-top:1.15rem;
+  border-top:1px solid rgba(255,255,255,.09);
+}
+
+.adm-who{
+  display:flex; align-items:center; gap:.6rem;
+  margin-bottom:.75rem;
+  padding:0 .35rem;
+}
+
+.adm-who__avatar{
+  display:grid; place-items:center;
+  width:32px; height:32px; flex:none;
+  border-radius:9px;
+  background:var(--adm-leaf);
+  color:#fff;
+  font-size:.76rem; font-weight:700;
+}
+
+.adm-who__body{ min-width:0; }
+
+.adm-who__label{
+  display:block;
+  font-size:.68rem; font-weight:500;
+  color:rgba(255,255,255,.36);
+}
+
+.adm-who__name{
+  display:block;
+  font-size:.82rem; font-weight:600;
+  color:rgba(255,255,255,.9);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+.adm-side__links{ display:flex; flex-direction:column; gap:1px; }
+
+.adm-side__link{
+  display:flex; align-items:center; gap:.55rem;
+  padding:.45rem .6rem;
+  border-radius:var(--adm-r-nav);
+  color:rgba(255,255,255,.5);
+  font-size:.8rem;
+  text-decoration:none;
+  transition:background .15s ease, color .15s ease;
+}
+
+.adm-side__link svg{ width:.92rem; height:.92rem; flex:none; }
+.adm-side__link:hover{ background:rgba(255,255,255,.05); color:#fff; }
+
+/* ---------- narrow ---------- */
+@media (max-width:900px){
+  .adm{ flex-direction:column; }
+
+  .adm-side{
+    flex:none;
+    padding:1rem;
+    /* the nav lies down and scrolls sideways rather than stacking
+       into a wall of links above every page */
+    display:grid; grid-template-columns:1fr auto; align-items:center;
+    gap:.75rem 1rem;
+  }
+
+  .adm-side__photo{ display:none; }
+  .adm-side::after{ inset:auto 0 0 0; width:auto; height:1px; }
+
+  .adm-brand{
+    padding:0; margin:0; border:0;
+  }
+  /* Laid down as a horizontal strip, the stack becomes a row again —
+     there is no vertical room for one here. */
+  /* Laid down as a horizontal strip there is no vertical room and no
+     column to centre against, so it becomes a plain row. */
+  /* Laid down as a horizontal strip there is no column to centre
+     against, so the balancing column goes and it becomes a plain
+     row. */
+  .adm-brand{ display:flex; align-items:center; gap:.5rem; padding:0; }
+  .adm-brand__text{ display:none; }
+  .adm-brand__seal, .adm-brand__mark{ width:34px; height:34px; }
+  .adm-brand__logo{ width:auto; height:26px; }
+
+  .adm-nav{
+    grid-column:1 / -1;
+    flex-direction:row;
+    gap:.25rem;
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+  .adm-nav::-webkit-scrollbar{ display:none; }
+  .adm-nav__link{ white-space:nowrap; }
+  .adm-nav__count{ margin-left:.35rem; }
+  .adm-nav__flag{ margin-left:.35rem; }
+
+  .adm-side__foot{
+    margin:0; padding:0; border:0;
+    grid-row:1; grid-column:2;
+    display:flex; align-items:center; gap:.5rem;
+  }
+  .adm-who{ margin:0; padding:0; }
+  .adm-who__body{ display:none; }
+  .adm-side__links{ flex-direction:row; }
+}
+
+@media (max-width:640px){
+  .adm-main{ padding:1.35rem 1rem 3.5rem; }
+}
+
+
+/* ===================================================================
+   3. PAGE HEAD
+
+   Title on the left, the one primary action on the right. Every page
+   has at most one primary action, and it lives in the same place on
+   all of them.
+   =================================================================== */
+.adm-head{
+  display:flex; align-items:flex-start; gap:1.25rem; flex-wrap:wrap;
+  margin-bottom:1.5rem;
+}
+
+.adm-eyebrow{
+  display:block;
+  margin-bottom:.15rem;
+  font-family:var(--adm-font-display);
+  font-size:.78rem; font-weight:600;
+  color:var(--adm-leaf);
+}
+
+.adm-title{
+  margin:0;
+  font-family:var(--adm-font-display);
+  font-size:1.6rem; font-weight:700; line-height:1.15;
+  letter-spacing:-.02em;
+}
+
+.adm-sub{
+  margin:.35rem 0 0;
+  max-width:62ch;
+  font-size:.9rem;
+  color:var(--adm-muted);
+}
+
+.adm-head__aside{
+  margin:0 0 0 auto;
+  padding-top:.2rem;
+  font-family:var(--adm-font-display);
+  font-size:.82rem; font-weight:500;
+  color:var(--adm-muted);
+  text-align:right;
+}
+
+/* the slot the primary button sits in */
+.adm-head__actions{
+  margin-left:auto;
+  display:flex; align-items:center; gap:.5rem;
+  padding-top:.15rem;
+}
+
+.adm-head__actions + .adm-head__aside{ margin-left:0; }
+
+
+/* ===================================================================
+   4. FLASH
+
+   Still here for pages that print it inline, but _toast.php now shows
+   saves as a toast instead. This is the fallback for anything that
+   renders a message in the flow of the page.
+   =================================================================== */
+.adm-flash{
+  display:flex; align-items:flex-start; gap:.6rem;
+  margin:0 0 1.25rem;
+  padding:.75rem .9rem;
+  border:1px solid;
+  border-radius:var(--adm-r-control);
+  font-size:.875rem;
+}
+
+.adm-flash{
+  background:var(--adm-leaf-wash);
+  border-color:rgba(46,138,102,.3);
+  color:var(--adm-leaf-deep);
+}
+
+.adm-flash--bad{
+  background:var(--adm-danger-wash);
+  border-color:rgba(168,55,44,.28);
+  color:var(--adm-danger);
+}
+
+
+/* ===================================================================
+   5. STATS
+
+   Numbers first, labels underneath in sentence case. The old version
+   set the labels in tracked capitals, which made every figure carry a
+   shouted caption.
+
+   A stat only changes colour when it is not zero and not-zero means
+   something needs doing. A dashboard where something is always
+   highlighted has nothing left to say when something is wrong.
+   =================================================================== */
+.adm-stats{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap:.7rem;
+  margin-bottom:1.5rem;
+}
+
+.adm-stat{
+  padding:.9rem 1rem;
+  background:var(--adm-panel);
+  border:1px solid var(--adm-line);
+  border-radius:var(--adm-r-panel);
+}
+
+.adm-stat__num{
+  display:block;
+  font-family:var(--adm-font-display);
+  font-size:1.75rem; font-weight:700; line-height:1;
+  letter-spacing:-.03em;
+}
+
+.adm-stat__label{
+  display:block;
+  margin-top:.3rem;
+  font-size:.8rem;
+  color:var(--adm-muted);
+}
+
+.adm-stat--flag{
+  border-color:rgba(198,137,47,.4);
+  background:var(--adm-gold-wash);
+}
+.adm-stat--flag .adm-stat__num{ color:var(--adm-gold); }
+
+
+/* ===================================================================
+   6. CARDS — the shortcuts on the overview
+   =================================================================== */
+.adm-cards{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(15rem, 1fr));
+  gap:.8rem;
+  margin-bottom:1.5rem;
+}
+
+.adm-card{
+  display:flex; flex-direction:column;
+  padding:1.1rem 1.15rem;
+  background:var(--adm-panel);
+  border:1px solid var(--adm-line);
+  border-radius:var(--adm-r-panel);
+  text-decoration:none;
+  color:inherit;
+  transition:border-color var(--adm-out) var(--adm-ease-out),
+              transform var(--adm-out) var(--adm-ease-out);
+}
+
+.adm-card:hover{
+  border-color:var(--adm-leaf);
+  transform:translateY(-1px);
+}
+
+.adm-card__title{
+  margin:0 0 .35rem;
+  font-family:var(--adm-font-display);
+  font-size:1rem; font-weight:700;
+  letter-spacing:-.01em;
+}
+
+.adm-card__text{
+  margin:0 0 .9rem;
+  font-size:.86rem; line-height:1.55;
+  color:var(--adm-muted);
+}
+
+.adm-card__go{
+  margin-top:auto;
+  font-family:var(--adm-font-display);
+  font-size:.82rem; font-weight:600;
+  color:var(--adm-leaf);
+}
+
+.adm-card:hover .adm-card__go{ color:var(--adm-leaf-deep); }
+
+
+/* ===================================================================
+   7. PANELS
+   =================================================================== */
+.adm-panel{
+  margin-bottom:1rem;
+  background:var(--adm-panel);
+  border:1px solid var(--adm-line);
+  border-radius:var(--adm-r-panel);
+  overflow:hidden;
+}
+
+.adm-panel__head{
+  display:flex; align-items:center; gap:.6rem;
+  padding:.85rem 1.1rem;
+  border-bottom:1px solid var(--adm-line-soft);
+}
+
+.adm-panel__title{
+  margin:0;
+  font-family:var(--adm-font-display);
+  font-size:.95rem; font-weight:700;
+  letter-spacing:-.01em;
+}
+
+.adm-panel__body{ padding:1.1rem; }
+.adm-panel__body--flush{ padding:0; }
+
+/* the small number beside a panel title */
+.adm-count{
+  display:inline-block;
+  margin-left:.3rem;
+  padding:.1rem .42rem;
+  border-radius:999px;
+  background:var(--adm-sunk);
+  font-size:.75rem; font-weight:600;
+  color:var(--adm-muted);
+}
+
+.adm-empty{
+  margin:0;
+  padding:2rem 1.1rem;
+  text-align:center;
+  font-size:.88rem;
+  color:var(--adm-muted);
+}
+
+
+/* ===================================================================
+   8. FORMS
+
+   Labels in sentence case at normal weight. The <em> inside a label
+   is the "optional" or the hint, and it is deliberately lighter than
+   the label itself rather than italic-for-emphasis.
+   =================================================================== */
+.adm-form__row{ display:flex; flex-wrap:wrap; gap:1rem; }
+
+.adm-field{ display:block; flex:1 1 210px; margin-bottom:1rem; }
+.adm-field--narrow{ flex:0 1 155px; }
+
+.adm-field__label{
+  display:block;
+  margin-bottom:.35rem;
+  font-family:var(--adm-font-display);
+  font-size:.84rem; font-weight:600;
+  color:var(--adm-ink);
+}
+
+.adm-field__label em{
+  font-style:normal; font-weight:400;
+  color:var(--adm-muted);
+}
+
+.adm-field input[type=text],
+.adm-field input[type=email],
+.adm-field input[type=password],
+.adm-field input[type=number],
+.adm-field select,
+.adm-field textarea,
+.adm-form input[type=text],
+.adm-form input[type=email],
+.adm-form input[type=password],
+.adm-form select,
+.adm-form textarea{
+  width:100%;
+  padding:.55rem .7rem;
+  border:1px solid var(--adm-line);
+  border-radius:var(--adm-r-control);
+  background:var(--adm-panel);
+  color:var(--adm-ink);
+  font-family:var(--adm-font-body);
+  font-size:.9rem;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+
+.adm-field textarea, .adm-form textarea{ resize:vertical; min-height:4.5rem; line-height:1.55; }
+
+.adm-field input:focus, .adm-field select:focus, .adm-field textarea:focus,
+.adm-form input:focus, .adm-form select:focus, .adm-form textarea:focus{
+  outline:none;
+  border-color:var(--adm-leaf);
+  box-shadow:0 0 0 3px var(--adm-leaf-wash);
+}
+
+.adm-field input[type=file], .adm-form input[type=file]{
+  width:100%;
+  font-size:.84rem;
+  color:var(--adm-muted);
+}
+
+.adm-check{
+  display:flex; align-items:center; gap:.5rem;
+  margin-bottom:1rem;
+  font-size:.88rem;
+  cursor:pointer;
+}
+
+.adm-check input{ width:1rem; height:1rem; accent-color:var(--adm-leaf); }
+
+.adm-form__actions{
+  display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
+  margin-top:.25rem;
+}
+
+
+/* ===================================================================
+   9. BUTTONS
+
+   Three weights, and the difference between them is doing a job:
+
+     .adm-btn            the action this screen is for
+     .adm-btn--ghost     everything else you might do
+     .adm-btn--danger    the one that cannot be taken back
+
+   Danger is an outline until you hover it, then it fills. You should
+   have to move toward it.
+   =================================================================== */
+.adm-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:.4rem;
+  padding:.52rem 1rem;
+  border:1px solid transparent;
+  border-radius:var(--adm-r-control);
+  background:var(--adm-leaf);
+  color:#fff;
+  font-family:var(--adm-font-display);
+  font-size:.875rem; font-weight:600;
+  line-height:1.3;
+  text-decoration:none;
+  cursor:pointer;
+  transition:background .15s ease, border-color .15s ease, color .15s ease;
+}
+
+.adm-btn svg{ width:1rem; height:1rem; flex:none; }
+
+.adm-btn:hover{ background:var(--adm-leaf-deep); }
+
+.adm-btn:focus-visible{
+  outline:2px solid var(--adm-ink);
+  outline-offset:2px;
+}
+
+.adm-btn[disabled]{ opacity:.38; cursor:not-allowed; }
+.adm-btn[disabled]:hover{ background:var(--adm-leaf); }
+
+.adm-btn--ghost{
+  background:var(--adm-panel);
+  border-color:var(--adm-line);
+  color:var(--adm-ink-2);
+}
+.adm-btn--ghost:hover{
+  background:var(--adm-sunk);
+  border-color:var(--adm-muted);
+  color:var(--adm-ink);
+}
+.adm-btn--ghost[disabled]:hover{ background:var(--adm-panel); border-color:var(--adm-line); }
+
+.adm-btn--danger{
+  background:transparent;
+  border-color:rgba(168,55,44,.35);
+  color:var(--adm-danger);
+}
+.adm-btn--danger:hover{
+  background:var(--adm-danger);
+  border-color:var(--adm-danger);
+  color:#fff;
+}
+
+.adm-btn--sm{
+  padding:.32rem .68rem;
+  font-size:.8rem;
+}
+.adm-btn--sm svg{ width:.88rem; height:.88rem; }
+
+
+/* ===================================================================
+   10. TABLES
+   =================================================================== */
+.adm-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:.875rem;
+}
+
+/* Header row in the display face at normal case. It used to be
+   tracked capitals; sentence case at weight 600 reads faster and
+   stops the header competing with the data. */
+.adm-table thead th{
+  padding:.6rem 1.1rem;
+  background:var(--adm-sunk);
+  border-bottom:1px solid var(--adm-line);
+  font-family:var(--adm-font-display);
+  font-size:.78rem; font-weight:600;
+  color:var(--adm-muted);
+  text-align:left;
+  white-space:nowrap;
+}
+
+.adm-table td{
+  padding:.8rem 1.1rem;
+  border-bottom:1px solid var(--adm-line-soft);
+  vertical-align:top;
+}
+
+.adm-table tbody tr:last-child td{ border-bottom:0; }
+.adm-table tbody tr:hover td{ background:rgba(46,138,102,.028); }
+
+.adm-table td strong{
+  display:block;
+  font-family:var(--adm-font-display);
+  font-size:.9rem; font-weight:600;
+  color:var(--adm-ink);
+}
+
+.adm-table__right{ text-align:right; }
+
+.adm-table__quote{
+  max-width:26rem;
+  color:var(--adm-ink-2);
+  line-height:1.5;
+}
+
+/* a row that is switched off, but still there */
+.adm-row--off td:not(.adm-table__right){ opacity:.55; }
+
+/* your own row in the users table */
+.adm-row--me td:first-child{ box-shadow:inset 2px 0 0 var(--adm-leaf); }
+
+.adm-muted{
+  display:block;
+  font-family:var(--adm-font-body);
+  font-size:.8rem; font-weight:400;
+  color:var(--adm-muted);
+}
+
+.adm-stars{ color:var(--adm-gold); letter-spacing:.06em; white-space:nowrap; }
+
+.adm-actions{
+  display:flex; gap:.35rem; flex-wrap:wrap; justify-content:flex-end;
+}
+
+.adm-inline{ display:inline; }
+
+@media (max-width:720px){
+  /* Below this the table stops being a table and each row becomes a
+     block. Horizontal scrolling on a table of actions is worse than
+     a taller page. */
+  .adm-table thead{ display:none; }
+  .adm-table, .adm-table tbody, .adm-table tr, .adm-table td{ display:block; width:100%; }
+  .adm-table tr{ padding:.85rem 1rem; border-bottom:1px solid var(--adm-line-soft); }
+  .adm-table td{ padding:.2rem 0; border:0; }
+  .adm-table__right{ text-align:left; padding-top:.6rem !important; }
+  .adm-actions{ justify-content:flex-start; }
+}
+
+
+/* ===================================================================
+   11. BADGES
+
+   A badge states a fact. Live, hidden, admin, active. It is never
+   used for decoration, so there is no neutral "pretty" variant.
+   =================================================================== */
+.adm-badge{
+  display:inline-block;
+  padding:.16rem .5rem;
+  border:1px solid var(--adm-line);
+  border-radius:999px;
+  background:var(--adm-sunk);
+  font-family:var(--adm-font-display);
+  font-size:.74rem; font-weight:600;
+  color:var(--adm-muted);
+  white-space:nowrap;
+}
+
+.adm-badge--live,
+.adm-badge--active{
+  background:var(--adm-leaf-wash);
+  border-color:rgba(46,138,102,.3);
+  color:var(--adm-leaf-deep);
+}
+
+.adm-badge--admin{
+  background:var(--adm-gold-wash);
+  border-color:rgba(198,137,47,.35);
+  color:#7A5214;
+}
+
+.adm-badge--off{
+  background:var(--adm-danger-wash);
+  border-color:rgba(168,55,44,.25);
+  color:var(--adm-danger);
+}
+
+
+/* ===================================================================
+   12. PEOPLE
+   =================================================================== */
+.adm-person{ display:flex; align-items:center; gap:.6rem; }
+
+.adm-person__avatar{
+  display:grid; place-items:center;
+  width:34px; height:34px; flex:none;
+  border-radius:9px;
+  background:var(--adm-sunk);
+  color:var(--adm-ink-2);
+  font-family:var(--adm-font-display);
+  font-size:.76rem; font-weight:700;
+}
+
+.adm-person__avatar--admin{
+  background:var(--adm-leaf);
+  color:#fff;
+}
+
+.adm-person__body{ min-width:0; }
+
+.adm-person__name{
+  display:block;
+  font-family:var(--adm-font-display);
+  font-size:.88rem; font-weight:600;
+}
+
+.adm-person__mail{
+  display:block;
+  font-size:.78rem;
+  color:var(--adm-muted);
+  overflow:hidden; text-overflow:ellipsis;
+}
+
+
+/* ===================================================================
+   13. USER DETAIL
+   =================================================================== */
+.adm-meta{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(11rem, 1fr));
+  gap:.9rem 1.5rem;
+}
+
+.adm-meta__item{ min-width:0; }
+
+.adm-meta__key{
+  display:block;
+  font-size:.78rem;
+  color:var(--adm-muted);
+}
+
+.adm-meta__value{
+  display:block;
+  margin-top:.1rem;
+  font-family:var(--adm-font-display);
+  font-size:.92rem; font-weight:600;
+  overflow-wrap:anywhere;
+}
+
+.adm-meta__value--none{ font-weight:400; color:var(--adm-muted); }
+
+.adm-meta__sub{
+  display:block;
+  font-size:.76rem;
+  color:var(--adm-muted);
+}
+
+
+/* ===================================================================
+   14. THE MODAL
+
+   Adding and editing happen in a panel over the middle of the screen,
+   not in a form parked permanently at the top of the page.
+
+   IT USED TO SLIDE IN FROM THE RIGHT. Centred is better here: the
+   destination form is tall and the eye has to travel from the
+   photograph at the top to Save at the bottom, and a full-height
+   right-hand column makes that a longer journey than it needs to be.
+   A panel capped at 88vh keeps head and foot in view and puts the
+   whole thing where you are already looking.
+
+   The class names are unchanged, so no page markup had to move.
+
+   ⚠ THE SCROLL BUG THIS FIXES. .adm-modal__body is a flex child with
+   flex:1, which was supposed to make it the scrolling part. It did
+   not, because a flex item defaults to min-height:auto — it refuses
+   to shrink below its own content, so instead of the body scrolling,
+   the panel simply grew past the bottom of the screen and the foot
+   went with it. min-height:0 is the whole fix, and it is the single
+   commonest mistake in flexbox layouts.
+   =================================================================== */
+.adm-drawer{
+  position:fixed; inset:0;
+  /* Above .adm-glass (950). The two should never be open together —
+     the script makes sure of that — but if they ever are, the thing
+     you are editing must be the thing on top. A z-index that only
+     matters when something else has gone wrong is still worth
+     getting right. */
+  z-index:960;
+  display:flex; align-items:center; justify-content:center;
+  padding:1.5rem;
+
+  /* ⚠ THE REASON IT USED TO SNAP SHUT.
+
+     visibility is not an animatable property — it flips the instant
+     the class comes off, so the panel and the scrim were removed
+     before their own fade had a single frame to run. Everything
+     opened smoothly and vanished.
+
+     Transitioning visibility with a DELAY equal to the exit duration
+     holds the element on screen just long enough for the fade to
+     finish, then hides it. On the way in the delay is zero, so it
+     appears immediately and fades in.
+
+     visibility rather than display, because display cannot be
+     transitioned or delayed at all. */
+  visibility:hidden;
+  transition:visibility 0s linear var(--adm-out);
+}
+
+.adm-drawer.is-open{
+  visibility:visible;
+  transition:visibility 0s linear 0s;
+}
+
+.adm-drawer__scrim{
+  position:absolute; inset:0;
+  background:rgba(11,31,22,.55);
+  backdrop-filter:blur(2px);
+  opacity:0;
+  transition:opacity var(--adm-out) var(--adm-ease-in);
+}
+.adm-drawer.is-open .adm-drawer__scrim{
+  opacity:1;
+  transition:opacity var(--adm-in) var(--adm-ease-out);
+}
+
+.adm-drawer__panel{
+  position:relative;
+  width:min(40rem, 100%);
+  max-height:min(88vh, 100%);
+  display:flex; flex-direction:column;
+  background:var(--adm-panel);
+  border-radius:var(--adm-r-panel);
+  box-shadow:var(--adm-lift);
+  overflow:hidden;                 /* keeps the head and foot inside the radius */
+  opacity:0;
+  transform:translateY(10px) scale(.985);
+
+  /* will-change promotes this to its own layer so the browser is not
+     repainting a large frosted panel on every frame. Only on the two
+     things that actually move; used everywhere it costs memory. */
+  will-change:transform, opacity;
+  transition:transform var(--adm-out) var(--adm-ease-in),
+             opacity   var(--adm-out) var(--adm-ease-in);
+}
+.adm-drawer.is-open .adm-drawer__panel{
+  opacity:1;
+  transform:none;
+  transition:transform var(--adm-in) var(--adm-ease-out),
+             opacity   var(--adm-in) var(--adm-ease-out);
+}
+
+.adm-drawer__head{
+  display:flex; align-items:center; gap:.75rem;
+  flex:none;
+  padding:1rem 1.25rem;
+  border-bottom:1px solid var(--adm-line);
+}
+
+.adm-drawer__title{
+  margin:0;
+  font-family:var(--adm-font-display);
+  font-size:1.05rem; font-weight:700;
+  letter-spacing:-.015em;
+}
+
+.adm-drawer__x{
+  margin-left:auto;
+  display:grid; place-items:center;
+  width:2rem; height:2rem; flex:none;
+  border:0; border-radius:var(--adm-r-control);
+  background:transparent;
+  color:var(--adm-muted);
+  cursor:pointer;
+  transition:background .15s ease, color .15s ease;
+}
+.adm-drawer__x:hover{ background:var(--adm-sunk); color:var(--adm-ink); }
+.adm-drawer__x svg{ width:1.05rem; height:1.05rem; stroke:currentColor; stroke-width:2; fill:none; stroke-linecap:round; }
+
+/* THE FORM WRAPPER HAS TO BE A FLEX COLUMN TOO.
+
+   Every edit panel is shaped like this:
+
+     .adm-drawer__panel        display:flex, column
+       └ <form>                <- this
+           ├ .adm-drawer__head
+           ├ .adm-drawer__body
+           └ .adm-drawer__foot
+
+   The form sits BETWEEN the flex container and the three parts, so
+   without this rule the head, body and foot are children of a plain
+   block. flex:1 on the body then means nothing — its parent is not a
+   flex container — and the form grows to its full content height,
+   pushing the foot off the bottom of the screen with no scrollbar
+   anywhere.
+
+   The detail sheet on the destinations page has no form wrapper and
+   scrolled correctly the whole time, which is what gave this away.
+
+   min-height:0 on this element for the same reason as on the body:
+   a flex item will not shrink below its content without it. */
+.adm-drawer__panel > form{
+  display:flex; flex-direction:column;
+  flex:1 1 auto;
+  min-height:0; min-width:0;
+}
+
+/* THE SCROLLING PART. min-height:0 is not optional — see the note at
+   the top of this section. */
+.adm-drawer__body{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  padding:1.25rem;
+}
+
+/* The head and foot never scroll, so Save is never something you have
+   to hunt for at the bottom of a long form. */
+.adm-drawer__foot{
+  display:flex; justify-content:flex-end; gap:.5rem;
+  flex:none;
+  padding:.85rem 1.25rem;
+  border-top:1px solid var(--adm-line);
+  background:var(--adm-panel);
+}
+
+body.adm-locked{ overflow:hidden; }
+
+@media (max-width:640px){
+  /* On a phone it comes up from the bottom and stops short of the
+     top, so the page it came from is still visible behind it. */
+  .adm-drawer{ align-items:flex-end; padding:0; }
+  .adm-drawer__panel{
+    width:100%;
+    max-height:92vh;
+    border-radius:14px 14px 0 0;
+    transform:translateY(100%);
+  }
+  .adm-drawer.is-open .adm-drawer__panel{ transform:none; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .adm-drawer__panel{ transition:opacity .01s linear; transform:none; }
+  .adm-drawer.is-open .adm-drawer__panel{ transform:none; }
+}
+
+/* ===================================================================
+   15. THE TOAST
+
+   A save is confirmed at the bottom-right and takes itself away. It
+   used to be a strip at the top of the page, which pushed the whole
+   layout down by a line every time you saved anything.
+
+   It says what happened using the same verb as the button that did
+   it: "Add destination" produces "Destination added".
+   =================================================================== */
+.adm-toasts{
+  position:fixed; right:1.25rem; bottom:1.25rem;
+  z-index:1100;
+  display:flex; flex-direction:column-reverse; gap:.5rem;
+  max-width:min(24rem, calc(100vw - 2.5rem));
+  pointer-events:none;
+}
+
+.adm-toast{
+  display:flex; align-items:flex-start; gap:.65rem;
+  padding:.8rem .9rem;
+  border:1px solid var(--adm-line);
+  border-left:3px solid var(--adm-leaf);
+  border-radius:var(--adm-r-control);
+  background:var(--adm-panel);
+  box-shadow:var(--adm-lift);
+  font-size:.875rem; line-height:1.5;
+  pointer-events:auto;
+  animation:admToastIn var(--adm-in) var(--adm-ease-out) both;
+}
+
+.adm-toast--bad{ border-left-color:var(--adm-danger); }
+
+.adm-toast__icon{
+  display:grid; place-items:center;
+  width:1.2rem; height:1.2rem; flex:none;
+  margin-top:.1rem;
+  color:var(--adm-leaf);
+}
+.adm-toast--bad .adm-toast__icon{ color:var(--adm-danger); }
+.adm-toast__icon svg{ width:1.2rem; height:1.2rem; stroke:currentColor; stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+
+.adm-toast__text{ flex:1; min-width:0; color:var(--adm-ink); }
+
+.adm-toast__x{
+  flex:none;
+  width:1.35rem; height:1.35rem;
+  display:grid; place-items:center;
+  border:0; border-radius:5px;
+  background:transparent;
+  color:var(--adm-muted);
+  cursor:pointer;
+  font-size:1rem; line-height:1;
+}
+.adm-toast__x:hover{ background:var(--adm-sunk); color:var(--adm-ink); }
+
+.adm-toast.is-going{ animation:admToastOut .2s ease-in both; }
+
+@keyframes admToastIn{
+  from{ opacity:0; transform:translateY(10px) scale(.98); }
+  to  { opacity:1; transform:none; }
+}
+@keyframes admToastOut{
+  from{ opacity:1; transform:none; }
+  to  { opacity:0; transform:translateY(6px); }
+}
+
+@media (max-width:640px){
+  .adm-toasts{ right:.75rem; left:.75rem; bottom:.75rem; max-width:none; }
+}
+
+
+/* ===================================================================
+   16. STILLNESS
+
+   Everything above animates only in answer to something a person did:
+   opening a drawer, confirming a delete, saving. Nothing moves on
+   page load. Turn all of it off for anyone who has asked for that.
+   =================================================================== */
+@media (prefers-reduced-motion:reduce){
+  *, *::before, *::after{
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+  }
+  .adm-drawer__panel{ transition:none; }
+}
+
+/* A visible focus ring on everything reachable by keyboard. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible{
+  outline:2px solid var(--adm-leaf);
+  outline-offset:2px;
+}
+
+.adm-side a:focus-visible,
+.adm-side button:focus-visible{ outline-color:#fff; }
+
+
+/* ===================================================================
+   17. THE SIGN-OFF
+
+   The panel that closes a list page. It exists because a page that
+   ends on a grid ends on nothing, and because the person doing this
+   work should be addressed once, by name.
+
+   IT USED TO BE ONE COLUMN OF PROSE capped at 60ch, which left the
+   right half of a very wide panel empty — the text was readable and
+   the panel looked unfinished. A measure that narrow is right for
+   something you read; this is something you glance at.
+
+   So: the greeting holds the left, and the reminders sit beside it as
+   their own short blocks. Same words, no wasted half.
+   =================================================================== */
+.adm-signoff{ margin-top:1.4rem; }
+
+.adm-signoff .adm-panel__body{
+  display:grid;
+  grid-template-columns:minmax(13rem, 1fr) 1.9fr;
+  gap:1.5rem 2rem;
+  align-items:start;
+}
+
+.adm-signoff__title{
+  margin:0 0 .4rem;
+  font-family:var(--adm-font-display);
+  font-size:1.1rem; font-weight:700;
+  letter-spacing:-.02em;
+  color:var(--adm-ink);
+}
+
+.adm-signoff__text{
+  margin:0;
+  font-size:.87rem; line-height:1.6;
+  color:var(--adm-muted);
+}
+
+/* the reminders, side by side rather than stacked under the greeting */
+.adm-signoff__notes{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(11rem, 1fr));
+  gap:1.1rem 1.5rem;
+}
+
+.adm-signoff__note{ min-width:0; }
+
+/* A hairline above each note rather than a box around it. Boxes would
+   make three reminders look like three things to do; a rule just says
+   "a new one starts here". */
+.adm-signoff__note dt{
+  margin:0 0 .25rem;
+  padding-top:.5rem;
+  border-top:2px solid var(--adm-leaf);
+  font-family:var(--adm-font-display);
+  font-size:.83rem; font-weight:600;
+  color:var(--adm-ink);
+}
+
+.adm-signoff__note dd{
+  margin:0;
+  font-size:.82rem; line-height:1.55;
+  color:var(--adm-muted);
+}
+
+.adm-signoff__note code{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:.94em;
+  color:var(--adm-ink-2);
+}
+
+/* the links run the full width, under both columns */
+.adm-signoff__links{
+  grid-column:1 / -1;
+  display:flex; flex-wrap:wrap; gap:1.4rem;
+  margin:0; padding-top:1rem;
+  border-top:1px solid var(--adm-line-soft);
+  font-family:var(--adm-font-display);
+  font-size:.84rem; font-weight:500;
+}
+
+.adm-signoff__links a{
+  color:var(--adm-leaf);
+  text-decoration:none;
+  border-bottom:1px solid transparent;
+  transition:border-color var(--adm-out) var(--adm-ease-out);
+}
+.adm-signoff__links a:hover{ border-bottom-color:currentColor; }
+
+@media (max-width:760px){
+  .adm-signoff .adm-panel__body{ grid-template-columns:1fr; }
+}
+
+
+/* ===================================================================
+   18. THE CHAPTER FORMS
+
+   Three of them stacked in one drawer, each saving on its own. The
+   rule between them is what says "these are separate things that
+   happen to be next to each other" — without it three forms in a
+   column read as one long form with three Save buttons in the middle
+   of it.
+   =================================================================== */
+.adm-chapform + .adm-chapform{
+  margin-top:1.5rem;
+  padding-top:1.5rem;
+  border-top:1px solid var(--adm-line-soft);
+}
+
+
+/* ===================================================================
+   19. THE TILE GRID
+
+   Destinations are places with photographs, so the list leads with
+   the photograph. The table it replaces had six columns, and half of
+   them carried one word each — and it repeated its header row twelve
+   times, once per municipality.
+
+   ONLY WHAT IS WRONG IS MARKED. The old table put a green "Live"
+   badge on every row, and twenty-four green badges tell you nothing.
+   Here a tile with no marks is fine; a tile with a mark needs you.
+   Hidden, no photograph, no map pin — those are the three states
+   worth interrupting for, and they are the only ones drawn.
+
+   THE TILE IS A BUTTON, not a link. Clicking opens the detail panel
+   over the grid rather than navigating, so you can look at six places
+   in a row without the page reloading six times.
+   =================================================================== */
+.adm-toolbar{
+  display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
+  margin-bottom:1rem;
+}
+
+.adm-chip{
+  padding:.32rem .7rem;
+  border:1px solid var(--adm-line);
+  border-radius:999px;
+  background:var(--adm-panel);
+  color:var(--adm-ink-2);
+  font-family:var(--adm-font-display);
+  font-size:.8rem; font-weight:500;
+  cursor:pointer;
+  transition:border-color .15s ease, background .15s ease, color .15s ease;
+}
+.adm-chip:hover{ border-color:var(--adm-muted); }
+
+.adm-chip.is-on{
+  background:var(--adm-ink);
+  border-color:var(--adm-ink);
+  color:#fff;
+}
+
+.adm-chip__n{ opacity:.5; margin-left:.3rem; font-variant-numeric:tabular-nums; }
+
+.adm-toolbar__count{
+  margin-left:auto;
+  font-family:var(--adm-font-display);
+  font-size:.82rem;
+  color:var(--adm-muted);
+}
+
+/* --- the grid --- */
+.adm-tiles{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(13rem, 1fr));
+  gap:.85rem;
+}
+
+.adm-tile{
+  display:flex; flex-direction:column;
+  padding:0;
+  border:1px solid var(--adm-line);
+  border-radius:var(--adm-r-panel);
+  background:var(--adm-panel);
+  overflow:hidden;
+  text-align:left;
+  font:inherit; color:inherit;
+  cursor:pointer;
+  transition:border-color var(--adm-out) var(--adm-ease-out),
+              transform var(--adm-out) var(--adm-ease-out);
+}
+
+.adm-tile:hover{ border-color:var(--adm-leaf); transform:translateY(-2px); }
+.adm-tile:focus-visible{ outline:2px solid var(--adm-leaf); outline-offset:2px; }
+
+.adm-tile__shot{
+  position:relative;
+  display:block;
+  aspect-ratio:16/10;
+  background:var(--adm-sunk);
+  overflow:hidden;
+}
+
+.adm-tile__shot img{
+  width:100%; height:100%;
+  object-fit:cover; display:block;
+  transition:transform .3s ease;
+}
+.adm-tile:hover .adm-tile__shot img{ transform:scale(1.03); }
+
+/* what is drawn when there is no photograph at all — a flat panel and
+   a word, rather than a broken image */
+.adm-tile__none{
+  position:absolute; inset:0;
+  display:grid; place-items:center;
+  color:var(--adm-muted);
+  font-family:var(--adm-font-display);
+  font-size:.78rem;
+}
+
+.adm-tile__body{
+  display:block;
+  padding:.7rem .8rem .8rem;
+}
+
+.adm-tile__name{
+  display:block;
+  font-family:var(--adm-font-display);
+  font-size:.9rem; font-weight:600; line-height:1.3;
+  letter-spacing:-.01em;
+  color:var(--adm-ink);
+}
+
+.adm-tile__town{
+  display:block;
+  margin-top:.15rem;
+  font-size:.78rem;
+  color:var(--adm-muted);
+}
+
+/* --- the marks ---
+   Top-left of the photograph, stacked. Nothing here when everything
+   is in order, which is the point. */
+.adm-tile__marks{
+  position:absolute; top:.45rem; left:.45rem;
+  display:flex; flex-direction:column; align-items:flex-start; gap:.25rem;
+}
+
+.adm-tile__mark{
+  padding:.14rem .45rem;
+  border-radius:5px;
+  background:rgba(16,32,26,.82);
+  color:#fff;
+  font-family:var(--adm-font-display);
+  font-size:.68rem; font-weight:600;
+  line-height:1.4;
+  backdrop-filter:blur(2px);
+}
+
+.adm-tile__mark--off{ background:var(--adm-danger); }
+.adm-tile__mark--warn{ background:var(--adm-gold); color:#231603; }
+
+/* a hidden destination is dimmed, so the grid reads at a glance */
+.adm-tile--off .adm-tile__shot img{ opacity:.4; }
+.adm-tile--off .adm-tile__name{ color:var(--adm-muted); }
+
+.adm-tile[hidden]{ display:none; }
+
+
+/* ===================================================================
+   20. THE DETAIL SHEET
+
+   What a tile opens into. One panel, filled from whichever tile was
+   clicked, rather than twenty-four hidden copies of the same markup
+   sitting in the page.
+   =================================================================== */
+.adm-sheet__shot{
+  /* same full-bleed trick as .adm-drop */
+  margin:-1.25rem -1.25rem 1rem;
+  aspect-ratio:16/9;
+  background:var(--adm-sunk);
+  overflow:hidden;
+}
+.adm-sheet__shot img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+.adm-sheet__meta{
+  display:flex; align-items:center; gap:.4rem; flex-wrap:wrap;
+  margin-bottom:.6rem;
+}
+
+.adm-sheet__quote{
+  margin:0 0 .7rem;
+  font-family:var(--adm-font-body);
+  font-size:.95rem; font-style:italic;
+  color:var(--adm-leaf-deep);
+}
+
+.adm-sheet__desc{
+  margin:0 0 1rem;
+  max-width:56ch;
+  font-size:.9rem; line-height:1.62;
+  color:var(--adm-ink-2);
+}
+
+.adm-sheet__facts{
+  display:flex; flex-wrap:wrap; gap:.35rem;
+  margin:0 0 1.1rem; padding:0;
+  list-style:none;
+}
+.adm-sheet__facts li{
+  padding:.22rem .6rem;
+  border:1px solid var(--adm-line);
+  border-radius:999px;
+  font-size:.78rem;
+  color:var(--adm-muted);
+}
+
+/* the key/value strip at the foot of the sheet */
+.adm-sheet__rows{
+  border-top:1px solid var(--adm-line-soft);
+}
+.adm-sheet__row{
+  display:flex; align-items:baseline; gap:1rem;
+  padding:.55rem 0;
+  border-bottom:1px solid var(--adm-line-soft);
+  font-size:.85rem;
+}
+.adm-sheet__row dt{
+  flex:0 0 7.5rem;
+  margin:0;
+  color:var(--adm-muted);
+}
+.adm-sheet__row dd{
+  margin:0; min-width:0;
+  font-family:var(--adm-font-display);
+  font-weight:500;
+  overflow-wrap:anywhere;
+}
+.adm-sheet__row dd.is-none{ font-family:var(--adm-font-body); font-weight:400; color:var(--adm-muted); }
+
+.adm-sheet__slug{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.8rem; }
+
+/* the reorder pair, in the sheet rather than on the tile — moving a
+   place is deliberate work, not something to trip over in a grid */
+.adm-sheet__move{
+  display:flex; gap:.4rem;
+  margin-top:1.1rem;
+}
+
+@media (max-width:640px){
+  .adm-sheet__row{ display:block; }
+  .adm-sheet__row dt{ margin-bottom:.1rem; }
+}
+
+
+/* ===================================================================
+   21. THE CURRENT-PHOTO PREVIEW
+
+   The small "here is what is on this record now" thumbnail beside a
+   file input, in the edit drawers.
+
+   These rules used to live in a <style> block inside
+   admin/destinations.php. They were removed with the old table they
+   were written for — but the edit drawer still used them, so the
+   preview lost its width and rendered the full photograph at panel
+   size, with the "Missing" note stranded above it instead of behind.
+
+   They belong here: two pages need them, and a rule that two pages
+   need should not live inside one of them.
+   =================================================================== */
+.adm-file{
+  display:flex; gap:.75rem; align-items:flex-start;
+}
+
+.adm-shot{
+  position:relative;
+  width:104px; flex:none;
+  aspect-ratio:16/10;
+  border-radius:var(--adm-r-control);
+  background:var(--adm-sunk);
+  overflow:hidden;
+}
+
+/* The image sits ON TOP of the note, and the onerror handler hides
+   it — so the note is only ever seen when there is genuinely nothing
+   to show. Without the z-index the absolutely-positioned note paints
+   over a photograph that loaded perfectly well. */
+.adm-shot img{
+  position:relative; z-index:1;
+  display:block; width:100%; height:100%;
+  object-fit:cover;
+}
+
+.adm-shot__missing{
+  position:absolute; inset:0;
+  display:grid; place-items:center;
+  padding:.25rem;
+  text-align:center;
+  font-family:var(--adm-font-display);
+  font-size:.68rem; line-height:1.3;
+  color:var(--adm-muted);
+}
+
+/* The gallery's thumbnails carry the crop the tile will actually
+   use, so they override the ratio above with one of these. Same
+   element, one extra class. */
+.adm-shot--ratio-3x4{ aspect-ratio:3/4; }
+.adm-shot--ratio-4x3{ aspect-ratio:4/3; }
+.adm-shot--ratio-1x1{ aspect-ratio:1/1; }
+.adm-shot--ratio-4x5{ aspect-ratio:4/5; }
+
+@media (max-width:480px){
+  .adm-file{ flex-direction:column; }
+  .adm-shot{ width:140px; }
+}
+
+
+/* ===================================================================
+   22. FORM STRUCTURE
+
+   The edit drawer was a single flat column: label, box, label, box,
+   fourteen times, every one at the same visual weight. Nothing said
+   which fields belonged together, nothing said which mattered most,
+   and the browser's own "Choose File" button sat in the middle of it
+   announcing that nobody had looked at this screen.
+
+   Three things fix it:
+
+     1. THE PHOTOGRAPH LEADS. It runs full-bleed across the top of the
+        drawer, at the size it will actually be seen. It is the thing
+        you are most likely to be changing and the thing most likely
+        to be wrong, so it stops being a 104px afterthought beside a
+        grey button.
+
+     2. FIELDS ARE GROUPED INTO SECTIONS. What it is called, how it
+        reads, what is true about it, where it is. Four groups instead
+        of fourteen equal rows.
+
+     3. FIELDS THAT ARE ONE IDEA SHARE ONE BORDER. Latitude and
+        longitude are a single coordinate; the three facts are one set
+        of three. Drawn as one control each, divided internally,
+        rather than as separate boxes that happen to be adjacent.
+   =================================================================== */
+
+/* --- the photograph -------------------------------------------------
+   A drop zone, not a file input. The real <input type=file> is still
+   there and still does the work — it is laid over the whole area at
+   zero opacity, so clicking anywhere opens the picker and keyboard
+   focus still lands on a real form control.
+
+   WHY NOT display:none ON THE INPUT: a hidden input cannot be focused
+   or reached by keyboard, and label-click only gets you so far. Zero
+   opacity keeps it a real, focusable, submittable control. */
+.adm-drop{
+  position:relative;
+  /* Full-bleed to the panel edges. The body has 1.25rem of padding,
+     so the negative margin cancels it on three sides. The panel's
+     overflow:hidden clips this to the rounded top corners, which is
+     why the image does not need its own radius. */
+  margin:-1.25rem -1.25rem 1.25rem;
+  aspect-ratio:16/9;
+  background:var(--adm-sunk);
+  overflow:hidden;
+  cursor:pointer;
+  isolation:isolate;
+}
+
+.adm-drop__img{
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  object-fit:cover;
+  z-index:0;
+}
+
+.adm-drop input[type=file]{
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  opacity:0;
+  cursor:pointer;
+  z-index:3;
+}
+
+/* The instruction sits over the photograph on a gradient, so it stays
+   legible whether the picture behind it is a bright sky or a cave. */
+.adm-drop__hint{
+  position:absolute; left:0; right:0; bottom:0;
+  z-index:2;
+  display:flex; align-items:center; gap:.5rem;
+  padding:2.25rem .9rem .8rem;
+  background:linear-gradient(to top, rgba(11,31,22,.88), rgba(11,31,22,0));
+  color:#fff;
+  font-family:var(--adm-font-display);
+  font-size:.82rem; font-weight:500;
+}
+.adm-drop__hint svg{ width:1rem; height:1rem; flex:none; }
+
+.adm-drop__hint b{ font-weight:600; }
+.adm-drop__hint span{ opacity:.7; font-weight:400; }
+
+/* nothing there yet */
+.adm-drop__empty{
+  position:absolute; inset:0; z-index:1;
+  display:grid; place-content:center; justify-items:center; gap:.35rem;
+  color:var(--adm-muted);
+  font-family:var(--adm-font-display);
+  font-size:.85rem;
+}
+.adm-drop__empty svg{ width:1.6rem; height:1.6rem; opacity:.5; }
+
+/* dragging a file over it */
+.adm-drop.is-drag{ background:var(--adm-leaf-wash); }
+.adm-drop.is-drag::after{
+  content:''; position:absolute; inset:.5rem; z-index:2;
+  border:2px dashed var(--adm-leaf);
+  border-radius:var(--adm-r-control);
+}
+
+.adm-drop input[type=file]:focus-visible{
+  outline:3px solid var(--adm-leaf);
+  outline-offset:-3px;
+}
+
+
+/* --- sections ------------------------------------------------------- */
+.adm-sect{ margin-bottom:1.5rem; }
+.adm-sect:last-child{ margin-bottom:0; }
+
+/* The heading is a quiet marker, not a shout. It exists to say "a new
+   kind of thing starts here", which needs a rule far more than it
+   needs size or colour. */
+.adm-sect__title{
+  display:flex; align-items:center; gap:.6rem;
+  margin:0 0 .8rem;
+  font-family:var(--adm-font-display);
+  font-size:.82rem; font-weight:600;
+  color:var(--adm-ink);
+}
+.adm-sect__title::after{
+  content:'';
+  flex:1; height:1px;
+  background:var(--adm-line-soft);
+}
+
+
+/* --- deliberate columns ---------------------------------------------
+   .adm-form__row is flex-wrap, which is right for a page but leaves
+   a drawer ragged: a field can end up alone on a line at full width
+   for no reason anyone can see. In here the columns are declared. */
+.adm-grid{ display:grid; gap:0 1rem; }
+.adm-grid--2{ grid-template-columns:1fr 1fr; }
+.adm-grid--3{ grid-template-columns:1fr 1fr 1fr; }
+.adm-grid--wide{ grid-template-columns:1.6fr 1fr; }
+
+.adm-grid .adm-field{ flex:none; margin-bottom:1rem; }
+
+@media (max-width:520px){
+  .adm-grid--2, .adm-grid--3, .adm-grid--wide{ grid-template-columns:1fr; }
+}
+
+
+/* --- one idea, one border -------------------------------------------
+   Latitude and longitude are a single coordinate. The three facts are
+   one set of three. Drawing them as separate boxes that happen to sit
+   next to each other makes you read them as separate decisions. */
+.adm-fieldset{
+  border:1px solid var(--adm-line);
+  border-radius:var(--adm-r-control);
+  overflow:hidden;
+  background:var(--adm-panel);
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+
+.adm-fieldset:focus-within{
+  border-color:var(--adm-leaf);
+  box-shadow:0 0 0 3px var(--adm-leaf-wash);
+}
+
+.adm-fieldset__row{
+  display:flex; align-items:center;
+  border-bottom:1px solid var(--adm-line-soft);
+}
+.adm-fieldset__row:last-child{ border-bottom:0; }
+
+/* The label lives inside the control, in a fixed gutter, so the three
+   rows line up and the eye reads down one edge. */
+.adm-fieldset__key{
+  flex:0 0 6.5rem;
+  padding:0 .7rem;
+  font-family:var(--adm-font-display);
+  font-size:.8rem; font-weight:500;
+  color:var(--adm-muted);
+}
+
+/* The inner inputs give up their own borders — the group carries the
+   border for all of them now. */
+.adm-fieldset input[type=text]{
+  flex:1; min-width:0;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent;
+  box-shadow:none !important;
+}
+.adm-fieldset input[type=text]:focus{ outline:none; box-shadow:none !important; }
+
+/* side by side, for the coordinate pair */
+.adm-fieldset--split{ display:flex; }
+.adm-fieldset--split .adm-fieldset__row{
+  flex:1; border-bottom:0; border-right:1px solid var(--adm-line-soft);
+}
+.adm-fieldset--split .adm-fieldset__row:last-child{ border-right:0; }
+.adm-fieldset--split .adm-fieldset__key{ flex:0 0 auto; }
+
+.adm-hint{
+  display:block;
+  margin-top:.4rem;
+  font-size:.79rem; line-height:1.5;
+  color:var(--adm-muted);
+}
+.adm-hint code{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:.94em;
+  color:var(--adm-ink-2);
+}
+
+
+/* ===================================================================
+   23. MUNICIPALITIES
+
+   Twelve cards, two places each. Click one and its places open in a
+   panel over the middle of the screen.
+
+   NO PHOTOGRAPH ON THESE CARDS. An earlier version borrowed a picture
+   from one of the town's own destinations so the grid never looked
+   empty. That was the wrong instinct once these carry a municipal
+   seal: a seal and a photograph in the same slot fight each other,
+   and the seal loses. So the card is a mark, a name, and a line about
+   the place — and the photographs live one level down, where they are
+   the subject rather than decoration.
+   =================================================================== */
+.adm-towns{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(15rem, 1fr));
+  gap:.85rem;
+}
+
+.adm-town{
+  position:relative;
+  display:flex; flex-direction:column;
+  gap:.55rem;
+  padding:1rem 1.05rem 1.1rem;
+  border:1px solid var(--adm-line);
+  border-radius:var(--adm-r-panel);
+  background:var(--adm-panel);
+  text-align:left;
+  font:inherit; color:inherit;
+  cursor:pointer;
+  transition:border-color var(--adm-out) var(--adm-ease-out),
+              transform var(--adm-out) var(--adm-ease-out);
+}
+
+.adm-town:hover{
+  border-color:var(--adm-leaf);
+  transform:translateY(-2px);
+  box-shadow:0 10px 24px -16px rgba(16,32,26,.5);
+}
+.adm-town:focus-visible{ outline:2px solid var(--adm-leaf); outline-offset:2px; }
+
+/* The seal sits on its own, at a size where a detailed municipal
+   crest is still readable. Contained, not cropped — a seal cut off
+   at the edges is worse than a smaller seal. */
+.adm-town__seal{
+  width:44px; height:44px; flex:none;
+  object-fit:contain;
+}
+
+.adm-town__initial{
+  display:grid; place-items:center;
+  width:44px; height:44px; flex:none;
+  border-radius:11px;
+  background:var(--adm-forest);
+  color:rgba(255,255,255,.55);
+  font-family:var(--adm-font-display);
+  font-size:.95rem; font-weight:700;
+  letter-spacing:-.02em;
+}
+
+/* The gallery's chapter cards wrap their text in this; the
+   destinations cards do not. Making it a pass-through column means
+   one card style serves both rather than two that drift apart. */
+.adm-town__body{
+  display:flex; flex-direction:column;
+  gap:.55rem;
+  min-width:0;
+}
+
+/* The icon variant. A letter needs a filled plate to sit on; a line
+   icon does not — outlined on a tint, it reads as a mark rather than
+   as a button, which is right, because the whole card is the button.
+
+   Leaf rather than white-on-forest so the three chapter cards do not
+   each carry a heavy dark block. Twelve of those on the destinations
+   page is a grid of dark squares; three here would be three too many
+   for what is only a signpost. */
+.adm-town__initial--icon{
+  background:var(--adm-leaf-wash);
+  color:var(--adm-leaf-deep);
+}
+
+.adm-town__initial--icon svg{
+  width:1.45rem; height:1.45rem;
+}
+
+.adm-town__name{
+  font-family:var(--adm-font-display);
+  font-size:1rem; font-weight:700;
+  letter-spacing:-.015em;
+  color:var(--adm-ink);
+}
+
+.adm-town__desc{
+  font-size:.83rem; line-height:1.5;
+  color:var(--adm-muted);
+}
+
+.adm-town__foot{
+  display:flex; align-items:center; gap:.5rem;
+  margin-top:auto; padding-top:.6rem;
+  border-top:1px solid var(--adm-line-soft);
+  font-family:var(--adm-font-display);
+  font-size:.8rem; font-weight:500;
+  color:var(--adm-muted);
+}
+
+/* Only what is wrong. A town with nothing to fix carries no mark. */
+.adm-town__flag{
+  margin-left:auto;
+  display:grid; place-items:center;
+  min-width:1.3rem; height:1.3rem; padding:0 .4rem;
+  border-radius:999px;
+  background:var(--adm-gold);
+  color:#231603;
+  font-family:var(--adm-font-display);
+  font-size:.72rem; font-weight:700;
+}
+
+
+/* ===================================================================
+   24. THE TOWN PANEL — glass
+
+   The two places of a municipality, over the middle of the screen.
+
+   THE GLASS IS DOING A JOB, not a style. The grid of twelve stays
+   visible and blurred behind the panel, so it is obvious you have
+   stepped into one town rather than navigated to a new page — and
+   obvious how to get back. A solid panel over a solid scrim would
+   lose that.
+
+   backdrop-filter is the whole effect and it is not universally
+   supported, so the panel also carries a mostly-opaque background
+   underneath. Where the blur works you get glass; where it does not
+   you get a clean light panel. Never an unreadable transparent one.
+   =================================================================== */
+.adm-glass{
+  position:fixed; inset:0;
+  z-index:950;
+  display:flex; align-items:center; justify-content:center;
+  padding:1.5rem;
+  visibility:hidden;
+}
+.adm-glass.is-open{ visibility:visible; }
+
+.adm-glass__scrim{
+  position:absolute; inset:0;
+  background:rgba(11,31,22,.34);
+  backdrop-filter:blur(14px) saturate(1.1);
+  -webkit-backdrop-filter:blur(14px) saturate(1.1);
+  opacity:0;
+  transition:opacity var(--adm-out) var(--adm-ease-in);
+}
+.adm-glass.is-open .adm-glass__scrim{
+  transition:opacity var(--adm-in) var(--adm-ease-out);
+}
+.adm-glass.is-open .adm-glass__scrim{ opacity:1; }
+
+.adm-glass__panel{
+  position:relative;
+  width:min(52rem, 100%);
+  max-height:min(88vh, 100%);
+  display:flex; flex-direction:column;
+  border:1px solid rgba(255,255,255,.55);
+  border-radius:16px;
+  /* the fallback layer first, the glass on top of it */
+  background:rgba(255,255,255,.82);
+  backdrop-filter:blur(22px) saturate(1.4);
+  -webkit-backdrop-filter:blur(22px) saturate(1.4);
+  box-shadow:0 32px 64px -28px rgba(11,31,22,.6),
+             inset 0 1px 0 rgba(255,255,255,.7);
+  overflow:hidden;
+  opacity:0;
+  transform:translateY(10px) scale(.985);
+  will-change:transform, opacity;
+  transition:transform var(--adm-out) var(--adm-ease-in),
+             opacity   var(--adm-out) var(--adm-ease-in);
+}
+.adm-glass.is-open .adm-glass__panel{
+  opacity:1;
+  transform:none;
+  transition:transform var(--adm-in) var(--adm-ease-out),
+             opacity   var(--adm-in) var(--adm-ease-out);
+}
+
+.adm-glass__head{
+  display:flex; align-items:center; gap:.75rem;
+  flex:none;
+  padding:1.05rem 1.3rem;
+  border-bottom:1px solid rgba(16,32,26,.08);
+}
+
+.adm-glass__seal{ width:34px; height:34px; object-fit:contain; flex:none; }
+
+.adm-glass__title{
+  margin:0;
+  font-family:var(--adm-font-display);
+  font-size:1.15rem; font-weight:700;
+  letter-spacing:-.02em;
+}
+
+.adm-glass__sub{
+  font-family:var(--adm-font-display);
+  font-size:.83rem;
+  color:var(--adm-muted);
+}
+
+.adm-glass__x{
+  margin-left:auto;
+  display:grid; place-items:center;
+  width:2.1rem; height:2.1rem; flex:none;
+  border:0; border-radius:var(--adm-r-control);
+  background:transparent;
+  color:var(--adm-ink-2);
+  cursor:pointer;
+  transition:background .15s ease;
+}
+.adm-glass__x:hover{ background:rgba(16,32,26,.07); }
+.adm-glass__x svg{ width:1.1rem; height:1.1rem; stroke:currentColor; stroke-width:2; fill:none; stroke-linecap:round; }
+
+.adm-glass__body{
+  flex:1 1 auto; min-height:0;
+  overflow-y:auto; overscroll-behavior:contain;
+  padding:1.2rem 1.3rem 1.4rem;
+}
+
+/* --- the two place cards --- */
+.adm-pair{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(17rem, 1fr));
+  gap:1rem;
+}
+
+.adm-place{
+  display:flex; flex-direction:column;
+  border:1px solid rgba(16,32,26,.1);
+  border-radius:12px;
+  background:rgba(255,255,255,.72);
+  overflow:hidden;
+}
+
+.adm-place__shot{
+  position:relative;
+  aspect-ratio:16/10;
+  background:var(--adm-sunk);
+  overflow:hidden;
+}
+.adm-place__shot img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+.adm-place__none{
+  position:absolute; inset:0;
+  display:grid; place-items:center;
+  color:var(--adm-muted);
+  font-family:var(--adm-font-display);
+  font-size:.8rem;
+}
+
+.adm-place__marks{
+  position:absolute; top:.45rem; left:.45rem;
+  display:flex; flex-direction:column; align-items:flex-start; gap:.25rem;
+}
+
+.adm-place__mark{
+  padding:.14rem .45rem;
+  border-radius:5px;
+  background:rgba(16,32,26,.85);
+  color:#fff;
+  font-family:var(--adm-font-display);
+  font-size:.68rem; font-weight:600;
+}
+.adm-place__mark--off{ background:var(--adm-danger); }
+.adm-place__mark--warn{ background:var(--adm-gold); color:#231603; }
+
+.adm-place--off .adm-place__shot img{ opacity:.4; }
+
+.adm-place__body{ padding:.8rem .9rem; flex:1; }
+
+.adm-place__name{
+  display:block;
+  font-family:var(--adm-font-display);
+  font-size:.98rem; font-weight:700;
+  letter-spacing:-.01em;
+}
+
+.adm-place__quote{
+  display:block;
+  margin-top:.2rem;
+  font-size:.85rem; font-style:italic;
+  color:var(--adm-leaf-deep);
+}
+
+.adm-place__desc{
+  margin:.5rem 0 0;
+  font-size:.84rem; line-height:1.55;
+  color:var(--adm-muted);
+}
+
+.adm-place__facts{
+  display:flex; flex-wrap:wrap; gap:.3rem;
+  margin:.65rem 0 0; padding:0;
+  list-style:none;
+}
+.adm-place__facts li{
+  padding:.18rem .5rem;
+  border:1px solid rgba(16,32,26,.12);
+  border-radius:999px;
+  font-size:.74rem;
+  color:var(--adm-muted);
+}
+
+.adm-place__pin{
+  display:block;
+  margin-top:.6rem;
+  font-family:var(--adm-font-display);
+  font-size:.76rem;
+  color:var(--adm-muted);
+  font-variant-numeric:tabular-nums;
+}
+
+.adm-place__foot{
+  display:flex; gap:.4rem; flex-wrap:wrap;
+  padding:.7rem .9rem;
+  border-top:1px solid rgba(16,32,26,.08);
+  background:rgba(255,255,255,.5);
+}
+
+@media (max-width:640px){
+  .adm-glass{ align-items:flex-end; padding:0; }
+  .adm-glass__panel{ width:100%; max-height:92vh; border-radius:16px 16px 0 0; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .adm-glass__panel{ transition:opacity .01s linear; transform:none; }
+  .adm-glass.is-open .adm-glass__panel{ transform:none; }
+}
+
+[hidden]{ display:none !important; }
+
+
+/* ===================================================================
+   25. MOTION, THE LAST WORD
+
+   Two corrections to what is above, and one promise kept.
+   =================================================================== */
+
+/* will-change is a standing instruction to the browser to keep an
+   element on its own compositor layer. On a panel that is closed and
+   will not move again that is memory held for nothing, so it is
+   released once the panel is shut. It costs one frame to re-promote
+   on the next open, which nobody can see. */
+.adm-drawer:not(.is-open) .adm-drawer__panel,
+.adm-glass:not(.is-open) .adm-glass__panel{ will-change:auto; }
+
+/* Scrollbars inside a panel that is fading out cause a flicker as the
+   layout settles. Hiding overflow while it leaves is invisible and
+   removes it. */
+.adm-drawer:not(.is-open) .adm-drawer__body,
+.adm-glass:not(.is-open) .adm-glass__body{ overflow:hidden; }
+
+/* THE PROMISE. Everything above moves only in answer to something a
+   person did — opening a panel, hovering a card, saving. Nothing
+   moves on page load. And for anyone who has asked their system not
+   to animate, all of it stops.
+
+   The delayed visibility has to be cancelled too, or a panel takes
+   180ms to disappear for someone who explicitly asked for no motion.
+   That is not a transition, it is a delay, and it would read as the
+   interface being slow. */
+@media (prefers-reduced-motion:reduce){
+  .adm-drawer,
+  .adm-glass{ transition:none !important; }
+
+  .adm-drawer__panel, .adm-drawer__scrim,
+  .adm-glass__panel,  .adm-glass__scrim{
+    transition:none !important;
+    transform:none !important;
+    will-change:auto !important;
+  }
+
+  .adm-side{ transition:none !important; }
+
+  .adm-toast, .adm-confirm[open], .adm-confirm[open]::backdrop{
+    animation:none !important;
+  }
+}
+
+
+/* ===================================================================
+   26. THE SEAL UPLOADER
+
+   Sits at the top of the municipality panel.
+
+   THE LABEL IS THE BUTTON. A file input styled to look like a button
+   is a fight you lose in every browser — the widget is drawn by the
+   operating system and barely responds to CSS. A <label> wrapping a
+   hidden input is the same single click, completely styleable, and
+   still reaches a real form control by keyboard and screen reader.
+   =================================================================== */
+.adm-seal{
+  display:flex; align-items:center; gap:.6rem; flex-wrap:wrap;
+  margin:0 0 1.1rem;
+  padding:.7rem .85rem;
+  border:1px solid var(--adm-line);
+  border-radius:var(--adm-r-control);
+  background:rgba(255,255,255,.5);
+}
+
+.adm-seal__text{
+  flex:1; min-width:12rem;
+  font-size:.83rem; line-height:1.5;
+  color:var(--adm-muted);
+}
+
+.adm-seal__pick{ position:relative; overflow:hidden; cursor:pointer; }
+
+/* Not display:none — a hidden input cannot be focused, so the button
+   would be unreachable by keyboard. Zero opacity over the label keeps
+   it a real, focusable control. */
+.adm-seal__input{
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  opacity:0;
+  cursor:pointer;
+}
+
+/* The label has no :focus of its own, so the ring is drawn when the
+   input inside it takes focus. */
+.adm-seal__pick:focus-within{
+  outline:2px solid var(--adm-leaf);
+  outline-offset:2px;
+}
+
+@media (max-width:520px){
+  .adm-seal{ flex-direction:column; align-items:stretch; }
+  .adm-seal__text{ min-width:0; }
+}

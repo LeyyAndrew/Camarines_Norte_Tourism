@@ -1,0 +1,725 @@
+/* ===================================================================
+   BUD.AI — launcher, greeting bubble and chat panel
+   assets/bud.css
+
+   Loaded by includes/bud-widget.php. Nothing else on the site should
+   need to know this file exists.
+
+   SELF-CONTAINED ON PURPOSE. Every custom property below carries a
+   fallback — var(--orange, #FF6E00), not var(--orange) — so the widget
+   looks right on a page that never loads homepage.css. Without the
+   fallbacks a missing --orange resolves to nothing and the send button
+   loses its background entirely.
+
+   To restyle across the whole site, edit here once.
+
+   Docked bottom-right. The lockup is a ringed orange disc with the bot
+   standing on it and a Bud.Ai nameplate underneath, plus a greeting
+   bubble that slides in off to the side.
+
+   ⚠ COLLIDING WITH AN EXISTING BUTTON?
+   If a sparkle button from a global include already sits in this
+   corner, either delete it at the source, or hide it here — replace
+   the selector with whatever that element actually is:
+
+       .your-old-fab { display:none; }
+
+   Two round buttons stacked in one corner is the single most common
+   way this ends up looking broken.
+   =================================================================== */
+
+/* visible to screen readers, not to the eye */
+.sr-only{
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
+}
+
+.bud{
+  /* bottom clears the nameplate that hangs below the disc */
+  position:fixed; right:2rem; bottom:2.75rem; z-index:8000;
+  display:flex; flex-direction:column; align-items:flex-end; gap:.85rem;
+
+  /* Hidden until the hero has been scrolled past — see the reveal
+     block in homepage.js. visibility, not display, so the transition
+     has something to animate and the layout never jumps. */
+  opacity:0; visibility:hidden;
+  transform:translateY(12px) scale(.96);
+  pointer-events:none;
+  transition:opacity .4s ease, transform .45s cubic-bezier(.16,.84,.44,1), visibility .4s;
+}
+
+.bud.is-ready{
+  opacity:1; visibility:visible;
+  transform:none;
+  pointer-events:auto;
+}
+
+/* --- launcher ------------------------------------------------------
+
+   The lockup: rings radiating from an orange disc, the bot standing on
+   it, a Bud.Ai badge clipped to the lower left, and a greeting bubble
+   off to the side. The rings are what make it read as "something is
+   listening" rather than a static help icon, so they get the one piece
+   of ambient motion on the widget and everything else stays still.
+   ------------------------------------------------------------------ */
+.bud__launcher{ display:flex; align-items:center; gap:.85rem; }
+
+/* ---- greeting bubble ---- */
+/* Dark glass rather than a white cloud. The white version was the
+   brightest object on the page and pulled the eye away from whatever
+   section the visitor had just scrolled to — the opposite of what a
+   helper prompt should do. */
+.bud__greet{
+  position:relative;
+  display:flex; align-items:center;
+  background:rgba(20,23,26,.92);
+  -webkit-backdrop-filter:blur(14px) saturate(1.2);
+          backdrop-filter:blur(14px) saturate(1.2);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:1rem 1rem .35rem 1rem;
+  box-shadow:0 18px 40px -16px rgba(0,0,0,.85);
+  animation:budGreetIn .45s cubic-bezier(.16,.84,.44,1) both;
+}
+
+.bud__greet[hidden]{ display:none; }
+
+@keyframes budGreetIn{
+  from{ opacity:0; transform:translateX(10px) scale(.94); }
+  to  { opacity:1; transform:none; }
+}
+
+/* the tail, pointing at the bot */
+.bud__greet::after{
+  content:''; position:absolute; right:-5px; bottom:7px;
+  width:12px; height:12px; background:rgba(20,23,26,.92);
+  border-right:1px solid rgba(255,255,255,.12);
+  border-bottom:1px solid rgba(255,255,255,.12);
+  transform:rotate(-45deg);
+}
+
+.bud__greet-open{
+  border:0; background:transparent; cursor:pointer;
+  padding:.8rem .4rem .8rem 1rem;
+  font-family:var(--font-display, 'Helvetica Neue', Arial, sans-serif);
+  font-size:.82rem; line-height:1.4; font-weight:450;
+  color:rgba(255,255,255,.9); text-align:left;
+  max-width:186px;
+}
+
+.bud__greet-x{
+  width:26px; height:26px; flex-shrink:0;
+  margin-right:.5rem;
+  display:flex; align-items:center; justify-content:center;
+  border:0; border-radius:999px;
+  background:transparent; color:rgba(255,255,255,.4);
+  cursor:pointer;
+  transition:background .2s ease, color .2s ease;
+}
+
+.bud__greet-x:hover{ background:rgba(255,255,255,.1); color:#fff; }
+.bud__greet-x svg{ width:11px; height:11px; }
+
+.bud__greet-open:focus-visible,
+.bud__greet-x:focus-visible{ outline:2px solid var(--orange, #FF6E00); outline-offset:2px; }
+
+/* ---- the button ---- */
+.bud__btn{
+  position:relative;
+  width:76px; height:76px; flex-shrink:0;
+  border:0; padding:0; cursor:pointer;
+  background:transparent;
+  color:#fff;
+
+  /* the rings spill past the box on purpose */
+  overflow:visible;
+  transition:transform .35s cubic-bezier(.16,.84,.44,1);
+}
+
+.bud__btn:hover{ transform:translateY(-3px); }
+.bud__btn:active{ transform:translateY(-1px) scale(.98); }
+
+/* The focus ring used to live on the disc. With the disc gone it goes
+   on the button itself — a keyboard user still has to be able to see
+   where they are, and a transparent control with no focus state is
+   invisible to them. Two colours so it shows on both light and dark
+   sections of the page. */
+.bud__btn:focus-visible{
+  outline:3px solid var(--orange, #FF6E00);
+  outline-offset:2px;
+  border-radius:999px;
+  box-shadow:0 0 0 6px rgba(0,0,0,.35);
+}
+
+/* ---- rings ---- */
+.bud__rings{
+  position:absolute; inset:0;
+  pointer-events:none;      /* never steal clicks from the page */
+  display:block;
+}
+
+/* ---- soundwave ----
+
+   Not the old static halo. These expand outward from behind the bot
+   and fade, three of them staggered a third of a cycle apart so a new
+   ripple leaves as the last one dies — a sonar ping rather than a
+   pulsing ring.
+
+   Deliberately faint. The earlier version at full opacity was the
+   loudest thing on the page; a ripple you notice only when you look
+   directly at it is doing the job. Raise the border alpha below if you
+   want it more obvious. */
+.bud__rings i{
+  position:absolute; top:50%; left:50%;
+  width:100%; height:100%;
+  border-radius:999px;
+  border:1.5px solid rgba(255,110,0,.5);
+  transform:translate(-50%,-50%) scale(.55);
+  opacity:0;
+  animation:budSonar 3.9s ease-out infinite;
+}
+
+/* Evenly spread across the cycle. Negative delays start each ring
+   already part-way through, so all three are live on the first frame
+   instead of the first ripple arriving alone. */
+.bud__rings i:nth-child(1){ animation-delay:0s; }
+.bud__rings i:nth-child(2){ animation-delay:-1.3s; }
+.bud__rings i:nth-child(3){ animation-delay:-2.6s; }
+
+@keyframes budSonar{
+  0%  { transform:translate(-50%,-50%) scale(.55); opacity:0; }
+  12% { opacity:.42; }                       /* fade in fast, out slow */
+  100%{ transform:translate(-50%,-50%) scale(1.75); opacity:0; }
+}
+
+/* ---- avatar ---- */
+/* The disc is gone: the logo sits on the page with nothing behind it.
+   It keeps its box because that box is the click target — a control
+   sized to the visible ink of a cartoon would be fiddly to hit,
+   especially on a phone. */
+.bud__disc{
+  position:absolute; inset:0;
+  background:transparent;
+  border:0;
+  display:block;
+}
+
+/* Centred and full-size now. It used to be bottom-aligned and cropped
+   by the disc, which cut off the raised hand and the lower sparkles —
+   fine when a circle framed it, wrong when the art is the whole logo. */
+.bud__avatar{
+  position:absolute; inset:0; margin:auto;
+  width:76px; height:auto;
+
+  /* The one thing the disc was doing that still needs doing. With no
+     backdrop the logo has to hold its own over a photo, a white
+     section or a dark one, and a soft shadow is what separates it from
+     all three. Two shadows: a tight one for edge definition, a wide
+     one for lift.
+
+     drop-shadow, not box-shadow — it follows the PNG's alpha, so the
+     shadow traces the robot. box-shadow would draw a square. */
+  filter:
+    drop-shadow(0 1px 2px rgba(0,0,0,.45))
+    drop-shadow(0 8px 18px rgba(0,0,0,.35));
+
+  transition:transform .35s cubic-bezier(.16,.84,.44,1),
+             filter .3s ease, opacity .25s ease;
+}
+
+/* Hover changes only the FILTER here, never the transform.
+
+   The avatar is running the float animation below, and a running
+   animation beats a plain declaration on the same property — so a
+   hover transform on this element would simply be ignored, and the
+   hover would look broken. The transforms are split across three
+   elements that each own one:
+
+     .bud__btn     hover and press          (transform)
+     .bud__disc    the slow wobble          (transform)
+     .bud__avatar  the float                (transform)
+
+   Nothing fights, and each can be tuned without touching the others. */
+.bud__btn:hover .bud__avatar{
+  filter:
+    drop-shadow(0 1px 2px rgba(0,0,0,.5))
+    drop-shadow(0 12px 22px rgba(0,0,0,.45))
+    drop-shadow(0 0 14px rgba(255,110,0,.45));
+}
+
+/* ---- the part that stops it reading as a sticker ----
+
+   A logo that only bobs looks like it is sliding up and down on the
+   glass. What sells "floating" is the shadow underneath moving in
+   OPPOSITE phase: as the bot rises the shadow shrinks and fades,
+   because the light source is further away. Same duration on both
+   keyframes so they never drift apart.
+
+   The shadow is a pseudo-element on the (now transparent) disc, so
+   this needs no extra markup. */
+.bud__disc::after{
+  content:'';
+  position:absolute; left:50%; bottom:-1px;
+  width:42px; height:8px;
+  border-radius:50%;
+  background:radial-gradient(ellipse at center, rgba(0,0,0,.5), rgba(0,0,0,0) 70%);
+  transform:translateX(-50%);
+  animation:budShadow 3.6s ease-in-out infinite;
+  pointer-events:none;
+}
+
+.bud__avatar{ animation:budFloat 3.6s ease-in-out infinite; }
+
+@keyframes budFloat{
+  0%, 100%{ transform:translateY(0); }
+  50%     { transform:translateY(-7px); }
+}
+
+@keyframes budShadow{
+  0%, 100%{ transform:translateX(-50%) scale(1);    opacity:.55; }
+  50%     { transform:translateX(-50%) scale(.72);  opacity:.28; }
+}
+
+/* A slow lean on top of the float, on a longer cycle so the two never
+   line up and the motion does not read as a loop. Mostly still: the
+   tilt happens over a fifth of the cycle and it sits upright for the
+   rest, which is what keeps this a character breathing rather than a
+   toy waving. */
+.bud__disc{ animation:budWobble 9s ease-in-out infinite; }
+
+@keyframes budWobble{
+  0%, 62%, 100%{ transform:rotate(0deg); }
+  70%          { transform:rotate(-4deg); }
+  78%          { transform:rotate(3deg); }
+  86%          { transform:rotate(-1.5deg); }
+}
+
+/* Still once the panel is open. It is a close button at that point,
+   and a close button that bobs is just harder to hit. */
+.bud.is-open .bud__avatar,
+.bud.is-open .bud__disc,
+.bud.is-open .bud__disc::after{ animation:none; }
+
+.bud.is-open .bud__disc::after{ display:none; }
+
+/* ---- Bud.Ai badge ---- */
+/* Under the disc, not across it. At -22px the pill lay over the bot's
+   arm and torso; the art is the point of the lockup, so the name gets
+   its own line beneath rather than competing for the same pixels. */
+.bud__badge{
+  position:absolute; top:calc(100% + 7px); left:50%;
+  transform:translateX(-50%);
+  padding:.28rem .55rem;
+  border-radius:999px;
+  background:#12161a;
+  border:1.5px solid rgba(255,255,255,.14);
+  font-family:var(--font-display, 'Helvetica Neue', Arial, sans-serif);
+  font-weight:600; font-size:.66rem; letter-spacing:.04em;
+  color:rgba(255,255,255,.92); white-space:nowrap;
+  box-shadow:0 6px 16px -6px rgba(0,0,0,.7);
+  transition:opacity .25s ease, transform .3s ease;
+}
+
+.bud__badge span{ color:var(--orange, #FF6E00); }
+
+/* ---- the little equaliser next to the name ----
+
+   Four bars, the shorthand for "this thing listens". Sits inside the
+   pill so the name reads as one lockup rather than a label with a
+   gadget parked beside it.
+
+   The pill stays inline, NOT flex. Making it a flex row turned the
+   bare "Bud" text node into a flex item of its own, so the gap landed
+   between the word and ".Ai" and the wordmark rendered as "Bud .Ai".
+   Only the bar strip is flex; it sits inline beside the type. */
+.bud__wave{
+  display:inline-flex; align-items:center; gap:2px;
+  height:11px;
+  margin-left:.42rem;
+  vertical-align:-1px;   /* optical, sits the bars on the type's centre */
+}
+
+.bud__wave i{
+  display:block;
+  width:2px; height:100%;
+  border-radius:1px;
+  background:var(--orange, #FF6E00);
+
+  /* scaleY from the centre, so a bar grows both ways like a real
+     level meter. Animating height instead would grow it downward only
+     and reflow the pill on every frame. */
+  transform:scaleY(.3);
+  transform-origin:center;
+  animation:budWave 1.15s ease-in-out infinite;
+}
+
+/* Prime numbers-ish offsets rather than an even stagger. An even one
+   makes the bars sweep in a visible wave, left to right, which reads
+   as a loading spinner; uneven offsets read as sound. */
+.bud__wave i:nth-child(1){ animation-delay:-.10s; }
+.bud__wave i:nth-child(2){ animation-delay:-.62s; }
+.bud__wave i:nth-child(3){ animation-delay:-.31s; }
+.bud__wave i:nth-child(4){ animation-delay:-.83s; }
+
+@keyframes budWave{
+  0%, 100%{ transform:scaleY(.28); opacity:.55; }
+  50%     { transform:scaleY(1);   opacity:1; }
+}
+
+/* ---- open state ---- */
+.bud__btn-close{
+  position:absolute; inset:0; margin:auto;
+  width:24px; height:24px; z-index:2;
+  opacity:0; transform:rotate(-90deg) scale(.6);
+  transition:opacity .25s ease, transform .35s cubic-bezier(.16,.84,.44,1);
+}
+
+/* Open state brings a backdrop back, for the close icon only. A bare
+   X floating on the page has nothing to separate it from whatever is
+   behind it and reads as a stray mark rather than a button — the logo
+   can carry itself unaided, a 24px glyph cannot. */
+.bud.is-open .bud__disc{
+  background:rgba(20,23,26,.94);
+  -webkit-backdrop-filter:blur(10px);
+          backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:999px;
+  box-shadow:0 14px 30px -12px rgba(0,0,0,.8);
+}
+
+/* No translateX(-50%) here any more. The avatar is centred with
+   inset:0 + margin:auto now, so carrying the old centring offset into
+   this transform would shove it half its width to the left as it
+   faded out. */
+.bud.is-open .bud__avatar{ opacity:0; transform:translateY(10px) scale(.85); }
+.bud.is-open .bud__btn-close{ opacity:1; transform:rotate(0) scale(1); }
+
+/* With the panel open the badge and rings are redundant — the header
+   says Bud.Ai and the widget is plainly awake. */
+/* keep the centring translate or the pill jumps left as it fades */
+.bud.is-open .bud__badge{ opacity:0; transform:translateX(-50%) translateY(4px); }
+.bud.is-open .bud__rings{ opacity:0; }
+.bud.is-open .bud__rings i,
+.bud.is-open .bud__wave i{ animation-play-state:paused; }
+.bud__rings{ transition:opacity .25s ease; }
+
+/* --- panel -------------------------------------------------------- */
+.bud__panel[hidden]{ display:none; }
+
+.bud__panel{
+  order:-1;                       /* sits above the launcher */
+  width:min(380px, calc(100vw - 3rem));
+  height:min(520px, calc(100vh - 8rem));
+  display:flex; flex-direction:column;
+  background:#14171a;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:1.3rem;
+  box-shadow:0 30px 70px -25px rgba(0,0,0,.85);
+  overflow:hidden;
+  opacity:0; transform:translateY(14px) scale(.97);
+  transform-origin:bottom right;
+  transition:opacity .28s ease, transform .35s cubic-bezier(.16,.84,.44,1);
+}
+
+.bud.is-open .bud__panel{ opacity:1; transform:none; }
+
+.bud__head{
+  display:flex; align-items:center; gap:.75rem;
+  padding:.95rem 1rem;
+  border-bottom:1px solid rgba(255,255,255,.09);
+  background:rgba(255,255,255,.03);
+  flex-shrink:0;
+}
+
+.bud__head-avatar{
+  width:38px; height:38px; flex-shrink:0;
+  border-radius:999px; object-fit:cover; object-position:top center;
+  background:var(--orange, #FF6E00);
+}
+
+.bud__head-name{
+  font-family:var(--font-display, 'Helvetica Neue', Arial, sans-serif);
+  font-weight:600; font-size:1rem; color:#fff; line-height:1.2;
+}
+
+.bud__head-role{ font-size:.74rem; color:rgba(255,255,255,.5); margin-top:.1rem; }
+
+.bud__close{
+  margin-left:auto;
+  width:32px; height:32px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:999px;
+  background:transparent; color:#fff; cursor:pointer;
+  transition:background .25s ease, transform .25s ease;
+}
+
+.bud__close:hover{ background:rgba(255,255,255,.1); transform:rotate(90deg); }
+.bud__close:focus-visible{ outline:2px solid var(--orange, #FF6E00); outline-offset:2px; }
+.bud__close svg{ width:15px; height:15px; }
+
+.bud__log{
+  flex:1; min-height:0;
+  overflow-y:auto; overscroll-behavior:contain;
+  padding:1rem;
+  display:flex; flex-direction:column; gap:.7rem;
+  scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.2) transparent;
+}
+
+.bud__log::-webkit-scrollbar{ width:7px; }
+.bud__log::-webkit-scrollbar-track{ background:transparent; }
+.bud__log::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.16); border-radius:999px; }
+
+.bud__msg{
+  max-width:85%;
+  padding:.7rem .9rem;
+  border-radius:1rem;
+  font-size:.85rem; line-height:1.6;
+  animation:budMsgIn .3s cubic-bezier(.16,.84,.44,1) both;
+}
+
+@keyframes budMsgIn{
+  from{ opacity:0; transform:translateY(8px); }
+  to  { opacity:1; transform:none; }
+}
+
+/* The tucked corner on each bubble points back at its sender, which
+   is what carries the direction of the conversation without needing
+   labels or avatars on every line. */
+.bud__msg--bot{
+  align-self:flex-start;
+  background:rgba(255,255,255,.07);
+  color:rgba(255,255,255,.85);
+  border-bottom-left-radius:.35rem;
+}
+
+.bud__msg--user{
+  align-self:flex-end;
+  background:var(--orange, #FF6E00);
+  color:#fff;
+  border-bottom-right-radius:.35rem;
+}
+
+/* three dots while a reply is being fetched */
+.bud__typing{ display:flex; gap:.25rem; align-items:center; padding:.25rem 0; }
+
+.bud__typing i{
+  width:6px; height:6px; border-radius:999px;
+  background:rgba(255,255,255,.55);
+  animation:budDot 1.1s infinite ease-in-out;
+}
+
+.bud__typing i:nth-child(2){ animation-delay:.16s; }
+.bud__typing i:nth-child(3){ animation-delay:.32s; }
+
+@keyframes budDot{
+  0%, 60%, 100%{ opacity:.28; transform:translateY(0); }
+  30%          { opacity:1;   transform:translateY(-4px); }
+}
+
+.bud__compose{
+  display:flex; align-items:center; gap:.5rem;
+  padding:.75rem;
+  border-top:1px solid rgba(255,255,255,.09);
+  background:rgba(255,255,255,.02);
+  flex-shrink:0;
+}
+
+.bud__input{
+  flex:1; min-width:0;
+  padding:.7rem .9rem;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:999px;
+  background:rgba(255,255,255,.05);
+  color:#fff;
+  font-family:inherit; font-size:.85rem;
+}
+
+.bud__input::placeholder{ color:rgba(255,255,255,.38); }
+
+.bud__input:focus{
+  outline:none;
+  border-color:var(--orange, #FF6E00);
+  background:rgba(255,255,255,.08);
+}
+
+.bud__send{
+  width:40px; height:40px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  border:0; border-radius:999px;
+  background:var(--orange, #FF6E00);
+  color:#fff; cursor:pointer;
+  transition:transform .25s ease, opacity .25s ease;
+}
+
+.bud__send:hover{ transform:scale(1.07); }
+.bud__send:focus-visible{ outline:2px solid #fff; outline-offset:2px; }
+.bud__send:disabled{ opacity:.4; cursor:not-allowed; transform:none; }
+.bud__send svg{ width:17px; height:17px; }
+
+/* --- phones ------------------------------------------------------- */
+@media (max-width:600px){
+  .bud{ right:1rem; bottom:2.4rem; gap:.7rem; }   /* clears the nameplate */
+
+  .bud__btn{ width:64px; height:64px; }
+  /* Fills the button, same as desktop. The old 51px inset the logo so
+     it sat inside the circular disc; with no disc that inset is just
+     a smaller tap target. */
+  .bud__avatar{ width:64px; }
+  .bud__badge{ font-size:.62rem; }
+
+  /* No room for a bubble beside a phone-width launcher without
+     covering the page it is inviting you to read. */
+  .bud__greet{ display:none !important; }
+
+  /* Near-fullscreen, and pinned to the viewport rather than to the
+     launcher — a 380px panel floating above a phone-width button
+     wastes the screen it is sitting on. */
+  .bud__panel{
+    position:fixed; inset:.75rem .75rem 5.5rem;
+    width:auto; height:auto;
+  }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .bud__btn, .bud__panel, .bud__badge,
+  .bud__avatar, .bud__btn-close,
+  .bud__close, .bud__send{ transition:none; }
+  .bud__msg, .bud__greet{ animation:none; }
+  .bud__rings i{ animation:none; }
+
+  /* The float, the wobble and the ground shadow all stop. Someone who
+     has asked their OS for less motion should not get a mascot bobbing
+     in the corner of every page — for a vestibular disorder that is
+     not a flourish, it is a problem. The logo stays exactly where it
+     is, shadow included, and everything still works. */
+  .bud__avatar, .bud__disc, .bud__disc::after{ animation:none; }
+
+  /* The ripple and the equaliser stop too. The bars hold a static
+     staggered shape rather than collapsing flat, so the name still
+     reads as a voice assistant when it is standing still. */
+  .bud__rings i{ animation:none; opacity:0; }
+  .bud__wave i{ animation:none; opacity:.8; }
+  .bud__wave i:nth-child(1){ transform:scaleY(.45); }
+  .bud__wave i:nth-child(2){ transform:scaleY(.9); }
+  .bud__wave i:nth-child(3){ transform:scaleY(.6); }
+  .bud__wave i:nth-child(4){ transform:scaleY(1); }
+  .bud__avatar{ transform:none; }
+  .bud__disc::after{ opacity:.45; transform:translateX(-50%) scale(1); }
+  .bud__typing i{ animation:none; opacity:.6; }
+  .bud__panel{ transform:none; }
+}
+
+/* ===================================================================
+   DRAGGING THE LAUNCHER
+
+   The gesture is in bud.js; these are the states it switches between.
+
+   THE WIDGET IS MOVED WITH A TRANSFORM, never with left/top. .bud is
+   anchored to a corner at line 39 and re-anchored for phones at line
+   561; a transform is a visual offset from wherever those rules put
+   it, so the CSS keeps owning the corner and the two can never
+   disagree. It also means clearing bud.style.transform puts everything
+   back exactly as designed.
+   =================================================================== */
+.bud__btn{
+  /* Without this the browser claims a vertical drag as a page scroll,
+     fires pointercancel, and the gesture dies after about four pixels.
+     The cost is that a scroll cannot be STARTED with a finger on the
+     button — on a 64px control that is already a button, that is the
+     right trade. */
+  touch-action:none;
+  -webkit-user-select:none; user-select:none;
+}
+
+/* An <img> can be dragged out of a page on its own, and that native
+   drag beats pointer events: the browser fires pointercancel and a
+   translucent copy of the robot follows the cursor while the real
+   widget stays where it was. user-drag is still prefixed in WebKit and
+   Blink and absent in Firefox, which is why bud.js also refuses
+   dragstart and includes/bud-widget.php sets draggable="false". */
+.bud__avatar,
+.bud__head-avatar{
+  -webkit-user-drag:none;
+  user-drag:none;
+}
+
+/* The avatar is the whole face of the button, so nothing is lost by
+   making it transparent to the pointer — and the press then always
+   registers against the button rather than an image inside it. */
+.bud__avatar{ pointer-events:none; }
+
+/* --- while the finger is down and moving ---------------------------
+   .bud carries transitions for its reveal, including one on transform.
+   Left running, the widget would lag the finger by their duration. */
+.bud.is-dragging{
+  transition:none;
+  cursor:grabbing;
+}
+
+.bud.is-dragging .bud__btn{ cursor:grabbing; }
+
+/* Rings carrying on underneath the drag read as the thing squirming in
+   your hand. */
+.bud.is-dragging .bud__rings{ opacity:0; }
+
+/* --- the flight to the nearest edge after release ------------------ */
+.bud.is-snapping{
+  transition:transform .24s cubic-bezier(.2,.7,.3,1);
+}
+
+/* ===================================================================
+   ONCE IT HAS BEEN MOVED
+
+   The panel is a CHILD of .bud, so while it is in the flow, opening
+   the chat changes the size of the box being positioned and shoves the
+   launcher out from under the finger that just pressed it.
+
+   position:absolute takes it out of that flow. The launcher becomes
+   the only thing .bud is sized by, and the panel hangs off whichever
+   corner of it makes sense — above by default, below when the widget
+   is parked in the top half of the screen, and on the matching side.
+
+   Only once .bud--moved is set: a widget still in its designed corner
+   keeps the designed layout exactly as it was.
+
+   min-width:601px, because bud.css:577 already pins the panel to the
+   viewport with inset on phones. It does not follow the launcher there
+   and does not need to — which is why the phone case, the one that
+   needed dragging most, is also the simplest.
+   =================================================================== */
+@media (min-width:601px){
+  .bud--moved .bud__panel{
+    position:absolute;
+    right:0;
+    bottom:calc(100% + .85rem);
+    transform-origin:bottom right;
+  }
+
+  .bud--moved.bud--left .bud__panel{
+    right:auto;
+    left:0;
+    transform-origin:bottom left;
+  }
+
+  .bud--moved.bud--top .bud__panel{
+    bottom:auto;
+    top:calc(100% + .85rem);
+    transform-origin:top right;
+    transform:translateY(-14px) scale(.97);
+  }
+
+  .bud--moved.bud--top.bud--left .bud__panel{ transform-origin:top left; }
+
+  .bud--moved.bud--top.is-open .bud__panel{ transform:none; }
+
+  /* The greeting bubble sits to the LEFT of the button in source order,
+     which is right in the bottom-right corner and off the edge of the
+     screen in the bottom-left. */
+  .bud--left .bud__launcher{ flex-direction:row-reverse; }
+
+  .bud--left{ align-items:flex-start; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .bud.is-snapping{ transition:none; }
+}

@@ -1,0 +1,387 @@
+/* ===================================================================
+   13b. FOOTER — REWRITE
+
+   PASTE THIS AT THE VERY END OF base.css. It is written to sit after
+   section 13 and win on the four rules it needs to overturn, so you
+   do not have to go and delete anything first. If you would rather
+   have one copy, the old rules are .footer, .footer-grid, .footer h4
+   and .footer ul li in section 13 — they are safe to remove once this
+   block is in, and .footer-grid is not used by the new markup at all.
+
+   THE IDEA. The old footer was four columns of links on a black
+   field, which is what every footer looks like before someone
+   decides what it is for. A tourism site's footer is the page people
+   reach when they have finished looking and want to know whether
+   this place is real and who to ask — so the left third is now the
+   province itself: seal, wordmark, one sentence, an address you
+   could put in a car, and an email that opens a mail client.
+
+   The one flourish is the strip along the top: the province and its
+   coordinates, set in the display face, small and letterspaced. The
+   auth modal already prints coordinates under its photograph. Two
+   places on the site quoting the same kind of fact in the same way
+   is what makes a site feel authored rather than assembled.
+
+   Colours are the existing tokens. Amber (--orange) appears in four
+   places only — the horizon line at the top, the dashes beside the
+   headings, the contact icons, and the underline that grows under a
+   link on hover. Nothing else is coloured, on purpose: on a near
+   black band, restraint is the whole effect.
+   =================================================================== */
+.footer{
+  position:relative;
+  background:var(--navy);
+  color:rgba(255,255,255,.6);
+  padding:0 0 1.75rem;
+  overflow:hidden;
+  isolation:isolate;
+}
+
+/* the horizon line. It fades out at both ends rather than running
+   wall to wall, so it reads as a horizon and not as a border. */
+.footer::before{
+  content:'';
+  position:absolute;
+  top:0; left:0; right:0;
+  height:1px;
+  background:linear-gradient(90deg,
+    transparent,
+    rgba(240,163,44,.55) 18%,
+    rgba(240,163,44,.55) 82%,
+    transparent);
+}
+
+/* a very low glow under that line. Kept under 10% opacity: enough
+   that the top of the footer is not flat, not enough to notice. */
+.footer::after{
+  content:'';
+  position:absolute;
+  top:-14rem; left:50%;
+  width:min(70rem,120%); height:22rem;
+  transform:translateX(-50%);
+  background:radial-gradient(50% 50% at 50% 50%,
+    rgba(240,163,44,.10), transparent 70%);
+  pointer-events:none;
+  z-index:-1;
+}
+
+.footer__inner{ padding-top:3.25rem; }
+
+/* ---------- the strip: province + coordinates ---------- */
+.footer__meta{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:1rem;
+  padding-bottom:1.5rem;
+  margin-bottom:3.25rem;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  font-family:var(--font-display);
+  font-size:.68rem;
+  font-weight:600;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+}
+
+.footer__meta-place{ color:rgba(255,255,255,.72); }
+
+/* tabular figures so the degrees do not jitter, and a wider track
+   because coordinates are read a character at a time */
+.footer__meta-coords{
+  color:rgba(255,255,255,.34);
+  letter-spacing:.16em;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+
+/* ---------- the columns ----------
+   The brand column is wider than the link columns because it carries
+   a paragraph and an address; three equal quarters would set the
+   address in a gutter. */
+.footer__top{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:2.75rem 2rem;
+}
+
+@media (min-width:600px){
+
+    .footer__top{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+
+    .footer__brand{ grid-column:1 / -1; }
+}
+
+@media (min-width:960px){
+
+    .footer__top{ grid-template-columns:1.7fr .8fr .8fr 1fr; gap:3rem 2.5rem; }
+
+    .footer__brand{ grid-column:auto; }
+}
+
+/* ---------- brand ---------- */
+.footer__brand-mark{
+  display:flex;
+  align-items:center;
+  gap:.9rem;
+  margin-bottom:1.4rem;
+}
+
+.footer__seal{
+  height:56px; width:56px;
+  border-radius:50%;
+  object-fit:cover;
+  flex-shrink:0;
+}
+
+/* the same -3px nudge .nav__logo-word takes, for the same reason:
+   the script in the wordmark curls above the letters, so its
+   geometric centre sits below its visual one */
+.footer__word{
+  height:44px;
+  width:auto;
+  object-fit:contain;
+  flex-shrink:0;
+  transform:translateY(-3px);
+}
+
+/* IF THE WORDMARK DISAPPEARS ON THE DARK BAND it is dark artwork.
+   Add this class to the <img> in footer.php and it flips to white.
+   Only works on a flat one-colour mark — on a multicolour logo it
+   will flatten the colours, so supply a light version instead. */
+.footer__word--invert{ filter:brightness(0) invert(1); }
+
+.footer__blurb{
+  max-width:36ch;
+  margin:0 0 1.6rem;
+  font-size:.9rem;
+  line-height:1.75;
+  color:rgba(255,255,255,.5);
+}
+
+.footer__contact{ display:grid; gap:.75rem; }
+
+.footer .footer__contact li{
+  display:flex;
+  gap:.7rem;
+  margin:0;
+  font-size:.875rem;
+  line-height:1.55;
+  color:rgba(255,255,255,.6);
+}
+
+/* the icons are the only thing keeping three unlike lines aligned,
+   so they are fixed width and nudged to sit on the first line's
+   cap height rather than its box */
+.footer__contact svg{
+  width:15px; height:15px;
+  flex-shrink:0;
+  margin-top:.22rem;
+  color:var(--orange);
+  opacity:.85;
+}
+
+.footer .footer__contact a{ transition:color .2s ease; }
+
+.footer .footer__contact a:hover{ color:#fff; }
+
+/* ---------- column headings ---------- */
+.footer .footer__head{
+  display:flex;
+  align-items:center;
+  gap:.6rem;
+  margin:0 0 1.35rem;
+  font-family:var(--font-display);
+  font-size:.7rem;
+  font-weight:700;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  color:#fff;
+}
+
+.footer__head::before{
+  content:'';
+  width:12px; height:2px;
+  background:var(--orange);
+  flex-shrink:0;
+}
+
+/* ---------- links ----------
+   The underline grows from the left on hover instead of appearing
+   whole. It costs nothing and it tells you which link you are on
+   more clearly than a colour change alone. */
+.footer__list{ display:grid; gap:.1rem; }
+
+.footer .footer__list li{ margin:0; }
+
+.footer__link{
+  position:relative;
+  display:inline-block;
+  padding:.3rem 0;
+  font-size:.9rem;
+  color:rgba(255,255,255,.6);
+  transition:color .25s ease;
+}
+
+.footer__link::after{
+  content:'';
+  position:absolute;
+  left:0; bottom:.16rem;
+  width:100%; height:1px;
+  background:var(--orange);
+  transform:scaleX(0);
+  transform-origin:left;
+  transition:transform .3s ease;
+}
+
+.footer .footer__link:hover{ color:#fff; }
+
+.footer__link:hover::after{ transform:scaleX(1); }
+
+/* keyboard users get the same information, visibly */
+.footer a:focus-visible{
+  outline:2px solid var(--orange);
+  outline-offset:3px;
+  border-radius:2px;
+  color:#fff;
+}
+
+/* ---------- social ---------- */
+.footer__social{
+  display:flex;
+  gap:.6rem;
+  margin:0 0 1.7rem;
+}
+
+.footer .footer__social li{ margin:0; }
+
+.footer__social a{
+  display:grid;
+  place-items:center;
+  width:38px; height:38px;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:50%;
+  color:rgba(255,255,255,.75);
+  transition:background .25s ease, border-color .25s ease,
+             color .25s ease, transform .25s ease;
+}
+
+.footer__social svg{ width:16px; height:16px; }
+
+.footer .footer__social a:hover{
+  background:var(--orange);
+  border-color:var(--orange);
+  color:var(--navy);
+  transform:translateY(-2px);
+}
+
+/* ---------- office hours ---------- */
+.footer__hours{
+  margin:0;
+  font-size:.82rem;
+  line-height:1.6;
+  color:rgba(255,255,255,.45);
+}
+
+.footer__hours strong{
+  display:block;
+  margin-bottom:.3rem;
+  font-size:.68rem;
+  font-weight:600;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.7);
+}
+
+/* ---------- bottom ---------- */
+.footer__rule{
+  height:1px;
+  margin:3.5rem 0 1.6rem;
+  background:linear-gradient(90deg,
+    rgba(255,255,255,.14), rgba(255,255,255,.03));
+}
+
+/* flex-direction is declared even though row is the default. Section
+   13 sets .footer__bottom to column below 768px and only switches it
+   back at 768px up; without this line the phone layout is a column
+   flex box, align-items centres everything, and the copyright drifts
+   to the middle of the screen. */
+.footer__bottom{
+  display:flex;
+  flex-direction:row;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  gap:.9rem 2.5rem;
+  font-size:.76rem;
+  color:rgba(255,255,255,.36);
+}
+
+.footer__legal{ display:flex; flex-wrap:wrap; gap:1.25rem; }
+
+.footer .footer__legal a{ transition:color .2s ease; }
+
+.footer .footer__legal a:hover{ color:#fff; }
+
+.footer__sign{
+  display:inline-flex;
+  align-items:center;
+  gap:.5rem;
+  font-family:var(--font-display);
+  font-size:.72rem;
+  font-weight:600;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.5);
+}
+
+.footer__sign::before{
+  content:'';
+  width:6px; height:6px;
+  border-radius:50%;
+  background:var(--orange);
+  flex-shrink:0;
+}
+
+/* the quietest line on the page, and the one that says the site is
+   official. It gets its own row under everything else. */
+.footer__official{
+  width:100%;
+  margin:.6rem 0 0;
+  font-size:.72rem;
+  color:rgba(255,255,255,.26);
+}
+
+/* ---------- small screens ---------- */
+@media (max-width:600px){
+
+    .footer__inner{ padding-top:2.75rem; }
+
+  /* the coordinates under the province name rather than shrinking
+     both to fit one line */
+    .footer__meta{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:.45rem;
+    margin-bottom:2.5rem;
+  }
+
+    .footer__rule{ margin:2.75rem 0 1.4rem; }
+
+  /* stacked, the bottom row reads better left-aligned than spread */
+    .footer__bottom{
+    justify-content:flex-start;
+    align-items:flex-start;
+    gap:.7rem;
+  }
+
+    .footer__copy, .footer__sign{ width:100%; }
+
+    .footer__legal{ width:100%; }
+}
+
+@media (prefers-reduced-motion: reduce){
+
+    .footer__link::after{ transition:none; }
+
+    .footer__social a:hover{ transform:none; }
+}

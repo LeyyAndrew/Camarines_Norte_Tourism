@@ -1,0 +1,421 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap');
+
+/* ===================================================================
+   assets/css/plan-trip.css
+
+   Loaded automatically by includes/header.php, which derives the name
+   from plan-trip.php. Nothing to register.
+
+   Dark, because the rest of the site is. The amber is the one already
+   on the nav CTA and the footer rules; the only colours added are a
+   green for a filled slot and a red for a destructive control, and
+   both are there to carry meaning rather than to decorate.
+
+   Every class is prefixed pt- and the page is wrapped in .pt, so
+   nothing here can reach base.css, nav.css or mobile.css, and nothing
+   there can reach in. Archivo and Inter come from the header; only
+   the mono face for the schedule times is imported.
+   =================================================================== */
+
+.pt,
+.pt-modal,
+.pt-toast{
+  --pt-bg:#0D0F11;
+  --pt-surface:#15181B;
+  --pt-surface-2:#1B1F24;
+  --pt-raised:#22272C;
+  --pt-line:rgba(255,255,255,.09);
+  --pt-line-2:rgba(255,255,255,.17);
+  --pt-text:#E9ECEE;
+  --pt-dim:#B4BBC0;
+  --pt-muted:#868E94;
+  --pt-amber:#F2A93B;
+  --pt-amber-2:#FFC163;
+  --pt-amber-soft:rgba(242,169,59,.12);
+  --pt-green:#3FBF87;
+  --pt-green-soft:rgba(63,191,135,.12);
+  --pt-red:#E2593F;
+  --pt-r-lg:18px;
+  --pt-r-md:12px;
+  --pt-r-sm:9px;
+  --pt-ease:cubic-bezier(.22,.8,.3,1);
+}
+
+.pt{
+  display:block;
+  background:var(--pt-bg);
+  color:var(--pt-text);
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15px;
+  line-height:1.55;
+}
+.pt *{box-sizing:border-box}
+.pt h1,.pt h2,.pt h3,.pt h4{font-family:Archivo,system-ui,sans-serif;margin:0;letter-spacing:-.02em;color:var(--pt-text)}
+.pt button,.pt input,.pt select,.pt textarea{font-family:inherit;font-size:inherit;color:inherit}
+.pt a{text-decoration:none}
+.pt :focus-visible,.pt-modal :focus-visible{outline:2px solid var(--pt-amber);outline-offset:2px;border-radius:4px}
+.pt-wrap{max-width:1280px;margin:0 auto;padding:0 32px}
+@media(max-width:640px){.pt-wrap{padding:0 18px}}
+
+/* The rule-and-caps label from the footer — "— EXPLORE", "— FOLLOW".
+   Reused here so a heading on this page is the same object it is
+   everywhere else on the site. */
+.pt-label{display:flex;align-items:center;gap:12px;font-family:Inter,sans-serif;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--pt-muted)}
+.pt-label::before{content:"";flex:none;width:20px;height:2px;background:var(--pt-amber)}
+
+/* ---------- hero ---------- */
+.pt-hero{position:relative;overflow:hidden;padding:84px 0 104px;background:#0A0C0E}
+.pt-hero-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.34;filter:saturate(.75)}
+.pt-hero::after{
+  content:"";position:absolute;inset:0;
+  background:
+    radial-gradient(90% 120% at 78% 8%, rgba(242,169,59,.16), transparent 58%),
+    linear-gradient(180deg, rgba(10,12,14,.60) 0%, rgba(10,12,14,.86) 58%, var(--pt-bg) 100%);
+}
+.pt-hero .pt-wrap{position:relative;z-index:2}
+.pt-coords{position:absolute;top:2px;right:0;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.10em;color:rgba(255,255,255,.30)}
+@media(max-width:820px){.pt-coords{display:none}}
+.pt-hero h1{font-size:clamp(38px,6.4vw,64px);line-height:1.02;font-weight:800;margin:20px 0 16px;max-width:15ch}
+.pt-hero h1 em{font-style:normal;color:var(--pt-amber)}
+.pt-hero p{max-width:54ch;font-size:17px;color:var(--pt-dim);margin:0}
+.pt-figures{display:flex;flex-wrap:wrap;margin-top:40px;border-top:1px solid var(--pt-line)}
+.pt-figures div{padding:18px 34px 0 0;margin-right:34px;font-size:10.5px;color:var(--pt-muted);letter-spacing:.14em;text-transform:uppercase;font-weight:700;border-right:1px solid var(--pt-line)}
+.pt-figures div:last-child{border-right:0;margin-right:0;padding-right:0}
+.pt-figures b{display:block;font-family:Archivo,sans-serif;font-size:30px;color:#fff;letter-spacing:-.03em;text-transform:none;font-weight:800;line-height:1;margin-bottom:6px}
+
+/* ---------- rotating hero word ----------
+   Sits with the hero rules because it extends one of them:
+   ".pt-hero h1 em" above is where the word gets its amber.
+
+   The word keeps the amber from that rule; nothing here sets a colour.
+   The spring is the one from the React reference (damping 30,
+   stiffness 400) written as a bezier: it arrives fast and overshoots
+   by a hair rather than easing flat into place. */
+.pt{
+  --pt-spring:cubic-bezier(.2,.95,.25,1.04);
+  --pt-rotate-dur:520ms;
+}
+
+.pt-hero h1 em.pt-rotate{
+  display:inline-flex;
+  position:relative;
+}
+
+/* Holds the width. Animating it is what makes "Adventure" give way to
+   the shorter "Itinerary" instead of the letters jumping left.
+   The padding is headroom for the descender on the y in Itinerary,
+   which overflow:hidden would otherwise shave off; the negative
+   margin gives the space straight back so the line below never moves. */
+.pt-rotate-clip{
+  display:inline-block;
+  position:relative;
+  overflow:hidden;
+  white-space:nowrap;
+  padding-bottom:.16em;
+  margin-bottom:-.16em;
+  transition:width var(--pt-rotate-dur) var(--pt-spring);
+}
+
+.pt-rotate-word{display:inline-block;white-space:nowrap}
+
+/* The outgoing word leaves the flow so the incoming one can take the
+   left edge immediately; both are clipped by the box above. */
+.pt-rotate-word.is-out{position:absolute;left:0;top:0}
+
+.pt-rotate-ch{
+  display:inline-block;
+  transform:translateY(100%);
+  transition:transform var(--pt-rotate-dur) var(--pt-spring);
+  will-change:transform;
+}
+.pt-rotate-ch.is-in{transform:translateY(0)}
+
+/* Beats .is-in on specificity, so a letter that is still arriving when
+   the next swap begins turns round and leaves with the rest. */
+.pt-rotate-word.is-out .pt-rotate-ch{transform:translateY(-120%)}
+
+/* The visible letters are aria-hidden — they are one word split into a
+   dozen boxes, which a screen reader would spell out. This carries the
+   word as text instead, and the JS keeps it current. */
+.pt-rotate-sr{
+  position:absolute;
+  width:1px;height:1px;
+  padding:0;margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+  border:0;
+}
+
+/* ---------- layout ---------- */
+.pt-board{position:relative;z-index:5;padding:0 0 90px}
+.pt-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;align-items:start;margin-top:22px}
+@media(max-width:1080px){.pt-grid{grid-template-columns:1fr}}
+
+.pt-card{background:var(--pt-surface);border:1px solid var(--pt-line);border-radius:var(--pt-r-lg)}
+.pt-card-h{display:flex;align-items:center;gap:14px;padding:20px 24px;border-bottom:1px solid var(--pt-line)}
+.pt-card-h h2{font-size:18px;font-weight:700}
+.pt-card-h .pt-sub{font-size:13px;color:var(--pt-muted);margin-left:auto}
+
+/* The signed-out stand-in for the builder. Same card, so the page is
+   recognisably the same page — a visitor who signs in and lands back
+   here should feel they got past a door, not that they were sent
+   somewhere else. */
+.pt-gate{padding:52px 34px;text-align:center;margin-top:22px}
+.pt-gate .pt-label{justify-content:center}
+.pt-gate h2{font-size:23px;font-weight:800;margin:14px 0 10px}
+.pt-gate p{max-width:46ch;margin:0 auto 26px;color:var(--pt-dim);font-size:15px}
+.pt-gate .pt-btn{display:inline-flex}
+@media(max-width:640px){.pt-gate{padding:38px 20px}}
+@media(max-width:700px){.pt-card-h .pt-sub{display:none}}
+
+/* ---------- trip details ---------- */
+.pt-form{padding:22px 24px 26px;display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+@media(max-width:880px){.pt-form{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:540px){.pt-form{grid-template-columns:1fr}}
+.pt-field label{display:block;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--pt-muted);margin-bottom:9px}
+.pt-field input{width:100%;padding:13px 14px;border:1px solid var(--pt-line-2);border-radius:var(--pt-r-sm);background:var(--pt-bg);color:var(--pt-text);transition:border-color .18s,box-shadow .18s}
+.pt-field input::placeholder{color:#5E666C}
+.pt-field input:hover{border-color:rgba(255,255,255,.28)}
+.pt-field input:focus{outline:none;border-color:var(--pt-amber);box-shadow:0 0 0 3px var(--pt-amber-soft)}
+/* the native pickers render as black glyphs on a dark field otherwise */
+.pt input[type=date]::-webkit-calendar-picker-indicator,
+.pt input[type=time]::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.55);cursor:pointer}
+
+/* ---------- day card, built like a ticket ---------- */
+.pt-days{display:flex;flex-direction:column;gap:18px}
+.pt-day{background:var(--pt-surface);border:1px solid var(--pt-line);border-radius:var(--pt-r-lg);overflow:hidden;animation:pt-pop .34s var(--pt-ease)}
+.pt-day-h{position:relative;display:flex;align-items:center;gap:15px;padding:17px 22px;background:var(--pt-surface-2)}
+/* the perforation: a ticket stub, and the only ornament on the card */
+.pt-day-h::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background-image:linear-gradient(90deg,var(--pt-line-2) 50%,transparent 0);background-size:10px 1px}
+.pt-day-no{flex:none;width:42px;height:42px;border-radius:11px;background:var(--pt-amber-soft);border:1px solid rgba(242,169,59,.30);color:var(--pt-amber);display:grid;place-items:center;font-family:"JetBrains Mono",monospace;font-weight:700;font-size:15px}
+.pt-day-t b{display:block;font-family:Archivo,sans-serif;font-size:17px;font-weight:700;letter-spacing:-.02em}
+.pt-day-t span{font-size:12.5px;color:var(--pt-muted)}
+.pt-day-h .pt-chip{margin-left:auto;background:transparent;border:1px solid var(--pt-line-2);color:var(--pt-muted);border-radius:999px;padding:8px 15px;font-size:12.5px;font-weight:600;cursor:pointer;transition:.18s}
+.pt-day-h .pt-chip:hover{border-color:var(--pt-red);color:var(--pt-red);background:rgba(226,89,63,.10)}
+
+/* ---------- activity rail ---------- */
+.pt-acts{padding:6px 22px 2px;position:relative}
+.pt-acts::before{content:"";position:absolute;left:21px;top:14px;bottom:14px;width:1px;background:repeating-linear-gradient(180deg,var(--pt-line-2) 0 5px,transparent 5px 11px)}
+.pt-act{position:relative;display:grid;grid-template-columns:158px minmax(0,1.25fr) minmax(0,1fr) 38px;gap:14px;align-items:center;padding:15px 0;border-bottom:1px solid var(--pt-line);animation:pt-slide .3s var(--pt-ease)}
+.pt-act:last-child{border-bottom:0}
+.pt-act::before{content:"";position:absolute;left:-6px;top:50%;transform:translateY(-50%);width:11px;height:11px;border-radius:50%;background:var(--pt-surface);border:2px solid var(--pt-line-2);z-index:2;transition:background .2s,border-color .2s,box-shadow .2s}
+.pt-act.is-set::before{background:var(--pt-green);border-color:var(--pt-green);box-shadow:0 0 0 4px var(--pt-green-soft)}
+.pt-act>*{min-width:0}
+.pt-time{padding-left:32px}
+.pt-time input{width:100%;min-width:0;font-family:"JetBrains Mono",monospace;font-weight:700;font-size:14px;letter-spacing:0;padding:11px 8px;border:1px solid var(--pt-line-2);border-radius:var(--pt-r-sm);background:var(--pt-bg);color:var(--pt-amber)}
+.pt-time input:focus{outline:none;border-color:var(--pt-amber);box-shadow:0 0 0 3px var(--pt-amber-soft)}
+.pt-pick{width:100%;text-align:left;display:flex;align-items:center;gap:11px;padding:8px 12px;border:1px dashed var(--pt-line-2);border-radius:var(--pt-r-md);background:transparent;cursor:pointer;min-height:56px;transition:border-color .18s,background .18s}
+.pt-pick:hover{border-color:var(--pt-amber);background:var(--pt-amber-soft)}
+.pt-pick.is-filled{border-style:solid;border-color:rgba(63,191,135,.30);background:var(--pt-green-soft)}
+.pt-thumb{flex:none;width:40px;height:40px;border-radius:8px;display:grid;place-items:center;color:#fff;overflow:hidden;position:relative}
+.pt-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pt-pt b{display:block;font-size:14px;font-weight:700;line-height:1.3}
+.pt-pt span{font-size:12px;color:var(--pt-muted)}
+.pt-pick .pt-ph{color:var(--pt-muted);font-size:13.5px;font-weight:600}
+.pt-note{width:100%;padding:13px 12px;border:1px solid var(--pt-line-2);border-radius:var(--pt-r-md);background:var(--pt-bg);color:var(--pt-text);resize:none;min-height:56px;font-size:13.5px}
+.pt-note::placeholder{color:#5E666C}
+.pt-note:focus{outline:none;border-color:var(--pt-amber);box-shadow:0 0 0 3px var(--pt-amber-soft)}
+.pt-del{width:38px;height:38px;border-radius:9px;border:1px solid var(--pt-line);background:transparent;color:var(--pt-muted);cursor:pointer;display:grid;place-items:center;transition:.18s}
+.pt-del:hover{border-color:var(--pt-red);color:var(--pt-red);background:rgba(226,89,63,.10)}
+.pt-act.is-going{animation:pt-out .26s var(--pt-ease) forwards}
+@media(max-width:780px){
+  .pt-acts::before{display:none}
+  .pt-act{grid-template-columns:1fr 38px;gap:10px}
+  .pt-act::before{display:none}
+  .pt-time{padding-left:0;grid-column:1}
+  .pt-time input{width:auto;min-width:150px}
+  .pt-del{grid-row:1;grid-column:2}
+  .pt-pick,.pt-note{grid-column:1 / -1}
+}
+
+.pt-add-act{margin:4px 22px 18px;width:calc(100% - 44px);padding:13px;border:1px dashed var(--pt-line-2);background:transparent;color:var(--pt-dim);border-radius:var(--pt-r-md);font-weight:600;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:.18s}
+.pt-add-act:hover{border-color:var(--pt-amber);color:var(--pt-amber);background:var(--pt-amber-soft)}
+.pt-add-day{width:100%;margin-top:18px;padding:19px;border:1px dashed var(--pt-line-2);background:transparent;color:var(--pt-dim);border-radius:var(--pt-r-lg);font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:.18s}
+.pt-add-day:hover{border-color:var(--pt-amber);color:var(--pt-amber);background:var(--pt-amber-soft)}
+
+/* ---------- summary ---------- */
+.pt-summary{position:sticky;top:100px}
+@media(max-width:1080px){.pt-summary{position:static}}
+.pt-sum-h{padding:20px 22px;border-bottom:1px solid var(--pt-line)}
+.pt-sum-h h2{font-size:17px;font-weight:700;margin-top:12px}
+.pt-sum-h p{margin:4px 0 0;font-size:12.5px;color:var(--pt-muted)}
+.pt-figs{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--pt-line)}
+.pt-fig{padding:18px 22px}
+.pt-fig+.pt-fig{border-left:1px solid var(--pt-line)}
+.pt-fig b{display:block;font-family:Archivo,sans-serif;font-size:32px;font-weight:800;color:var(--pt-amber);line-height:1;letter-spacing:-.03em;margin-bottom:6px}
+.pt-fig span{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--pt-muted)}
+.pt-dates{display:flex;border-bottom:1px solid var(--pt-line);font-size:13px}
+.pt-dates div{flex:1;padding:15px 22px}
+.pt-dates div+div{border-left:1px solid var(--pt-line)}
+.pt-dates span{display:block;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--pt-muted);margin-bottom:4px}
+.pt-dates b{font-weight:600;color:var(--pt-dim)}
+.pt-ov{padding:6px 22px 18px;max-height:330px;overflow:auto}
+.pt-ov-day{padding:13px 0;border-bottom:1px solid var(--pt-line)}
+.pt-ov-day:last-child{border-bottom:0}
+.pt-ov-day>b{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--pt-dim)}
+.pt-ov-day>b span{color:var(--pt-muted);font-weight:500;letter-spacing:.04em;text-transform:none}
+.pt-ov-item{display:flex;gap:10px;font-size:13px;margin-top:9px}
+.pt-ov-item time{font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;color:var(--pt-amber);background:var(--pt-amber-soft);padding:3px 7px;border-radius:5px;height:fit-content;flex:none}
+.pt-ov-item i{font-style:normal;color:var(--pt-text)}
+.pt-ov-item i small{display:block;color:var(--pt-muted);font-size:11.5px}
+.pt-ov-empty{padding:26px 0;text-align:center;color:var(--pt-muted);font-size:13px;line-height:1.6}
+
+/* ---------- actions ---------- */
+.pt-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;padding:18px 20px;background:var(--pt-surface);border:1px solid var(--pt-line);border-radius:var(--pt-r-lg)}
+.pt-btn{display:inline-flex;align-items:center;gap:9px;padding:13px 22px;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer;border:1px solid transparent;transition:transform .16s var(--pt-ease),background .16s,border-color .16s,color .16s}
+.pt-btn:active{transform:translateY(1px)}
+.pt-btn--ghost{background:transparent;border-color:var(--pt-line-2);color:var(--pt-dim)}
+.pt-btn--ghost:hover{border-color:rgba(255,255,255,.34);color:#fff;background:rgba(255,255,255,.05)}
+.pt-btn--danger{background:transparent;border-color:var(--pt-line-2);color:var(--pt-muted)}
+.pt-btn--danger:hover{border-color:var(--pt-red);color:var(--pt-red);background:rgba(226,89,63,.10)}
+.pt-btn--primary{background:var(--pt-amber);color:#1A1206}
+.pt-btn--primary:hover{background:var(--pt-amber-2)}
+.pt-spacer{flex:1}
+@media(max-width:660px){.pt-spacer{display:none}.pt-btn{flex:1;justify-content:center}}
+
+/* ---------- modals ---------- */
+.pt-modal{position:fixed;inset:0;z-index:1200;display:none;padding:22px;font-family:Inter,system-ui,sans-serif;color:var(--pt-text)}
+.pt-modal.is-open{display:grid;place-items:center}
+.pt-veil{position:absolute;inset:0;background:rgba(5,7,9,.78);animation:pt-fade .2s}
+.pt-sheet{position:relative;width:min(1000px,100%);max-height:88vh;display:flex;flex-direction:column;background:var(--pt-surface);border:1px solid var(--pt-line-2);border-radius:20px;overflow:hidden;animation:pt-pop .28s var(--pt-ease);box-shadow:0 40px 90px rgba(0,0,0,.6)}
+.pt-sheet-h{padding:22px 24px 16px;background:var(--pt-surface-2);border-bottom:1px solid var(--pt-line)}
+.pt-sheet-h h2{font-family:Archivo,sans-serif;font-size:20px;font-weight:700;margin:11px 0 0;letter-spacing:-.02em}
+.pt-sheet-h p{margin:3px 0 0;font-size:13px;color:var(--pt-muted)}
+.pt-close{position:absolute;top:18px;right:20px;width:34px;height:34px;border-radius:50%;border:1px solid var(--pt-line-2);background:transparent;cursor:pointer;display:grid;place-items:center;color:var(--pt-muted);z-index:3}
+.pt-close:hover{color:#fff;border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.06)}
+.pt-search{display:flex;align-items:center;gap:10px;margin-top:16px;padding:12px 15px;border:1px solid var(--pt-line-2);border-radius:999px;background:var(--pt-bg)}
+.pt-search input{flex:1;border:0;outline:none;background:none;color:var(--pt-text)}
+.pt-search input::placeholder{color:#5E666C}
+
+/* filter bar: a scope toggle, then the chips it drives. Sixteen types
+   and twelve municipalities are too many to show at once, and the two
+   answer different questions — what do I feel like, versus where am I
+   going to be that day. */
+.pt-fbar{display:flex;align-items:center;gap:14px;padding:13px 24px;background:var(--pt-surface-2);border-bottom:1px solid var(--pt-line)}
+.pt-scope{flex:none;display:flex;padding:3px;background:var(--pt-bg);border:1px solid var(--pt-line);border-radius:999px}
+.pt-scope button{padding:7px 15px;border:0;background:transparent;color:var(--pt-muted);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;cursor:pointer;transition:.16s}
+.pt-scope button.is-on{background:var(--pt-amber);color:#1A1206}
+.pt-filters{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0}
+.pt-filters::-webkit-scrollbar{display:none}
+.pt-f{white-space:nowrap;padding:8px 15px;border-radius:999px;border:1px solid var(--pt-line-2);background:transparent;font-size:12.5px;font-weight:600;color:var(--pt-muted);cursor:pointer;transition:.16s}
+.pt-f:hover{color:var(--pt-text);border-color:rgba(255,255,255,.32)}
+.pt-f.is-on{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.42);color:#fff}
+@media(max-width:640px){.pt-fbar{flex-direction:column;align-items:stretch;gap:10px}.pt-filters{width:100%}}
+
+/* ---------- destination cards ----------
+   Fixed pixel boxes, not aspect-ratio, and the structural properties
+   are forced. plan-trip.css is loaded BEFORE responsive.css and
+   mobile.css by the header, so anything those two declare for a
+   generic img or a flex child would otherwise win on source order
+   alone. These few !important flags are the price of loading third
+   from last; everything cosmetic below is left unforced. */
+.pt-dests{
+  padding:20px 24px 26px;overflow-y:auto;overflow-x:hidden;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+  grid-auto-rows:314px;      /* every card the same box */
+  gap:18px;align-content:start;
+}
+.pt-modal .pt-dcard{
+  display:flex !important;
+  flex-direction:column !important;
+  height:100% !important;
+  background:var(--pt-surface-2);border:1px solid var(--pt-line);
+  border-radius:14px;overflow:hidden;cursor:pointer;text-align:left;
+  transition:transform .2s var(--pt-ease),border-color .2s;
+}
+.pt-modal .pt-dcard:hover{transform:translateY(-4px);border-color:var(--pt-amber)}
+.pt-modal .pt-dcard:focus-visible{outline:2px solid var(--pt-amber);outline-offset:3px}
+.pt-modal .pt-dcard *{min-width:0}
+
+/* the photo box: a fixed slab the picture is cropped into */
+.pt-modal .pt-shot{
+  position:relative !important;
+  flex:0 0 172px !important;
+  height:172px !important;
+  width:100% !important;
+  overflow:hidden !important;
+  display:grid;place-items:center;color:rgba(255,255,255,.9);
+}
+/* absolutely positioned, so no img rule anywhere can resize it */
+.pt-modal .pt-shot img{
+  position:absolute !important;inset:0 !important;
+  width:100% !important;height:100% !important;
+  max-width:none !important;min-height:0 !important;
+  object-fit:cover !important;display:block !important;
+}
+.pt-modal .pt-shot::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(9,11,13,.45) 0%,transparent 36%,transparent 62%,rgba(9,11,13,.55) 100%)}
+.pt-tag{position:absolute;z-index:2;top:10px;left:10px;background:rgba(9,11,13,.78);border:1px solid rgba(255,255,255,.18);color:#fff;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:5px 9px;border-radius:999px}
+.pt-add-hint{position:absolute;z-index:2;right:10px;bottom:10px;display:flex;align-items:center;gap:5px;background:var(--pt-amber);color:#1A1206;font-size:11px;font-weight:700;padding:6px 11px;border-radius:999px;opacity:0;transform:translateY(4px);transition:opacity .18s,transform .18s}
+.pt-modal .pt-dcard:hover .pt-add-hint,
+.pt-modal .pt-dcard:focus-visible .pt-add-hint{opacity:1;transform:none}
+
+/* the caption block fills whatever is left of the 314px box */
+.pt-modal .pt-db{
+  flex:1 1 auto !important;min-height:0 !important;
+  display:flex !important;flex-direction:column !important;
+  gap:4px;padding:12px 14px 14px;overflow:hidden;
+}
+.pt-town{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--pt-amber);flex:none}
+.pt-modal .pt-db b{font-family:Archivo,sans-serif;font-size:15px;font-weight:700;line-height:1.25;letter-spacing:-.01em;color:var(--pt-text);flex:none;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* clamped so one long description cannot push the rest out of the box */
+.pt-d{font-size:12.5px;color:var(--pt-muted);line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+
+@media(max-width:520px){
+  .pt-dests{grid-template-columns:1fr;grid-auto-rows:302px;padding:16px 16px 22px}
+  .pt-modal .pt-shot{flex-basis:160px !important;height:160px !important}
+}
+
+.pt-none{grid-column:1/-1;text-align:center;padding:44px 20px;color:var(--pt-muted);line-height:1.7}
+
+/* ---------- preview ---------- */
+.pt-prev{padding:26px;overflow:auto}
+.pt-prev-h{border-bottom:1px solid var(--pt-line-2);padding-bottom:18px;margin-bottom:22px}
+.pt-prev-h h3{font-family:Archivo,sans-serif;font-size:27px;font-weight:800;margin:10px 0 0;letter-spacing:-.03em}
+.pt-prev-h p{margin:7px 0 0;color:var(--pt-muted);font-size:13.5px}
+.pt-prev-day{margin-bottom:24px;break-inside:avoid}
+.pt-prev-day h4{margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--pt-amber)}
+.pt-prev-row{display:grid;grid-template-columns:96px 1fr;gap:16px;padding:12px 0;border-top:1px solid var(--pt-line)}
+.pt-prev-row time{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:13px;color:var(--pt-dim)}
+.pt-prev-row b{font-size:14.5px;font-weight:600}
+.pt-prev-row small{display:block;color:var(--pt-muted);margin-top:2px}
+
+/* ---------- confirm dialog ----------
+   A native confirm() paints in browser chrome: wrong typeface, wrong
+   colours, and no room to say what is actually about to be lost. This
+   reuses the modal shell so a destructive question looks like part of
+   the site rather than an interruption from the browser. */
+.pt-confirm .pt-sheet{width:min(440px,100%);max-height:none}
+.pt-confirm-b{padding:20px 24px 4px}
+.pt-confirm-b p{margin:0;font-size:14px;line-height:1.6;color:var(--pt-dim)}
+.pt-confirm-b .pt-loss{margin-top:14px;padding:12px 14px;background:var(--pt-bg);border:1px solid var(--pt-line);border-radius:var(--pt-r-md);font-size:13px;color:var(--pt-text)}
+.pt-confirm-b .pt-loss b{color:var(--pt-amber);font-family:"JetBrains Mono",monospace}
+.pt-confirm-f{display:flex;gap:10px;justify-content:flex-end;padding:20px 24px 22px}
+.pt-btn--solid{background:var(--pt-red);color:#fff;border-color:transparent}
+.pt-btn--solid:hover{background:#EE6B50}
+@media(max-width:460px){.pt-confirm-f{flex-direction:column-reverse}.pt-confirm-f .pt-btn{width:100%;justify-content:center}}
+
+/* ---------- toast ---------- */
+.pt-toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,150%);background:var(--pt-raised);border:1px solid var(--pt-line-2);color:var(--pt-text);padding:14px 22px;border-radius:999px;font-size:13.5px;font-weight:500;font-family:Inter,sans-serif;box-shadow:0 20px 50px rgba(0,0,0,.55);z-index:1300;transition:transform .34s cubic-bezier(.22,.8,.3,1);display:flex;align-items:center;gap:9px;max-width:min(90vw,540px)}
+.pt-toast.is-up{transform:translate(-50%,0)}
+.pt-toast b{color:var(--pt-amber);font-weight:700}
+.pt-toast-act{flex:none;margin-left:6px;background:transparent;border:1px solid var(--pt-line-2);color:var(--pt-amber);border-radius:999px;padding:5px 13px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;transition:.16s}
+.pt-toast-act:hover{background:var(--pt-amber);border-color:var(--pt-amber);color:#1A1206}
+
+@keyframes pt-pop{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes pt-slide{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+@keyframes pt-fade{from{opacity:0}to{opacity:1}}
+@keyframes pt-out{to{opacity:0;transform:translateX(24px) scale(.97)}}
+@media(prefers-reduced-motion:reduce){
+  .pt *,.pt-modal *,.pt-toast{animation:none !important;transition:none !important}
+}
+
+@media print{
+  .nav,.pt-hero,.pt-actions,.pt-grid,.pt-card,.pt-close,.pt-fbar,.pt-toast,#horizonLine,.skip-link{display:none !important}
+  .pt-modal{position:static;display:block;padding:0}
+  .pt-veil{display:none}
+  .pt-sheet{max-height:none;border:0;border-radius:0;background:#fff;box-shadow:none}
+  .pt-prev,.pt-prev-h h3,.pt-prev-row b,.pt-prev-row time,.pt-prev-row small{color:#000 !important}
+  .pt-prev-day h4{color:#8A5A12 !important}
+}

@@ -1,0 +1,612 @@
+/* ===================================================================
+   assets/css/auth.css
+
+   The sign-in card. Loads AFTER base.css, so everything in here beats
+   section 14 of that file. Nothing in base.css was deleted — if you
+   remove this stylesheet the old card comes back, plainer but working.
+
+   Put the link in includes/header.php, under the search.css line:
+
+     <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('assets/css/auth.css')) ?>">
+
+   It must come before responsive.css and mobile.css. Those two are
+   meant to have the last word.
+
+   WHAT CHANGED FROM THE SCREENSHOT
+
+   1. THE PANEL HAD NO BACKGROUND OF ITS OWN. The form column was
+      transparent, so the page behind it — a beach, a sky — was showing
+      through the fields at whatever colour it happened to be. That is
+      the green-and-blue wash on your screenshot: not a gradient anyone
+      chose, just the homepage leaking through. It is opaque now.
+
+   2. THE COLUMNS WERE 20.5rem AND WHATEVER WAS LEFT, which on a wide
+      screen makes the photograph the narrow one. A tourism site sells
+      the place first: the photo now takes 46% and the card is wider.
+
+   3. THE SOCIAL BUTTONS WERE THREE ICONS with no words. An unlabelled
+      envelope beside a Google mark is a guess, so they are labelled.
+
+   4. THE SEAL. Bottom-left of the photograph, with the provincial
+      government named beside it — the one thing on the card that says
+      this is an official portal and not a fan page.
+
+   CHANGING THE COLOURS
+   Both live in the block below. --a-brand is the button and the focus
+   ring; --a-amber is the accent rule and the eyebrow. The green is
+   taken from the screenshot; for the amber button base.css shipped
+   with, set --a-brand to #F0A32C and --a-brand-ink to #241703.
+   =================================================================== */
+
+.auth-modal{
+  --a-brand:#1F6A4F;        /* sea green: the primary button          */
+  --a-brand-dark:#18543F;   /* its hover                              */
+  --a-brand-ink:#FFFFFF;    /* text on the button                     */
+  --a-amber:#F0A32C;        /* the accent rule, the eyebrow           */
+  --a-ink:#16191C;
+  --a-deep:#08262A;
+  --a-line:rgba(22,25,28,.10);
+  --a-muted:rgba(22,25,28,.55);
+  --a-field:#FBFBF9;
+
+  padding:1.75rem;
+}
+
+/* Darker and less blurred than before. The card is wider now, so the
+   page around it is a thin margin — it should read as a surface, not
+   as a photograph competing with the one inside the card. */
+.auth-modal__backdrop{
+  background:rgba(8,20,24,.58);
+  -webkit-backdrop-filter:blur(5px) saturate(108%);
+          backdrop-filter:blur(5px) saturate(108%);
+}
+
+/* ---------- the card ----------
+   57rem, and the photo takes the larger share. background:#fff is not
+   decoration: without it the panel is transparent and the homepage
+   shows through the form. */
+.auth-modal .auth-modal__box{
+  max-width:57rem;
+  grid-template-columns:minmax(0,46%) minmax(0,54%);
+  background:#fff;
+  border-radius:1.15rem;
+  box-shadow:0 50px 100px -40px rgba(8,20,24,.65),
+             0 0 0 1px rgba(22,25,28,.06);
+}
+
+/* White on a photograph is a coin toss — it lands on a cloud and
+   disappears. Ink disc, white mark, always readable. */
+.auth-modal .auth-modal__close{
+  top:1.1rem; right:1.1rem;
+  width:36px; height:36px;
+  background:rgba(8,20,24,.55);
+  border-color:rgba(255,255,255,.22);
+  color:#fff;
+  -webkit-backdrop-filter:blur(6px);
+          backdrop-filter:blur(6px);
+}
+
+.auth-modal .auth-modal__close:hover{
+  background:#fff; border-color:#fff; color:var(--a-ink);
+  transform:rotate(90deg);
+}
+
+.auth-modal .auth-modal__close svg{ width:16px; height:16px; }
+
+/* ===================================================================
+   THE PHOTOGRAPH
+   =================================================================== */
+.auth-modal .auth-media{
+  min-height:38rem;
+  background:linear-gradient(165deg,#12474C 0%,var(--a-deep) 70%);
+}
+
+/* Every slide is stacked in the same place and only opacity moves.
+   Cross-fading two layers costs nothing; swapping one background-image
+   flashes empty for as long as the next file takes to arrive.
+
+   The slow zoom runs on the visible slide only, so a photo that has
+   been sitting in the background does not arrive already zoomed. */
+.auth-modal .auth-media__img{
+  position:absolute; inset:0;
+  background-image:var(--auth-photo);
+  background-size:cover; background-position:center;
+  opacity:0; transform:scale(1.08);
+  transition:opacity 1.1s ease, transform 11s cubic-bezier(.2,.6,.3,1);
+}
+
+.auth-modal .auth-media__img.is-active{ opacity:1; transform:scale(1); }
+
+/* Three stops. The middle one is the important one: it holds the band
+   where the place name sits, so the name has something solid under it
+   whether the photo is sky or sand there. */
+.auth-modal .auth-media__scrim{
+  background:linear-gradient(180deg,
+              rgba(8,38,42,.55)  0%,
+              rgba(8,38,42,.15) 34%,
+              rgba(8,38,42,.62) 68%,
+              rgba(8,38,42,.94) 100%);
+}
+
+/* ---------- the seal ---------- */
+.auth-media__crest{
+  position:absolute; top:1.6rem; left:2rem; right:2rem; z-index:3;
+  display:flex; align-items:center; gap:.7rem;
+  color:#fff;
+}
+
+/* A white disc behind it, because a provincial seal is a full-colour
+   drawing and a full-colour drawing on a photograph is mud. */
+.auth-media__seal{
+  width:46px; height:46px; flex-shrink:0;
+  object-fit:contain;
+  background:rgba(255,255,255,.94);
+  border-radius:50%;
+  padding:3px;
+  box-shadow:0 2px 10px rgba(8,20,24,.3);
+}
+
+.auth-media__crest-text{
+  display:flex; flex-direction:column; gap:.12rem;
+  font-size:.66rem; line-height:1.25;
+  letter-spacing:.02em;
+  color:rgba(255,255,255,.72);
+  text-shadow:0 1px 8px rgba(8,20,24,.55);
+}
+
+.auth-media__crest-text strong{
+  font-family:var(--font-display);
+  font-size:.58rem; font-weight:600;
+  letter-spacing:.18em; text-transform:uppercase;
+  color:rgba(255,255,255,.62);
+}
+
+/* ---------- the place plate ---------- */
+.auth-modal .auth-media__plate{
+  left:2rem; right:2rem; bottom:1.9rem; z-index:3;
+  padding-left:1.1rem;
+  border-left:2px solid var(--a-amber);
+}
+
+.auth-modal .auth-media__place{
+  font-size:1.85rem;
+  text-shadow:0 2px 20px rgba(8,20,24,.5);
+}
+
+.auth-media__note{
+  margin-top:.35rem;
+  font-size:.8rem; line-height:1.45;
+  color:rgba(255,255,255,.78);
+}
+
+.auth-modal .auth-media__coords{ margin-top:.45rem; }
+
+/* ---------- the dots ----------
+   A hairline, not a hollow circle: three rings on a photograph look
+   like dust. The active one widens rather than changing colour, so it
+   reads at a glance and does not depend on hue.
+
+   44px tall hit area on a 3px rule — the target is finger-sized while
+   the mark stays small. */
+.auth-media__dots{
+  display:flex; gap:.4rem; margin-top:1.1rem;
+}
+
+.auth-media__dot{
+  position:relative;
+  width:26px; height:3px; padding:0;
+  border:none; border-radius:999px; cursor:pointer;
+  background:rgba(255,255,255,.32);
+  transition:background .25s ease, width .3s cubic-bezier(.16,.84,.44,1);
+}
+
+/* The mark stays 3px; the thing a thumb has to hit is 31px tall. */
+.auth-media__dot::before{
+  content:''; position:absolute; inset:-14px -3px;
+}
+
+.auth-media__dot:hover{ background:rgba(255,255,255,.6); }
+
+.auth-media__dot.is-active{ width:38px; background:var(--a-amber); }
+
+/* ===================================================================
+   THE FORM COLUMN
+   =================================================================== */
+
+/* background is the fix for the wash in the screenshot. The panel
+   scrolls on its own if the register pane runs long, so a short laptop
+   screen gets a scrollbar inside the card instead of a card taller
+   than the window. */
+.auth-modal .auth-panel{
+  background:#fff;
+  padding:2.5rem 3rem 2rem;
+  max-height:min(90vh,44rem);
+  overflow-y:auto;
+  scrollbar-width:thin;
+}
+
+/* ---------- the wordmark ----------
+   Centred and larger. base.css sets display:flex with align-items but
+   no justify-content, so the mark sat hard against the left edge of
+   the panel while everything under it — the heading, the fields —
+   read as a block with its own left margin. It looked stranded rather
+   than placed.
+
+   justify-content:center is the whole fix. It needs to be stated
+   here: flex-start is the initial value, so there is nothing in
+   base.css to override, only a default to replace.
+
+   88px from 64px. The mark is wide and short — most of its height is
+   the "love" script above the letters — so it carries a larger size
+   better than a square logo would, and at 64 it was reading as an
+   afterthought above a 2rem heading.
+
+   min-height matches, so the space is reserved before the PNG
+   arrives and the heading does not jump up and then drop back down
+   as it loads. */
+.auth-modal .auth-logo{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:88px;
+  margin-bottom:1.6rem;
+}
+
+.auth-modal .auth-logo img{ height:88px; width:auto; }
+
+.auth-modal .auth-modal__title{
+  font-size:2.05rem; margin-bottom:.45rem;
+}
+
+.auth-modal .auth-modal__desc{
+  font-size:.87rem; margin-bottom:1.5rem;
+}
+
+/* The three panes. data-mode on #authBox picks one; the other two are
+   display:none, which also takes their fields out of the tab order —
+   important, because three panes of inputs are all in the DOM at once
+   and a hidden required field would otherwise block submission. */
+.auth-modal__box[data-mode="signin"]   .auth-pane--register,
+.auth-modal__box[data-mode="signin"]   .auth-pane--reset,
+.auth-modal__box[data-mode="register"] .auth-pane--signin,
+.auth-modal__box[data-mode="register"] .auth-pane--reset,
+.auth-modal__box[data-mode="reset"]    .auth-pane--signin,
+.auth-modal__box[data-mode="reset"]    .auth-pane--register{ display:none; }
+
+/* ---------- fields ---------- */
+.auth-modal .auth-field{ margin-bottom:.8rem; }
+
+.auth-modal .auth-field input{
+  padding:.95rem 1rem;
+  font-size:.9rem;
+  background:var(--a-field);
+  border:1px solid rgba(22,25,28,.15);
+  border-radius:.65rem;
+}
+
+.auth-modal .auth-field input:focus{
+  background:#fff;
+  border-color:var(--a-brand);
+  box-shadow:0 0 0 3px rgba(31,106,79,.16);
+}
+
+/* The browser paints its own colour over an autofilled field and
+   ignores background. A very long inset shadow is the only thing that
+   covers it, so an autofilled email does not sit in a pale blue box
+   that matches nothing else on the card. */
+.auth-modal .auth-field input:-webkit-autofill,
+.auth-modal .auth-field input:-webkit-autofill:hover,
+.auth-modal .auth-field input:-webkit-autofill:focus{
+  -webkit-text-fill-color:var(--a-ink);
+  -webkit-box-shadow:0 0 0 100px var(--a-field) inset;
+  transition:background-color 9999s ease-out;
+}
+
+/* Set by the JS when a field fails its check. The ring is the same
+   shape as the focus ring so the field does not resize. */
+.auth-modal .auth-field input.is-invalid{
+  border-color:#B22C22;
+  box-shadow:0 0 0 3px rgba(178,44,34,.14);
+}
+
+.auth-field__caps{
+  display:block; margin-top:.4rem;
+  font-size:.72rem; font-weight:500; color:#9A5B12;
+}
+
+.auth-field__caps::before{ content:'⇪ '; }
+
+/* ---------- password strength ---------- */
+.auth-strength{ margin-top:.55rem; }
+
+.auth-strength__bars{
+  display:grid; grid-template-columns:repeat(4,1fr); gap:.25rem;
+}
+
+.auth-strength__bars span{
+  height:3px; border-radius:999px;
+  background:rgba(22,25,28,.1);
+  transition:background .25s ease;
+}
+
+.auth-strength[data-level="1"] .auth-strength__bars span:nth-child(-n+1){ background:#B22C22; }
+.auth-strength[data-level="2"] .auth-strength__bars span:nth-child(-n+2){ background:#D08A1E; }
+.auth-strength[data-level="3"] .auth-strength__bars span:nth-child(-n+3){ background:#2E7D5B; }
+.auth-strength[data-level="4"] .auth-strength__bars span{ background:var(--a-brand); }
+
+.auth-strength__text{
+  display:block; margin-top:.35rem;
+  font-size:.72rem; color:var(--a-muted);
+}
+
+/* ---------- the row above the button ---------- */
+.auth-modal .auth-form__row{ margin:1rem 0 1.2rem; }
+
+.auth-modal .auth-check{ font-size:.82rem; }
+
+/* A button styled as a link needs these three lines or it inherits a
+   grey system font at 13.33px and sits a pixel low. */
+.auth-modal .auth-link{
+  border:none; background:none; padding:0; cursor:pointer;
+  font-family:inherit; font-size:.82rem; font-weight:500;
+  color:var(--a-brand);
+}
+
+.auth-modal .auth-link:hover{
+  color:var(--a-brand-dark); text-decoration:underline; text-underline-offset:3px;
+}
+
+/* The terms checkbox wraps onto two lines, so it is aligned to the top
+   rather than the middle — a centred tick beside two lines of text
+   floats between them. */
+.auth-check--terms{
+  align-items:flex-start; gap:.6rem;
+  margin-bottom:1.2rem;
+  font-size:.78rem; line-height:1.5;
+}
+
+.auth-check--terms input{ margin-top:.15rem; }
+
+.auth-check--terms a{
+  color:var(--a-ink);
+  text-decoration:underline; text-underline-offset:2px;
+  text-decoration-color:var(--a-amber);
+  text-decoration-thickness:1.5px;
+}
+
+/* ---------- the submit button ---------- */
+.auth-modal .btn{
+  position:relative;
+  display:flex; align-items:center; justify-content:center; gap:.55rem;
+  width:100%; padding:1rem 1.5rem;
+  border:none; border-radius:.65rem; cursor:pointer;
+  font-family:var(--font-display);
+  font-size:.9rem; font-weight:700; letter-spacing:.01em;
+}
+
+.auth-modal .btn--orange{
+  background:var(--a-brand); color:var(--a-brand-ink);
+  box-shadow:0 1px 2px rgba(8,20,24,.14);
+  transition:background .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.auth-modal .btn--orange:hover{
+  background:var(--a-brand-dark); transform:translateY(-1px);
+  box-shadow:0 12px 24px -12px rgba(31,106,79,.8);
+}
+
+.auth-modal .btn--orange:active{ transform:translateY(0) scale(.99); }
+
+/* ---------- the button while it is working ----------
+   The click has to look like it landed, or the visitor clicks again
+   and you get two sign-in attempts. The label goes, the ring spins,
+   and the JS sets disabled so the second click cannot happen. */
+.btn__spinner{
+  display:none;
+  width:17px; height:17px; border-radius:50%;
+  border:2px solid rgba(255,255,255,.35);
+  border-top-color:currentColor;
+  animation:authSpin .7s linear infinite;
+}
+
+.auth-modal .btn.is-busy{ cursor:progress; opacity:.9; }
+
+.auth-modal .btn.is-busy .btn__label{ display:none; }
+
+.auth-modal .btn.is-busy .btn__spinner{ display:block; }
+
+.auth-modal .btn[disabled]{ pointer-events:none; }
+
+@keyframes authSpin{ to{ transform:rotate(360deg); } }
+
+/* ---------- or continue with ---------- */
+.auth-modal .auth-divider{ margin:1.4rem 0 1rem; }
+
+.auth-modal .auth-social{ gap:.5rem; }
+
+/* Labelled now, so the row is three named choices rather than three
+   guesses. The label hides under 380px where it would wrap — the icon
+   plus the aria-label still says which is which. */
+.auth-modal .auth-social__btn{
+  gap:.45rem; height:46px;
+  background:#fff;
+  border:1px solid rgba(22,25,28,.14);
+  border-radius:.65rem;
+  font-family:var(--font-body);
+  font-size:.78rem; font-weight:600;
+  color:rgba(22,25,28,.78);
+}
+
+.auth-modal .auth-social__btn:hover{
+  background:#FAFAF8; border-color:rgba(22,25,28,.3);
+  transform:translateY(-1px);
+  box-shadow:0 6px 14px -8px rgba(8,20,24,.35);
+}
+
+.auth-modal .auth-social__btn svg{ width:17px; height:17px; flex-shrink:0; }
+
+/* The provider is not connected yet. Still clickable — the click is
+   what explains why nothing happened. A disabled button explains
+   nothing. */
+.auth-modal .auth-social__btn[data-ready="0"]{ opacity:.72; }
+
+/* ---------- the way out ---------- */
+.auth-modal .auth-switch{ padding-top:1.4rem; }
+
+.auth-modal .auth-switch__btn{ font-size:.85rem; }
+
+.auth-guest{
+  display:inline-flex; align-items:center; gap:.4rem;
+  margin-top:.85rem; padding:0;
+  border:none; background:none; cursor:pointer;
+  font-family:var(--font-body);
+  font-size:.8rem; font-weight:500;
+  color:var(--a-muted);
+  transition:color .18s ease, gap .18s ease;
+}
+
+.auth-guest svg{ width:15px; height:15px; }
+
+.auth-guest:hover{ color:var(--a-ink); gap:.6rem; }
+
+/* ---------- the honeypot ----------
+   Not display:none. Some bots skip anything hidden that way, and some
+   password managers will not fill a form that has one. Off-screen with
+   zero size is invisible to a person and ordinary to a script. */
+.auth-hp{
+  position:absolute; left:-9999px;
+  width:1px; height:1px; overflow:hidden;
+}
+
+/* ---------- the small print ---------- */
+.auth-modal .auth-terms{
+  padding-top:1.5rem;
+  gap:.35rem 1.1rem;
+}
+
+/* ---------- focus ----------
+   Brand green, not black, and thick enough to see against the field it
+   sits beside. Keyboard users are the only people who see this and it
+   is the only thing telling them where they are. */
+.auth-modal button:focus-visible,
+.auth-modal a:focus-visible,
+.auth-modal input:focus-visible{
+  outline:2px solid var(--a-brand);
+  outline-offset:2px;
+  border-radius:.3rem;
+}
+
+.auth-modal .auth-media__dot:focus-visible,
+.auth-modal .auth-modal__close:focus-visible{
+  outline:2px solid #fff;
+  outline-offset:3px;
+}
+
+/* ===================================================================
+   hidden MUST MEAN HIDDEN
+
+   base.css sets .auth-error{display:flex} and .auth-notice{display:flex}.
+   A class-based display beats the browser's own [hidden]{display:none},
+   so the two empty banners this markup renders — there so the JS has
+   somewhere to write without building a node — would show up as blank
+   red and green boxes above the form, on every page, permanently.
+
+   This is the rule that stops that. !important is warranted: it exists
+   to beat a display declared elsewhere, which is precisely the case
+   the keyword is for.
+   =================================================================== */
+.auth-modal [hidden]{ display:none !important; }
+
+/* Only the visible slide gets the slow zoom. base.css hands
+   transform:scale(1) to every .auth-media__img the moment the card
+   opens, which would spend the effect on photographs nobody has seen
+   yet — by the time a dot brings one forward it is already at rest. */
+.auth-modal.is-open .auth-media__img:not(.is-active){ transform:scale(1.08); }
+
+/* ===================================================================
+   NARROW — the card stacks
+   =================================================================== */
+@media (max-width:900px){
+
+    .auth-modal{ padding:1rem; }
+
+    .auth-modal .auth-modal__box{
+      max-width:27rem;
+      grid-template-columns:1fr;
+    }
+
+    /* The photo becomes a banner. Tall enough for the seal and the
+       place name to both sit on it without touching. */
+    .auth-modal .auth-media{ min-height:12.5rem; }
+
+    .auth-media__crest{ top:1.1rem; left:1.4rem; right:4rem; }
+
+    .auth-media__seal{ width:38px; height:38px; }
+
+    .auth-modal .auth-media__plate{ left:1.4rem; right:1.4rem; bottom:1.1rem; }
+
+    .auth-modal .auth-media__place{ font-size:1.35rem; }
+
+    .auth-media__note{ display:none; }          /* the coords say it better in less room */
+
+    .auth-media__dots{ margin-top:.8rem; }
+
+    .auth-modal .auth-panel{
+      padding:1.85rem 1.6rem 1.5rem;
+      max-height:none;                          /* the page scrolls instead of the panel */
+    }
+
+    /* Smaller on a stacked card, but still centred — the panel is
+       narrower here and a wide wordmark at 88px would crowd the
+       heading. */
+    .auth-modal .auth-logo{ min-height:70px; margin-bottom:1.25rem; }
+
+    .auth-modal .auth-logo img{ height:70px; }
+
+    .auth-modal .auth-modal__title{ font-size:1.7rem; }
+}
+
+@media (max-width:420px){
+
+    .auth-modal{ padding:.7rem; }
+
+    .auth-modal .auth-modal__box{ border-radius:.9rem; }
+
+    .auth-modal .auth-media{ min-height:10rem; }
+
+    .auth-modal .auth-panel{ padding:1.5rem 1.2rem 1.3rem; }
+
+    .auth-modal .auth-modal__title{ font-size:1.5rem; }
+
+    .auth-modal .auth-logo{ min-height:60px; margin-bottom:1.1rem; }
+
+    .auth-modal .auth-logo img{ height:60px; }
+
+    .auth-modal .auth-field-row{ grid-template-columns:1fr; gap:0; }
+
+    /* Icons only. Three labels do not fit across a small phone and a
+       wrapped label is worse than none — the aria-label still names
+       each one for a screen reader. */
+    .auth-social__label{ display:none; }
+}
+
+/* Everything on this card that moves, stopped. The slideshow still
+   changes photograph — it just cuts instead of fading, and
+   auth-modal.js stops advancing it on its own. */
+@media (prefers-reduced-motion: reduce){
+
+    .auth-modal,
+    .auth-modal .auth-modal__box,
+    .auth-modal .auth-media__img,
+    .auth-modal .auth-modal__close,
+    .auth-modal .btn,
+    .auth-modal .auth-social__btn{
+      transition:none !important;
+    }
+
+    .auth-modal .auth-media__img{ transform:none; }
+
+    .auth-modal .auth-media__img.is-active{ transform:none; }
+
+    .btn__spinner{ animation-duration:1.8s; }
+}

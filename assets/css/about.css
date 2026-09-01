@@ -1,0 +1,1974 @@
+/* ===================================================================
+   assets/about.css  —  loaded by about.php only
+
+   The two-column orientation split, the fact list, the counted stats
+   band, and the town grid.
+
+   Loads AFTER base.css, so anything here wins over base.
+   =================================================================== */
+
+   /* ===================================================================
+   assets/about.css  —  loaded by about.php only
+
+   The two-column orientation split, the fact list, the counted stats
+   band, and the town grid.
+
+   Loads AFTER base.css, so anything here wins over base.
+   =================================================================== */
+
+/* ---- pasted from _extract_about.css ---- */
+.section--lg{ padding:6rem 0; }
+
+@media (min-width:768px){
+  .section--lg{ padding:8rem 0; }
+}
+
+.about-split__body{ color:rgba(22,25,28,.7); line-height:1.85; margin-bottom:1.1rem; }
+/* ---- end pasted block ---- */
+
+/* ===================================================================
+   10. STATS
+   =================================================================== */
+
+/* ===================================================================
+   10. STATS
+   =================================================================== */
+/* ⚠ UNUSED ON THIS PAGE. The counter band these style was replaced by
+   the .beats section at the bottom of this file. Left in place rather
+   than deleted because .photo-card and .stats are base.css components
+   that other pages still use — if nothing else on the site renders a
+   .stats block, these rules and the .photo-card hover rules further
+   down can go. */
+.stats{ background:var(--navy); color:#fff; position:relative; }
+
+.stats::before{
+  content:''; position:absolute; top:0; left:50%; transform:translateX(-50%);
+  width:64px; height:3px; background:var(--orange); border-radius:999px;
+}
+
+.stats-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:2.5rem; text-align:center; }
+
+@media (min-width:768px){
+
+   .stats-grid{ grid-template-columns:repeat(4,1fr); gap:2rem; }
+}
+
+.stat__num{ font-weight:800; font-size:clamp(2.2rem,6vw,3.4rem); margin-bottom:.5rem; font-variant-numeric:tabular-nums; }
+
+.stat__label{ color:rgba(255,255,255,.6); font-size:.8rem; letter-spacing:.05em; text-transform:uppercase; }
+
+/* --- about: two-column block --- */
+.about-split{ display:grid; grid-template-columns:1fr; gap:2.5rem; align-items:start; }
+
+@media (min-width:900px){
+
+   .about-split{ grid-template-columns:1.15fr .85fr; gap:4rem; }
+}
+
+.about-split__title{ font-weight:700; font-size:clamp(1.7rem,3.5vw,2.3rem); margin-bottom:1.2rem; }
+
+.fact-list{ display:grid; gap:0; margin:2rem 0 1.25rem; }
+
+.fact-list > div{
+  display:flex; justify-content:space-between; gap:1.5rem;
+  padding:.85rem 0; border-bottom:1px solid rgba(22,25,28,.1);
+}
+
+.fact-list dt{ font-size:.83rem; color:rgba(22,25,28,.55); }
+
+.fact-list dd{ margin:0; font-size:.88rem; font-weight:600; text-align:right; }
+
+.note{
+  font-size:.8rem; line-height:1.65; color:rgba(22,25,28,.5);
+  padding:.85rem 1rem; border-left:2px solid var(--orange);
+  background:rgba(240,163,44,.05); border-radius:0 .4rem .4rem 0;
+}
+
+.note--light{ color:rgba(255,255,255,.6); background:rgba(255,255,255,.05); margin-top:2.5rem; }
+
+/* --- the twelve towns --- */
+.town-grid{ display:grid; grid-template-columns:1fr; gap:0; }
+
+@media (min-width:640px){
+
+   .town-grid{ grid-template-columns:1fr 1fr; column-gap:3rem; }
+}
+
+@media (min-width:1000px){
+
+   .town-grid{ grid-template-columns:repeat(3,1fr); }
+}
+
+.town-grid li{
+  display:flex; align-items:baseline; justify-content:space-between; gap:1rem;
+  padding:.95rem 0; border-bottom:1px solid rgba(22,25,28,.1);
+}
+
+.town-grid__name{ font-weight:600; font-size:.98rem; }
+
+.town-grid__note{ font-size:.78rem; color:rgba(22,25,28,.5); text-align:right; }
+
+/* --- getting here --- */
+.getting-here{ background:var(--navy); color:#fff; }
+
+.getting-here__title{ font-weight:800; font-size:clamp(1.9rem,4.5vw,2.6rem); margin-bottom:2.5rem; }
+
+.steps{ display:grid; grid-template-columns:1fr; gap:1.5rem; }
+
+@media (min-width:768px){
+
+   .steps{ grid-template-columns:repeat(3,1fr); gap:2rem; }
+}
+
+.step{ padding-top:1.25rem; border-top:2px solid rgba(255,255,255,.18); }
+
+.step__label{
+  display:block; font-size:.72rem; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--orange); margin-bottom:.7rem;
+}
+
+.step__body{ font-size:.9rem; line-height:1.75; color:rgba(255,255,255,.72); }
+/* ===================================================================
+   11. CRACKED MOSAIC  (festivals)
+
+   Four photos, each broken into four quarters that sit a nudge out of
+   line. Hovering a photo closes that photo only, and brings its colour
+   back at the same time.
+
+   THE SEAMS ARE OFF-CENTRE ON PURPOSE
+   The cut is at 46% across and 44% down, not at the midpoint. Two
+   reasons. It stops a face or a subject in the middle of the frame
+   getting quartered through its centre, which reads as a mistake rather
+   than an effect. And four identical quarters look mechanical — uneven
+   ones look like something actually broke.
+
+   That is also why the numbers below are not round. Each quarter is a
+   different size, so each one needs its own blow-up factor to hold a
+   figure-sized photo:
+
+     left column   46% wide  ->  img 100/0.46 = 217.3913%
+     right column  54% wide  ->  img 100/0.54 = 185.1852%
+     top row       44% tall  ->  img 100/0.44 = 227.2727%
+     bottom row    56% tall  ->  img 100/0.56 = 178.5714%
+
+   and the right/bottom quarters shift back by the fraction already
+   used up: 46/54 = 85.1852% and 44/56 = 78.5714% of their own size.
+
+   IF YOU MOVE THE SEAMS, all eight of those numbers change together.
+   Recompute them or the photos will not close up — this is the one
+   part of the block you cannot eyeball.
+
+   HOW THE MOVEMENT WORKS
+   Each quarter moves twice, and the two moves do different jobs.
+
+   1. THE PULL-APART (--gx, --gy). Every quarter backs away from the
+   centre of its own photo, across and down. This is what opens the
+   gutters. The DIRECTION is baked into each quarter's rule and never
+   changes: top-left goes left and up, bottom-right goes right and
+   down, and so on. Only the distance varies.
+
+   THAT RULE IS LOAD-BEARING. An earlier version varied the offsets by
+   flipping their sign, which on half the photos pushed opposite corners
+   towards each other and closed the gutter completely. If you want a
+   photo to break differently, change how far a quarter moves, never
+   which way.
+
+   2. THE SLIDE (--sx, --sy). On top of that, each quarter slides ALONG
+   the seams it sits on: the left column drops by --sy while the right
+   column lifts by it, and the top row shifts left by --sx while the
+   bottom row shifts right. This is the difference between a photo that
+   looks broken and one that looks like it has a tidy cross drawn
+   through the middle. Measured off the reference collage, the slide
+   runs about half again as far as the pull-apart.
+
+   THE SLIDE MUST CANCEL ACROSS EVERY SEAM, and it does: both quarters
+   on either side of a given seam carry the SAME slide in the direction
+   that runs along it, so they move together and the gutter width is
+   still set by --gx / --gy alone. Give two quarters that share a seam
+   different slide values and the gutter will taper, or close at one
+   end. Vary --sx / --sy per photo, never per quarter.
+
+   THE GAPS ARE IN rem, NOT PERCENT. A percentage translate resolves
+   against the element's own size, and these quarters are deliberately
+   unequal — 46% vs 54% wide, 44% vs 56% tall. The same percentage on
+   two of them produces two different gaps, which is why the gutters
+   looked uneven before. A fixed length gives every seam the same
+   opening no matter which quarter it belongs to.
+
+   WHY --seamx / --seamy EXIST
+   Quarters can land a hairline apart on fractional device pixel ratios,
+   and with the cut running both ways the gap can open either direction.
+   Each quarter pulls back half a pixel on the axes where it meets a
+   neighbour, so they overlap instead of meeting exactly.
+
+   CORNERS ARE SQUARE. Rounding them softened the break — a torn edge
+   does not have a radius on it. Nothing in this block sets a
+   border-radius, and adding one back means adding it to all sixteen
+   quarters or the photos will not close up cleanly.
+
+   NOTHING HERE SCALES. Scaling a quarter would scale the photo inside
+   it too, and the four would no longer line up. Translation only.
+   =================================================================== */
+.crack-band{ background:var(--mist); }
+
+.crack-split{ display:grid; grid-template-columns:1fr; gap:3rem; align-items:center; }
+
+@media (min-width:900px){
+
+   /* The collage takes the larger share now. It was .95fr against 1fr,
+      which put the photos in the narrower of the two columns even
+      though they are the thing the section is about — the list beside
+      them is short lines and reads fine at a tighter measure. */
+   .crack-split{ grid-template-columns:1.12fr 1fr; gap:3.25rem; }
+}
+
+/* The .5rem left and right is not spacing — the quarters slide up to
+   about that far outside their figure's box, and without it the
+   outermost ones clip against the edge of the column. */
+.crack-stage{ padding:0 .5rem 2.25rem; }
+
+/* THE TWO GAPS IN THIS BLOCK ARE RELATED — KEEP THEM APART.
+
+   There is space between the quarters of one photo (--gx / --gy below)
+   and space between the photos themselves (this gap). When those two
+   are similar, the eye groups by nothing: sixteen tiles read as one
+   field and you cannot tell where one photo ends and the next begins.
+
+   The rule is simply that the gap between photos has to be clearly
+   bigger — around three to four times.
+
+   MEASURE THE GAP FROM THE SHARDS, NOT THE GRID. Quarters now sit up
+   to --gx + --sx outside their figure's box, so a photo eats about
+   22px of this gutter before the next one starts. The grid gap is 56px
+   and the crack inside a photo is about 10px, which leaves 34px of
+   real daylight between photos against that 10px — still the three to
+   four times the grouping needs. Widen the cracks or the slide and you
+   have to widen this to match, twice over.
+
+   THE 40rem CAP IS A CEILING, NOT A TARGET. It was 30rem, which was
+   binding at every desktop width and holding the photos about a third
+   smaller than the column could carry — the collage read as small
+   pictures adrift in a lot of grey. At 40rem the column runs out first
+   on any normal screen, so this now only catches the very wide case,
+   which is what a cap is for: past a point the photos get big enough
+   that the offsets stop reading as a crack and start reading as a
+   broken layout. */
+/* minmax(0,1fr), NOT 1fr. A plain 1fr is minmax(auto,1fr), and the auto
+   floor picks up a contribution from the figures' aspect-ratio, which
+   resolved the two columns to 236px and 204px — the left-hand photos
+   came out about 16% bigger than the right-hand ones and the tracks
+   overflowed the 28rem cap. Flooring the minimum at 0 makes the split
+   even. Do not shorten it back. */
+.crack-grid{
+  position:relative;
+  display:grid; grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:3.25rem 3.5rem;
+  max-width:40rem; margin:0 auto;
+}
+
+/* the second column drops, so the block reads as a collage not a table */
+.crack-grid .crack:nth-child(even){ margin-top:2rem; }
+
+/* --- one photo: portrait, and its own hover target --- */
+.crack{ position:relative; aspect-ratio:4/5; margin:0; cursor:pointer; }
+
+.crack:focus-visible{ outline:2px solid var(--orange); outline-offset:.75rem; }
+
+/* --gx / --gy are half the gutter: each quarter backs away from the
+   centre line by this much, so the visible gap between two quarters is
+   twice the value.
+
+   --sx / --sy are half the stagger, in the same way: the two columns
+   slide past each other by twice --sy, the two rows by twice --sx.
+   These do not affect gutter width — see the header.
+
+   All four are set here as the default; the per-figure rules further
+   down vary them so the collage does not repeat one gesture. */
+.crack__shard{
+  position:absolute;
+  --gx:.3rem; --gy:.3rem;
+  --sx:.34rem; --sy:.3rem;
+  overflow:hidden;
+  background:var(--navy);
+  box-shadow:0 10px 22px -16px rgba(22,25,28,.65);
+  transition:transform .8s cubic-bezier(.16,.84,.44,1);
+  will-change:transform;
+}
+
+/* Monochrome while broken, colour once it closes — the reference
+   collage is black and white throughout, and letting the colour return
+   gives the hover something to land on beyond the movement.
+   DELETE THESE TWO RULES to keep the photos in colour throughout. */
+.crack__img{ filter:grayscale(1) contrast(1.05); transition:filter .8s ease; }
+
+.crack:focus-within .crack__img,
+.crack.is-assembled .crack__img{ filter:grayscale(0) contrast(1); }
+
+/* figure-sized photo inside a smaller window.
+   max-width:none is needed — base.css caps every img at 100%. */
+.crack__img{
+  position:absolute; z-index:1;
+  max-width:none;
+  object-fit:cover;
+}
+
+/* THE CAP OVERRIDE, PROPERLY THIS TIME — DO NOT DELETE.
+
+   The rule above was losing to base.css's img{max-width:100%}, and the
+   symptom is specific enough to name: only the top-left quarter shows a
+   picture, and it is the WHOLE photo squeezed into that quarter instead
+   of a zoomed-in corner. The other three sit empty on their gradient.
+
+   Why that shape. Every quarter blows the photo up past the size of its
+   own window — 217% wide, 227% tall — and the three quarters that are
+   not top-left then pull it back with a negative top or left so their
+   window lands on a different part of it. Clamp the width to 100% and
+   the blow-up is gone: top-left, at top:0 left:0, shows the whole photo
+   shrunk down, while the other three still carry their -85% and -78%
+   offsets and slide the now-too-small image clean outside an
+   overflow:hidden box. Nothing left to see, so the navy gradient behind
+   it comes through and reads as a missing file.
+
+   So a grey quarter here is NOT proof the photo is missing. Check
+   whether the top-left one is showing the full frame first — if it is,
+   this is the cause and the file is fine.
+
+   !important because plain specificity was not enough: base.css loads
+   after about.css in includes/header.php, so its img rule wins ties on
+   order regardless of how the class selector above is written. Raising
+   the selector to .crack__shard .crack__img would beat it today, but it
+   breaks again the moment anyone adds !important to the base cap, which
+   is exactly the kind of change a global stylesheet gets.
+
+   max-height and the min-* pair are here for the same reason and cost
+   nothing: any one of them clamping produces the same broken picture. */
+.crack__shard .crack__img{
+  max-width:none !important;
+  max-height:none !important;
+  min-width:0 !important;
+  min-height:0 !important;
+}
+
+/* AND THE GEOMETRY ITSELF, FOR THE SAME REASON.
+
+   Capping max-width was only half of it. A global image rule can flatten
+   this effect through any of five properties — width, height, top, left,
+   or the max-* pair above — and every one of them produces the identical
+   symptom, so you cannot tell from looking which one did it. The usual
+   suspect is the img{max-width:100%;height:auto} pair that ships in more
+   or less every reset, but there is no way to be sure without reading
+   whatever base.css happens to say this week.
+
+   Rather than keep guessing at the cascade, the eight rules below repeat
+   the numbers from the quarter rules further up with !important on each,
+   which ends the argument for good. THE NUMBERS ARE COPIES, NOT NEW
+   VALUES. If you change a split up there you must change it here too or
+   these will silently win with the old figure and the photo will never
+   close. That duplication is the price of not being at the mercy of a
+   stylesheet this file does not control.
+
+   HOW TO CHECK IT IS FIXED: hover the first photo. If it closes into one
+   whole picture, this was it. If the top-left quarter still shows the
+   entire photo shrunk to fit, the file has not reloaded — hard-refresh
+   with Ctrl+Shift+R, because a stylesheet this size is exactly what a
+   browser holds on to. */
+.crack__shard--tl .crack__img{ width:217.3913% !important; height:227.2727% !important; top:0 !important; left:0 !important; }
+
+.crack__shard--tr .crack__img{ width:185.1852% !important; height:227.2727% !important; top:0 !important; left:-85.1852% !important; }
+
+.crack__shard--bl .crack__img{ width:217.3913% !important; height:178.5714% !important; top:-78.5714% !important; left:0 !important; }
+
+.crack__shard--br .crack__img{ width:185.1852% !important; height:178.5714% !important; top:-78.5714% !important; left:-85.1852% !important; }
+
+.crack--wide-left .crack__shard--tl .crack__img{ width:185.1852% !important; height:208.3333% !important; top:0 !important; left:0 !important; }
+
+.crack--wide-left .crack__shard--tr .crack__img{ width:217.3913% !important; height:208.3333% !important; top:0 !important; left:-117.3913% !important; }
+
+.crack--wide-left .crack__shard--bl .crack__img{ width:185.1852% !important; height:192.3077% !important; top:-92.3077% !important; left:0 !important; }
+
+.crack--wide-left .crack__shard--br .crack__img{ width:217.3913% !important; height:192.3077% !important; top:-92.3077% !important; left:-117.3913% !important; }
+
+/* the four quarters: slot, blow-up, crack offset, seam nudge, corner.
+   See the header for where the percentages come from. */
+.crack__shard--tl{
+  top:0; left:0; width:46%; height:44%;
+  --seamx:0px; --seamy:0px;
+  transform:translate(calc(-1 * var(--gx) - var(--sx)), calc(-1 * var(--gy) + var(--sy)));
+}
+
+.crack__shard--tr{
+  top:0; left:46%; width:54%; height:44%;
+  --seamx:-.5px; --seamy:0px;
+  transform:translate(calc(var(--gx) - var(--sx)), calc(-1 * var(--gy) - var(--sy)));
+}
+
+.crack__shard--bl{
+  top:44%; left:0; width:46%; height:56%;
+  --seamx:0px; --seamy:-.5px;
+  transform:translate(calc(-1 * var(--gx) + var(--sx)), calc(var(--gy) + var(--sy)));
+}
+
+.crack__shard--br{
+  top:44%; left:46%; width:54%; height:56%;
+  --seamx:-.5px; --seamy:-.5px;
+  transform:translate(calc(var(--gx) + var(--sx)), calc(var(--gy) - var(--sy)));
+}
+
+.crack__shard--tl .crack__img{ width:217.3913%; height:227.2727%; top:0; left:0; }
+
+.crack__shard--tr .crack__img{ width:185.1852%; height:227.2727%; top:0; left:-85.1852%; }
+
+.crack__shard--bl .crack__img{ width:217.3913%; height:178.5714%; top:-78.5714%; left:0; }
+
+.crack__shard--br .crack__img{ width:185.1852%; height:178.5714%; top:-78.5714%; left:-85.1852%; }
+
+/* --- alternate cut: 54/46 across, 48/52 down ---
+   In the reference no two photos are cut in the same place. This flips
+   the wide half to the left and moves the crossbar nearer the middle,
+   which is enough that photos 2 and 3 do not read as copies of 1 and 4.
+
+   THE FOUR NUMBERS COME FROM THE SPLIT — do not eyeball them. For a
+   quarter that is p% of the figure, the photo inside is 100/p as wide
+   (or tall) as the quarter, and a right or bottom quarter is pulled
+   back by (opposite share / own share) x 100%. Change the split and
+   every line below has to be recomputed or the photo will not close. */
+.crack--wide-left .crack__shard--tl{ width:54%; height:48%; }
+
+.crack--wide-left .crack__shard--tr{ left:54%; width:46%; height:48%; }
+
+.crack--wide-left .crack__shard--bl{ top:48%; width:54%; height:52%; }
+
+.crack--wide-left .crack__shard--br{ top:48%; left:54%; width:46%; height:52%; }
+
+.crack--wide-left .crack__shard--tl .crack__img{ width:185.1852%; height:208.3333%; top:0; left:0; }
+
+.crack--wide-left .crack__shard--tr .crack__img{ width:217.3913%; height:208.3333%; top:0; left:-117.3913%; }
+
+.crack--wide-left .crack__shard--bl .crack__img{ width:185.1852%; height:192.3077%; top:-92.3077%; left:0; }
+
+.crack--wide-left .crack__shard--br .crack__img{ width:217.3913%; height:192.3077%; top:-92.3077%; left:-117.3913%; }
+
+/* Each photo breaks by a slightly different amount, so the collage does
+   not read as the same gesture repeated four times. Distances only —
+   the directions are fixed in the quarter rules above and must stay
+   that way, or the gutters close.
+
+   Set all four variables per photo, not just the pair you are adjusting.
+   They inherit from .crack__shard otherwise, and a photo that slides
+   hard but barely opens looks like a mistake rather than a break. */
+.crack:nth-child(2) .crack__shard{ --gx:.26rem; --gy:.32rem; --sx:.22rem; --sy:.38rem; }
+
+.crack:nth-child(3) .crack__shard{ --gx:.32rem; --gy:.26rem; --sx:.4rem;  --sy:.24rem; }
+
+.crack:nth-child(4) .crack__shard{ --gx:.28rem; --gy:.3rem;  --sx:.3rem;  --sy:.34rem; }
+
+/* --- assembled ---
+   Scoped to the figure, not the grid, so each photo answers only to its
+   own hover and the other three stay broken.
+
+   :focus-within covers keyboard users (it matches the figure itself
+   when the figure is focused). .is-assembled is what the script adds on
+   touch. */
+.crack:focus-within .crack__shard,
+.crack.is-assembled .crack__shard{
+  transform:translate(var(--seamx), var(--seamy));
+}
+
+/* The mouse keeps its own rule, but only on a device that HAS a mouse.
+
+   Unguarded, :hover on a touch screen fires on tap and then LATCHES —
+   it stays matched until you tap something else. That is invisible while
+   hover is the only way in, because a latched hover and a real tap look
+   identical. It stops being invisible the moment the script below adds
+   a tap toggle: tap once and both the class and the stuck hover are on;
+   tap again and the class comes off while the hover stays, so the photo
+   refuses to break apart and the second tap does nothing.
+
+   (hover:hover) is what keeps the two inputs from arguing. Nothing
+   changes for a mouse. */
+@media (hover:hover){
+  .crack:hover .crack__shard{
+    transform:translate(var(--seamx), var(--seamy));
+  }
+
+  .crack:hover .crack__img{ filter:grayscale(0) contrast(1); }
+}
+
+.crack__hint{
+  position:absolute; left:0; right:0; bottom:-2rem; z-index:5;
+  text-align:center; pointer-events:none;
+  font-size:.66rem; letter-spacing:.18em; text-transform:uppercase;
+  color:rgba(22,25,28,.42);
+  transition:opacity .5s ease;
+}
+
+.crack-grid:hover .crack__hint,
+.crack-grid:focus-within .crack__hint,
+.crack-grid.is-open .crack__hint{ opacity:0; }   /* .is-open is set by the
+                                                    script while a photo is
+                                                    held together by tap */
+
+/* --- touch only ----------------------------------------------------
+   Both of these answer a finger, so neither is allowed to reach a
+   device that does not have one. On a desktop, user-select:none would
+   only take away the ability to drag or copy the photo for no gain.
+
+   A tap would otherwise flash the browser's default grey rectangle over
+   the photo — drawn square, and very visible on a black-and-white
+   image. The photo answers the touch by closing up, which is a better
+   answer than a highlight.
+
+   The second rule keeps a HOLD from being interrupted: without it, a
+   finger resting on the photo starts selecting the image or pops up
+   the long-press save sheet over the thing you are trying to look at. */
+@media (hover:none){
+  .crack{ -webkit-tap-highlight-color:transparent; }
+
+  .crack__img{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+}
+
+/* On a phone the two columns are close to half the screen each, and the
+   slide is what runs a quarter out over the gutter first. Pull both
+   back rather than only the gap, or the photos start touching. */
+@media (max-width:520px){
+
+   .crack-grid{ gap:2.75rem 2rem; }
+
+   .crack__shard,
+   .crack:nth-child(2) .crack__shard,
+   .crack:nth-child(3) .crack__shard,
+   .crack:nth-child(4) .crack__shard{ --gx:.22rem; --gy:.22rem; --sx:.24rem; --sy:.22rem; }
+}
+
+/* Reduce-motion kills transition duration globally (base.css), which
+   would leave the quarters snapping between states. Show them whole and
+   drop the prompt — the effect is decorative, the photos are not. */
+@media (prefers-reduced-motion:reduce){
+
+   .crack__shard{ transform:translate(var(--seamx), var(--seamy)); }
+
+   .crack__img{ filter:none; }
+
+   .crack__hint{ display:none; }
+}
+
+/* --- the column beside it --- */
+.crack-copy__title{ font-weight:700; font-size:clamp(1.9rem,4.5vw,2.8rem); line-height:1.14; margin-bottom:0; }
+
+.crack-copy__rule{ width:64px; height:2px; background:var(--orange); border-radius:999px; margin:1.6rem 0 1.5rem; }
+
+.crack-copy__sub{ font-weight:700; font-size:1.25rem; margin-bottom:.7rem; }
+
+/* --- the four festivals ---
+   A <dl>: each festival is a name (dt) and what it is (dd), which is
+   what a description list is actually for. The hairline between them
+   matches .fact-list and .town-grid higher up this page. */
+.fest-list{ margin:1.75rem 0 0; }
+
+.fest{ padding:1.1rem 0; border-top:1px solid rgba(22,25,28,.1); }
+
+.fest:last-child{ border-bottom:1px solid rgba(22,25,28,.1); }
+
+.fest__name{
+  font-family:'Poppins', Arial, sans-serif;
+  font-weight:700; font-size:1rem;
+  display:flex; align-items:baseline; justify-content:space-between; gap:1rem;
+  margin-bottom:.4rem;
+}
+
+.fest__town{
+  font-family:'Inter', Arial, sans-serif;
+  font-weight:500; font-size:.7rem; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--orange); white-space:nowrap;
+}
+
+.fest__body{ margin:0; color:rgba(22,25,28,.62); font-size:.88rem; line-height:1.7; }
+
+.crack-copy__body{ color:rgba(22,25,28,.65); font-size:.95rem; line-height:1.8; margin-bottom:1rem; }
+
+/* .note comes from higher up this file — it just needs spacing here */
+.crack-copy .note{ margin:1.5rem 0 .5rem; }
+
+.crack-copy__cta{ margin-top:1.25rem; }
+
+/* ===================================================================
+   12. THE MAP
+
+   A drawn map, not a photograph. The outlines are real municipal
+   boundaries; everything visual about them is set here, so the map
+   picks up the palette from base.css automatically.
+
+   Hover is CSS only — the name comes from the <title> inside each
+   <path>, which browsers show as a tooltip and screen readers announce.
+   =================================================================== */
+.map-figure{ margin:0; }
+
+.cn-map{ width:100%; height:auto; overflow:visible; }
+
+.map__town{
+  stroke:var(--beige);
+  stroke-width:1.6;
+  stroke-linejoin:round;
+  transition:filter .3s ease;
+}
+
+/* Hover deepens whatever colour the town already has, rather than
+   replacing it — one rule that works for all twelve. */
+.map__town:hover{ filter:saturate(1.5) brightness(.93); cursor:help; }
+
+/* ---- one colour per municipality ----
+
+   Hues are walked around the wheel in GEOGRAPHIC order, west to east,
+   so no two towns that share a border land near each other on the
+   wheel. If you recolour, keep that constraint or two neighbours will
+   read as one shape.
+
+   Saturation and lightness are held nearly constant (about 26% / 64%).
+   That is what keeps twelve different colours looking like a set
+   instead of a paint box, and it keeps every fill light enough for the
+   dark labels to stay legible on top.
+
+   Daet is the exception: it keeps the amber accent at full strength so
+   the capital still reads as the one fixed point on the map. */
+#mt-santa-elena     { fill:hsl(200 26% 64%); }   /* west end */
+#mt-capalonga       { fill:hsl(30 30% 66%); }
+#mt-labo            { fill:hsl(100 24% 63%); }
+#mt-jose-panganiban { fill:hsl(250 20% 68%); }
+#mt-paracale        { fill:hsl(45 34% 64%); }
+#mt-vinzons         { fill:hsl(165 24% 60%); }
+#mt-talisay         { fill:hsl(285 18% 68%); }
+#mt-san-vicente     { fill:hsl(15 30% 67%); }
+#mt-san-lorenzo-ruiz{ fill:hsl(220 24% 66%); }
+#mt-basud           { fill:hsl(340 24% 68%); }
+#mt-mercedes        { fill:hsl(190 28% 62%); }   /* east end */
+
+.map__town--capital,
+#mt-daet{ fill:var(--orange); }
+
+.map__label{
+  font-family:'Inter', Arial, sans-serif;
+  font-size:15px; font-weight:600;
+  fill:rgba(22,25,28,.78);
+  text-anchor:middle;
+  paint-order:stroke;          /* halo behind the text, so a label */
+  stroke:var(--beige);         /* crossing a boundary stays readable */
+  stroke-width:3.5;
+  pointer-events:none;         /* never steal the hover from a town */
+}
+
+/* the four eastern towns are labelled out in the gutter instead */
+.map__label--gutter{ text-anchor:start; stroke-width:0; }
+
+.map__label--capital{ font-weight:700; fill:var(--navy); }
+
+/* The leader lines and their dots are annotation, and they sit ON TOP
+   of the towns they point at — the Daet dot lands inside Daet. Without
+   this they swallow the pointer, and the capital becomes the one shape
+   on the map you cannot hover or click. Labels already opt out the same
+   way; these were missed. */
+.map__leaders{ pointer-events:none; }
+
+.map__leader{ fill:none; stroke:rgba(22,25,28,.28); stroke-width:1.2; }
+
+.map__dot{ fill:var(--navy); transition:fill .3s ease; }
+
+.map__sea{
+  font-family:'Inter', Arial, sans-serif;
+  font-size:13px; font-weight:500; letter-spacing:.22em;
+  fill:rgba(22,25,28,.3);
+  text-anchor:middle;
+}
+
+.map-figure__cap{
+  margin-top:1rem;
+  font-size:.78rem; line-height:1.6;
+  color:rgba(22,25,28,.5);
+}
+
+@media (prefers-reduced-motion:reduce){
+
+   .map__town{ transition:none; }
+}
+
+/* ===================================================================
+   13. THE OPENER
+
+   Three columns: statement, tall media, second thought. The middle
+   column is the anchor and is deliberately taller than its neighbours.
+
+   THE SHAPES. Each media box has three generously rounded corners and
+   one square one. Four equal corners read as "rounded"; three and one
+   reads as a decision. The square corner faces inward on both sides —
+   bottom-right on the middle box, bottom-left on the right-hand one —
+   so the two shapes lean towards each other across the section.
+
+   The radii are large enough that they must come down on small screens,
+   or a 320px-wide box with a 16rem radius collapses into a lozenge.
+   =================================================================== */
+/* minmax(0,...) rather than a bare 1fr. This is precautionary, not a
+   fix for anything visible today: the columns currently measure the
+   same either way. But a bare 1fr is minmax(auto,1fr), and these
+   columns hold aspect-ratio boxes, which is exactly the combination
+   that silently widened .crack-grid's tracks. Cheap insurance. */
+.intro-grid{ display:grid; grid-template-columns:minmax(0,1fr); gap:3rem; align-items:center; }
+
+@media (min-width:900px){
+
+   .intro-grid{ grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) minmax(0,1fr); gap:3rem; }
+}
+
+.intro__title{
+  font-weight:400; font-size:clamp(2rem,5vw,3.1rem);
+  line-height:1.1; letter-spacing:-.01em; margin-bottom:1.4rem;
+}
+
+.intro__title strong{ font-weight:800; }
+
+.intro__subtitle{
+  font-weight:400; font-size:clamp(1.4rem,3vw,1.9rem);
+  line-height:1.2; margin:1.6rem 0 .9rem;
+}
+
+.intro__subtitle strong{ font-weight:800; }
+
+.intro__body{ color:rgba(22,25,28,.65); font-size:.95rem; line-height:1.8; margin-bottom:1rem; }
+
+/* --- the media boxes --- */
+.intro-media{ position:relative; overflow:hidden; background:var(--navy); }
+
+.intro-media--tall{ aspect-ratio:5/7; border-radius:9rem 9rem 0 9rem; }
+
+.intro-media--wide{ aspect-ratio:4/3; border-radius:5rem 5rem 5rem 0; }
+
+@media (min-width:900px){
+
+   .intro-media--tall{ border-radius:15rem 15rem 0 15rem; }
+
+   .intro-media--wide{ border-radius:8rem 8rem 8rem 0; }
+}
+
+/* the clip is decoration, not a player — it should never take a click */
+.intro-media video.photo-layer{ pointer-events:none; }
+
+@media (prefers-reduced-motion:reduce){
+
+  /* a silent looping clip is exactly what "reduce motion" is for.
+     the poster still shows in its place. */
+   .intro-media video.photo-layer{ display:none; }
+}
+
+/* --- the dark call to action --- */
+.intro-card{
+  display:block; margin-top:2rem; padding:1.6rem 1.8rem;
+  background:var(--navy); color:#fff;
+  border-radius:1.25rem 2.75rem 1.25rem 2.75rem;
+  transition:transform .4s cubic-bezier(.16,.84,.44,1), box-shadow .4s ease;
+}
+
+.intro-card:hover{ transform:translateY(-4px); box-shadow:0 22px 40px -22px rgba(22,25,28,.65); }
+
+.intro-card__title{ display:block; font-weight:400; font-size:1.2rem; line-height:1.3; }
+
+.intro-card__title strong{ font-weight:800; }
+
+.intro-card__cta{
+  display:flex; align-items:center; gap:.6rem; margin-top:1.4rem;
+  font-size:.85rem; font-weight:500; color:rgba(255,255,255,.85);
+}
+
+.intro-card__cta svg{ width:20px; height:20px; color:var(--orange); flex-shrink:0; }
+
+.intro-card:hover .intro-card__cta{ color:#fff; }
+
+/* ===================================================================
+   14. INTERACTION AND MOTION
+
+   Everything in this section is an enhancement layered on top of a page
+   that already works without it. Nothing here reveals content, changes
+   meaning, or is required to read anything — which is the line worth
+   holding, because base.css section 29 exists precisely because an
+   earlier version of this site hid content behind animation and lost it
+   when the script failed.
+
+   base.css already collapses every animation and transition to
+   effectively zero under prefers-reduced-motion, so the idle drifts
+   below simply stop for anyone who has asked for that.
+   =================================================================== */
+
+/* --- the opener: an outlined shape echoing each media box ---
+   Sits behind and slightly offset, so the composition has some depth
+   without another photograph to load. Pure decoration, so it is hidden
+   from assistive tech by virtue of being a pseudo-element. */
+.intro-col--media,
+.intro-col--aside{ position:relative; }
+
+.intro-col--media::before{
+  content:''; position:absolute; z-index:0;
+  inset:1.5rem -1.5rem -1.5rem 1.5rem;
+  border:1.5px solid rgba(22,25,28,.16);
+  border-radius:9rem 9rem 0 9rem;
+  transition:inset .6s cubic-bezier(.16,.84,.44,1);
+  pointer-events:none;
+}
+
+@media (min-width:900px){
+
+   .intro-col--media::before{ border-radius:15rem 15rem 0 15rem; }
+}
+
+.intro-col--media:hover::before{ inset:2.25rem -2.25rem -2.25rem 2.25rem; }
+
+.intro-media{ z-index:1; }
+
+/* --- idle drift ---
+   Two different durations and a delay on one, so the two boxes never
+   fall into step with each other. A shared period would read as a
+   mechanism; offset periods read as float. */
+@keyframes introFloat{
+  0%,100%{ transform:translateY(0); }
+  50%{ transform:translateY(-14px); }
+}
+
+.intro-media--tall{ animation:introFloat 9s ease-in-out infinite; }
+
+.intro-media--wide{ animation:introFloat 11s ease-in-out infinite; animation-delay:-3s; }
+
+/* --- the shape answers the pointer ---
+   The square corner jumps to the opposite side on hover. It is the one
+   thing about these boxes that is obviously a choice, so moving it is
+   more interesting than a scale would be. */
+.intro-media{ transition:border-radius .7s cubic-bezier(.16,.84,.44,1); }
+
+.intro-media--tall:hover{ border-radius:9rem 9rem 9rem 0; }
+
+.intro-media--wide:hover{ border-radius:5rem 0 5rem 5rem; }
+
+@media (min-width:900px){
+
+   .intro-media--tall:hover{ border-radius:15rem 15rem 15rem 0; }
+
+   .intro-media--wide:hover{ border-radius:8rem 0 8rem 8rem; }
+}
+
+.intro-media .photo-layer{ transition:transform 1.2s cubic-bezier(.16,.84,.44,1); }
+
+.intro-media:hover .photo-layer{ transform:scale(1.06); }
+
+/* the arrow leans towards where it is going */
+.intro-card__cta svg{ transition:transform .4s cubic-bezier(.16,.84,.44,1); }
+
+.intro-card:hover .intro-card__cta svg{ transform:translateX(5px); }
+
+/* --- the map ---
+   Hovering one town dims the rest, so the shape being read separates
+   from the eleven around it. */
+.cn-map.is-reading .map__town{ opacity:.45; transition:opacity .3s ease; }
+
+.cn-map.is-reading .map__town.is-active{ opacity:1; }
+
+.map__town.is-active{ filter:saturate(1.5) brightness(.93); }
+
+/* the shapes are keyboard targets once the script has run */
+.map__town:focus{ outline:none; }
+
+.map__town:focus-visible{ stroke:var(--navy); stroke-width:2.6; }
+
+.map-figure__cap{ min-height:3.2rem; }
+
+.map-readout__name{
+  display:block;
+  font-family:'Poppins', Arial, sans-serif;
+  font-weight:700; font-size:.95rem; color:var(--navy);
+  margin-bottom:.15rem;
+}
+
+.map-readout__note{ display:block; }
+
+/* --- the lists answer the pointer too ---
+   A row that lifts slightly on hover tells you the page is alive
+   without anything having to move on its own. */
+.fact-list > div,
+.town-grid li{ transition:background .25s ease, padding .25s ease; }
+
+.fact-list > div:hover,
+.town-grid li:hover{
+  background:rgba(240,163,44,.07);
+  padding-left:.7rem; padding-right:.7rem;
+}
+
+.fest{ transition:background .25s ease; }
+
+.fest:hover{ background:rgba(240,163,44,.06); }
+
+.fest__name,
+.town-grid__name{ transition:color .25s ease; }
+
+.fest:hover .fest__name,
+.town-grid li:hover .town-grid__name{ color:var(--orange); }
+
+/* ===================================================================
+   THE PROVINCE INDEX — map and town list as one control
+
+   Two halves that answer each other. Everything below is about making
+   the link legible: which town is being read, and which half you are
+   reading it from.
+
+   THE ACTIVE STATE IS THE SAME GESTURE ON BOTH SIDES. A town lifts and
+   the rest of the map recedes; the matching row lifts and gains the
+   amber marker. Different shapes, one idea, so the eye connects them
+   without being told.
+   =================================================================== */
+.province__intro{ display:grid; grid-template-columns:1fr; gap:2.5rem; align-items:start; }
+
+@media (min-width:900px){
+
+   .province__intro{ grid-template-columns:1.15fr .85fr; gap:4rem; }
+}
+
+.province__stage{ display:grid; grid-template-columns:1fr; gap:2.5rem; align-items:start; margin-top:3rem; }
+
+/* The map leads and the list supports it, so the split is not even. At
+   1000px the map column lands near 600px, which is where the four
+   gutter labels stop colliding with the coastline. */
+@media (min-width:1000px){
+
+   .province__stage{ grid-template-columns:minmax(0,1.55fr) minmax(0,1fr); gap:3.25rem; margin-top:3.5rem; }
+
+   /* The left column now stacks the film over the map, which makes it
+      about as tall as the list of twelve beside it. The map no longer
+      needs centring to fill dead space — there is none. */
+   .province__map{ margin-top:2.5rem; }
+}
+
+/* the map lifts the active shape ------------------------------------
+   transform-box:fill-box makes the translate resolve against the
+   shape's own box rather than the whole SVG canvas, which is what lets
+   one path move without the others. */
+.map__town{
+  transform-box:fill-box;
+  transform-origin:center;
+  transition:filter .3s ease, opacity .3s ease, transform .35s cubic-bezier(.16,.84,.44,1);
+}
+
+.map__town.is-active{ transform:translateY(-5px); }
+
+/* --- the list half --- */
+.town-index__title{
+  font-family:'Poppins', Arial, sans-serif;
+  font-weight:700; font-size:1.15rem; color:var(--navy);
+  margin:0 0 .4rem;
+}
+
+.town-index__lead{
+  margin:0 0 1.1rem;
+  font-size:.86rem; line-height:1.7; color:rgba(22,25,28,.6);
+}
+
+.town-index__list{ list-style:none; margin:0; padding:0; }
+
+.town-index__list li{ border-top:1px solid rgba(22,25,28,.1); }
+
+.town-index__list li:last-child{ border-bottom:1px solid rgba(22,25,28,.1); }
+
+/* A button, not a div with a click handler: it is focusable, it
+   announces itself, and the space bar works — all for free. The reset
+   is only undoing what the browser gives buttons by default. */
+.town-index__item{
+  display:flex; align-items:baseline; justify-content:space-between; gap:1rem;
+  width:100%; padding:.72rem .3rem; margin:0;
+  background:none; border:0; border-radius:0;
+  font:inherit; color:inherit; text-align:left; cursor:pointer;
+  position:relative;
+  transition:background .25s ease, padding .25s ease;
+}
+
+/* The amber marker rides in from the left rather than appearing, so a
+   run of hovers down the list reads as one movement. */
+.town-index__item::before{
+  content:""; position:absolute; left:0; top:.55rem; bottom:.55rem;
+  width:2px; background:var(--orange);
+  transform:scaleY(0); transform-origin:top;
+  transition:transform .3s cubic-bezier(.16,.84,.44,1);
+}
+
+.town-index__item:hover,
+.town-index__item.is-active{ background:rgba(240,163,44,.08); padding-left:.9rem; }
+
+.town-index__item:hover::before,
+.town-index__item.is-active::before{ transform:scaleY(1); }
+
+.town-index__item:focus-visible{ outline:2px solid var(--orange); outline-offset:-2px; }
+
+.town-index__name{
+  font-weight:600; font-size:.95rem; color:var(--navy);
+  transition:color .25s ease;
+}
+
+.town-index__item:hover .town-index__name,
+.town-index__item.is-active .town-index__name{ color:var(--orange); }
+
+.town-index__note{
+  font-size:.78rem; color:rgba(22,25,28,.5); text-align:right;
+}
+
+/* Pinned reads differently from hovered — you chose this one and it
+   stays chosen, so it keeps the marker after the pointer leaves. */
+.town-index__item[aria-pressed="true"]{ background:rgba(240,163,44,.12); }
+
+.town-index__link{
+  display:inline-block; margin-top:1.1rem;
+  font-size:.82rem; font-weight:600; letter-spacing:.02em;
+  color:var(--navy); text-decoration:none;
+  border-bottom:1px solid rgba(240,163,44,.55);
+  padding-bottom:.15rem;
+  transition:color .25s ease, border-color .25s ease;
+}
+
+.town-index__link:hover{ color:var(--orange); border-bottom-color:var(--orange); }
+
+/* Name and note share a line until there is no room for it. "Jose
+   Panganiban" against "Bay, islands, mining history" is the pair that
+   runs out first, so the break is set where that one stops fitting. */
+@media (max-width:430px){
+
+   .town-index__item{ flex-direction:column; align-items:flex-start; gap:.12rem; }
+
+   .town-index__note{ text-align:left; }
+}
+
+@media (prefers-reduced-motion:reduce){
+
+   .map__town.is-active{ transform:none; }
+
+   .town-index__item::before{ transition:none; }
+}
+
+
+/* ===================================================================
+   HERO — the page-load sequence
+
+   One orchestrated entrance rather than four separate effects: eyebrow,
+   the two heading lines, the lead, and the cue, each a beat behind the
+   last. The delays are per-element in the markup (--in) so the order
+   lives next to the content it applies to.
+
+   THE HEADING LINES ARE MASKED, not faded. Each line sits in a window
+   with overflow hidden and slides up into it, which is why the two
+   <span> wrappers exist. The window needs a little vertical slack or it
+   clips descenders on the way past — that is the padding/margin pair,
+   not spacing.
+
+   NOTHING HERE HIDES CONTENT PERMANENTLY. Every animation ends at
+   opacity 1 with fill-mode both, and under prefers-reduced-motion the
+   whole sequence is skipped rather than snapped through.
+   =================================================================== */
+.hero-in{ animation:heroIn .9s cubic-bezier(.16,.84,.44,1) both; animation-delay:var(--in, 0ms); }
+
+@keyframes heroIn{
+  from{ opacity:0; transform:translateY(14px); }
+  to{ opacity:1; transform:none; }
+}
+
+.hero-lines__mask{
+  display:block;
+  overflow:hidden;
+  padding-bottom:.09em; margin-bottom:-.09em;   /* descender slack */
+}
+
+.hero-lines__mask > span{
+  display:block;
+  animation:heroLine 1.05s cubic-bezier(.16,.84,.44,1) both;
+  animation-delay:var(--in, 0ms);
+}
+
+@keyframes heroLine{
+  from{ transform:translateY(105%); }
+  to{ transform:none; }
+}
+
+/* A slow drift on the clip so the hero is never completely still.
+   Uses the scale property rather than transform, so it composes with
+   whatever transform base.css puts on .photo-layer instead of
+   overwriting it. */
+.page-hero .photo-layer{ animation:heroDrift 28s ease-in-out infinite alternate; }
+
+@keyframes heroDrift{
+  from{ scale:1; }
+  to{ scale:1.08; }
+}
+
+/* Bottom RIGHT, not bottom centre. The hero copy is left-aligned and
+   runs to a 46rem measure, so a centred cue lands on top of the lead
+   paragraph at common widths. The right gutter is the one place in this
+   hero that is reliably empty. clamp() keeps it off the edge without
+   needing to know what .wrap resolves to. */
+.page-hero__cue{
+  position:absolute; right:clamp(1.5rem, 4vw, 5rem); bottom:2.25rem; z-index:3;
+  display:flex; flex-direction:column; align-items:center; gap:.6rem;
+  text-decoration:none;
+  font-size:.68rem; letter-spacing:.2em; text-transform:uppercase;
+  color:rgba(255,255,255,.75);
+  transition:color .3s ease;
+}
+
+.page-hero__cue:hover{ color:#fff; }
+
+.page-hero__cue-rule{
+  display:block; width:1px; height:44px;
+  background:linear-gradient(to bottom, rgba(255,255,255,.7), rgba(255,255,255,0));
+  overflow:hidden;
+}
+
+/* A highlight falling down the rule, on a long pause between runs. The
+   pause is the point — a continuous bounce reads as a busy page. */
+.page-hero__cue-rule::after{
+  content:""; display:block; width:100%; height:14px;
+  background:var(--orange);
+  animation:cueFall 2.6s ease-in-out infinite;
+}
+
+@keyframes cueFall{
+  0%{ transform:translateY(-14px); }
+  55%, 100%{ transform:translateY(44px); }
+}
+
+@media (max-width:640px){
+
+   .page-hero__cue{ display:none; }
+}
+
+@media (prefers-reduced-motion:reduce){
+
+   .hero-in,
+   .hero-lines__mask > span{ animation:none; }
+
+   .page-hero .photo-layer{ animation:none; }
+
+   .page-hero__cue-rule::after{ display:none; }
+}
+
+
+/* ===================================================================
+   HOVER, ELSEWHERE
+
+   Small and consistent: photographs push in slightly, rules take the
+   amber. Nothing moves until it is pointed at.
+   =================================================================== */
+.photo-card .media{ overflow:hidden; }
+
+.photo-card .photo-layer{ transition:scale .7s cubic-bezier(.16,.84,.44,1); }
+
+.photo-card:hover .photo-layer{ scale:1.06; }
+
+.photo-card h3{ transition:color .25s ease; }
+
+.photo-card:hover h3{ color:var(--orange); }
+
+.step{ transition:border-top-color .35s ease; }
+
+.step:hover{ border-top-color:var(--orange); }
+
+.intro-media .photo-layer{ transition:scale .8s cubic-bezier(.16,.84,.44,1); }
+
+.intro-media:hover .photo-layer{ scale:1.05; }
+
+@media (prefers-reduced-motion:reduce){
+
+   .photo-card:hover .photo-layer,
+   .intro-media:hover .photo-layer{ scale:1; }
+}
+
+
+/* ===================================================================
+   BEST OF CAM NORTE
+
+   A dark band with the heading on the page measure, then a row of
+   cards that scrolls sideways out past the right edge of the window.
+
+   WHY SIDEWAYS. Four full-width alternating rows is four screens of
+   scrolling before the reader reaches anything else on the page. The
+   same four cards in a track is one screen, and the fact that the row
+   runs off the edge is what tells you there is more of it — which is
+   the entire job the "Scroll to explore" line is doing.
+
+   THE STAGGER IS THE POINT. Each card sets its own --drop and --ratio
+   inline. Four identical cards on one baseline is a widget; four
+   uneven ones is a spread. The values are in the markup rather than
+   here so they sit next to the card they belong to.
+
+   THE BLEED IS DONE WITH PADDING, NOT WIDTH. The track is full width
+   and pads its first card in to line up with the heading above it.
+   Padding cannot overflow the way a 100vw width can, so this cannot
+   produce a stray horizontal scrollbar on the page itself. The
+   71.25rem below is .wrap's max-width — if you change one, change the
+   other.
+   =================================================================== */
+/* THESE TWO MIRROR .wrap IN base.css AND ARE NOT FREE CHOICES. The head
+   sits inside .wrap but the track does not, and it lines itself up by
+   arithmetic. If .wrap's max-width or side padding changes, change
+   these to match or the first card will stop agreeing with the title. */
+.best{
+  --page-max:71.25rem;    /* .wrap max-width  (1140px) */
+  --page-pad:1.5rem;      /* .wrap padding-inline */
+  --gutter:max(var(--page-pad), calc(50vw - (var(--page-max) / 2) + var(--page-pad)));
+  background:var(--navy); color:#fff;
+  overflow:hidden;        /* the track's own overflow, not the page's */
+}
+
+/* --- the head ------------------------------------------------------ */
+.best__head{
+  display:grid; gap:1.5rem;
+  margin-bottom:clamp(2.5rem,5vw,4rem);
+}
+
+@media (min-width:900px){
+
+   /* The cue sits on the last line of the lead rather than beside the
+      title — align-items:end, not centre. Level with the title it reads
+      as a second heading; level with the bottom of the paragraph it
+      reads as a footnote to it, which is what it is. */
+   .best__head{ grid-template-columns:minmax(0,1fr) auto; align-items:end; gap:2rem clamp(2rem,6vw,5rem); }
+}
+
+.best__intro{ max-width:44rem; }
+
+.best__title{
+  font-weight:800; font-size:clamp(1.9rem,4.6vw,2.9rem);
+  line-height:1.12; margin:0 0 1rem;
+}
+
+.best__lead{ color:rgba(255,255,255,.66); font-size:.98rem; line-height:1.8; margin:0; }
+
+.best__nav{
+  display:flex; align-items:center; gap:1.25rem;
+  flex-wrap:wrap;
+}
+
+@media (min-width:900px){
+
+   .best__nav{ justify-content:flex-end; padding-bottom:.15rem; }
+}
+
+.best__arrows{ display:flex; gap:.5rem; }
+
+.best__arrow{
+  display:grid; place-items:center;
+  width:2.6rem; height:2.6rem; padding:0; margin:0;
+  border:1px solid rgba(255,255,255,.28); border-radius:50%;
+  background:transparent; color:#fff;
+  cursor:pointer;
+  transition:background .25s ease, border-color .25s ease, opacity .25s ease;
+}
+
+.best__arrow:hover:not(:disabled){ background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.55); }
+
+.best__arrow:focus-visible{ outline:2px solid var(--orange); outline-offset:3px; }
+
+/* Dimmed, not removed. A control that disappears at the end of the row
+   makes the head reflow and the other button jump sideways under the
+   pointer that was about to press it. */
+.best__arrow:disabled{ opacity:.3; cursor:default; }
+
+.best__arrow svg{ width:18px; height:18px; }
+
+/* Clipped, not display:none — a hidden label is not announced, and
+   these buttons have no visible text for a screen reader to read. */
+.best__arrow-label{
+  position:absolute;
+  width:1px; height:1px;
+  margin:-1px; padding:0; border:0;
+  overflow:hidden; white-space:nowrap;
+  clip-path:inset(50%);
+}
+
+.best__cue{
+  margin:0; white-space:nowrap;
+  font-size:.72rem; font-weight:500;
+  letter-spacing:.22em; text-transform:uppercase;
+  color:rgba(255,255,255,.5);
+}
+
+/* Below 900px the head is one column and the buttons are the whole
+   affordance, so the line telling you to scroll is just noise. */
+@media (max-width:639px){
+
+   .best__cue{ display:none; }
+}
+
+/* A short nudge on a long pause. A continuous slide reads as a busy
+   page; this reads as something waiting to be used. */
+.best__cue-arrow{
+  display:inline-block; margin-left:.4rem;
+  animation:bestNudge 2.8s ease-in-out infinite;
+}
+
+@keyframes bestNudge{
+  0%, 62%, 100%{ transform:none; }
+  76%{ transform:translateX(.35rem); }
+}
+
+/* --- the track ----------------------------------------------------- */
+/* scroll-padding, not just padding: it is what stops a snapped card
+   landing flush against the window edge instead of on the measure. */
+.best__track{
+  display:flex; align-items:flex-start;
+  gap:clamp(1rem,2.5vw,2rem);
+  padding:0 var(--gutter) 1.5rem;
+  overflow-x:auto; overflow-y:hidden;
+  scroll-padding-inline-start:var(--gutter);
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(255,255,255,.28) transparent;
+}
+
+/* The track is focusable so it can be scrolled from a keyboard, which
+   means it will show a focus ring — inset, because an outset one would
+   be clipped by the section's own overflow:hidden. */
+.best__track:focus-visible{ outline:2px solid var(--orange); outline-offset:-2px; }
+
+/* The row can be dragged, so it says so. grab/grabbing is the one cursor
+   pair every reader already knows means "this moves". */
+.best__track{ cursor:grab; }
+
+.best__track.is-dragging{ cursor:grabbing; user-select:none; }
+
+/* Mid-drag the pointer is steering the row, not pointing at a photo, so
+   the hover zoom would fire on whatever it happened to pass over. */
+.best__track.is-dragging .photo-layer{ scale:1; }
+
+.best__track::-webkit-scrollbar{ height:6px; }
+.best__track::-webkit-scrollbar-track{ background:transparent; }
+.best__track::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.28); border-radius:999px; }
+.best__track::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,.45); }
+
+/* --- a card -------------------------------------------------------- */
+/* flex-shrink 0, or four cards politely squeeze themselves into the
+   window and there is nothing left to scroll. */
+.best-card{
+  flex:0 0 clamp(15.5rem, 76vw, 27rem);
+  margin-top:var(--drop, 0rem);
+}
+
+/* SNAPPING IS FOR TOUCH ONLY, AND THAT IS NOT A STYLE CHOICE.
+
+   Snap points fight anything that sets scrollLeft from script. A wheel
+   notch or an arrow button moves the row a couple of hundred pixels,
+   the browser decides the nearest snap point is still the card it
+   started on, and puts it straight back — so the row reads as frozen
+   even though the handler ran and the number changed.
+
+   A finger swipe carries momentum past the snap point, so it never hits
+   this. Hence: snapping below 900px, where swiping is the gesture, and
+   none above it, where the wheel and the buttons are. */
+@media (max-width:899px){
+
+   .best__track{ scroll-snap-type:x proximity; }
+
+   .best-card{ scroll-snap-align:start; }
+}
+
+.best-card__media{
+  position:relative;
+  aspect-ratio:var(--ratio, 3/4);
+  overflow:hidden; background:#20262b;
+}
+
+.best-card__media .photo-layer{ transition:scale 1s cubic-bezier(.16,.84,.44,1); }
+
+.best-card:hover .best-card__media .photo-layer{ scale:1.05; }
+
+/* A missing file leaves a broken-image icon and its alt text sitting on
+   the gradient. The script adds this once the load has actually
+   failed — never before, or a slow connection hides a photo that was
+   going to arrive. Scoped to the page, not this section, because every
+   .photo-layer here has a .gradient-fill behind it for the same
+   reason. */
+img.photo-layer.is-broken,
+img.crack__img.is-broken{ display:none; }
+
+.best-card__copy{ padding-top:1.25rem; }
+
+.best-card__material{
+  display:inline-block; position:relative;
+  padding-bottom:.6rem; margin-bottom:.9rem;
+  font-size:.64rem; font-weight:600; letter-spacing:.28em; text-transform:uppercase;
+  color:var(--orange);
+}
+
+/* The rule under it runs the width of the card on hover, so pointing at
+   a card draws a line across it. One gesture, not four. */
+.best-card__material::after{
+  content:""; position:absolute; left:0; bottom:0; height:1px;
+  width:2.5rem; background:var(--orange);
+  transition:width .6s cubic-bezier(.16,.84,.44,1);
+}
+
+.best-card:hover .best-card__material::after{ width:100%; }
+
+/* The value and its unit are two flex items; the "+" has to live INSIDE
+   the value or flex treats it as a third item and puts the column gap
+   between the number and its own plus sign. */
+.best-card__figure{
+  display:flex; align-items:baseline; flex-wrap:wrap; gap:.25rem .8rem;
+  margin:0;
+}
+
+/* Sized to sit UNDER the card title, not over it. At 3rem the number
+   was the first thing you read on every card and the four headlines
+   were competing with it; the headline is the thing worth reading. */
+.best-card__value{
+  font-family:'Poppins', Arial, sans-serif;
+  font-weight:800; font-size:clamp(1.35rem,2.6vw,1.7rem);
+  line-height:1; letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums;   /* so counting up does not jitter */
+}
+
+.best-card__unit{
+  font-family:'Inter', Arial, sans-serif;
+  font-weight:500; font-size:.64rem; letter-spacing:.13em; line-height:1.6;
+  text-transform:uppercase; color:rgba(255,255,255,.5);
+  max-width:12rem;
+}
+
+/* The one thing on the card allowed to be big. Roughly 1.8x the body,
+   which is what makes a card scan as headline-then-detail rather than
+   as an undifferentiated block of text. */
+.best-card__title{
+  font-weight:700; font-size:clamp(1.2rem,2.2vw,1.5rem);
+  line-height:1.22; margin:.9rem 0 .6rem;
+}
+
+.best-card__body{
+  margin:0;
+  color:rgba(255,255,255,.62); font-size:.85rem; line-height:1.75;
+}
+
+/* Below 900px the drop is dead weight — one card is on screen at a
+   time, so a stagger nobody can see against a neighbour just pushes
+   the copy down. */
+@media (max-width:899px){
+
+   .best-card{ margin-top:0; }
+}
+
+@media (prefers-reduced-motion:reduce){
+
+   .best__cue-arrow{ animation:none; }
+
+   .best-card:hover .best-card__media .photo-layer{ scale:1; }
+
+   .best-card__material::after{ transition:none; }
+
+   .best__track{ scroll-behavior:auto; }
+}
+
+
+/* ===================================================================
+   THE TOWN FILM
+
+   One panel, twelve clips. Picking a town in the list or on the map
+   loads that town's film here; the map and the list keep working
+   exactly as they did if no clip is there.
+
+   THREE STATES, AND THE DEFAULT ONE IS "NOTHING PICKED":
+     resting     no class     the prompt, over a plain field
+     is-playing  loading/ok   the clip, the town's name, sound control
+     is-missing  404          poster or field, and a line saying so
+
+   is-missing IS NOT AN ERROR STYLE. Until the clips are uploaded it is
+   the state most visitors will see, so it is written to look like a
+   deliberate placeholder rather than something broken — no red, no
+   warning icon, same frame as the other two.
+   =================================================================== */
+.town-film{ margin:0; }
+
+.town-film__frame{
+  position:relative;
+  aspect-ratio:16/9;
+  overflow:hidden;
+  background:var(--navy);
+}
+
+.town-film__video{
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  object-fit:cover;
+  opacity:0;
+  transition:opacity .6s ease;
+}
+
+/* Only shown once there are frames to show. Before that the video box is
+   transparent and the gradient behind it is what you see, so a failed
+   load never flashes a black rectangle. */
+.town-film.is-playing .town-film__video{ opacity:1; }
+
+.town-film__pending{
+  position:absolute; inset:auto 0 0 0; z-index:2;
+  margin:0; padding:clamp(1rem,3vw,1.6rem) clamp(1rem,3vw,1.6rem);
+  font-size:.78rem; letter-spacing:.02em;
+  color:rgba(255,255,255,.72);
+  background:linear-gradient(to top, rgba(10,12,14,.72), rgba(10,12,14,0));
+  pointer-events:none;
+}
+
+.town-film.is-playing .town-film__pending:empty{ display:none; }
+
+/* the town whose film is up, top left, quiet */
+.town-film__badge{
+  position:absolute; top:0; left:0; z-index:3;
+  padding:.55rem .9rem;
+  font-family:'Poppins', Arial, sans-serif;
+  font-weight:700; font-size:.75rem; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--navy); background:var(--orange);
+}
+
+.town-film__badge:empty{ display:none; }
+
+.town-film__sound{
+  position:absolute; top:.85rem; right:.85rem; z-index:3;
+  display:inline-flex; align-items:center; gap:.4rem;
+  padding:.45rem .8rem; margin:0;
+  border:1px solid rgba(255,255,255,.3); border-radius:999px;
+  background:rgba(10,12,14,.55); color:#fff;
+  font:inherit; font-size:.7rem; letter-spacing:.12em; text-transform:uppercase;
+  cursor:pointer;
+  transition:background .25s ease, border-color .25s ease;
+}
+
+.town-film__sound:hover{ background:rgba(10,12,14,.8); border-color:rgba(255,255,255,.6); }
+
+.town-film__sound:focus-visible{ outline:2px solid var(--orange); outline-offset:2px; }
+
+/* The script hides this with the hidden attribute, and the rule above
+   sets display:inline-flex, which beats the browser's own [hidden] rule
+   — so without this the control stayed on screen over a panel with no
+   film in it. Any element given a display here needs this pair. */
+.town-film__sound[hidden]{ display:none; }
+
+/* --- the list rows say which one is playing --- */
+.town-index__item[aria-pressed="true"] .town-index__name::after{
+  content:"Playing";
+  display:inline-block; margin-left:.6rem;
+  font-size:.6rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--orange);
+  vertical-align:middle;
+}
+
+/* Selected, but the clip 404'd. Says what is true instead of claiming
+   something is playing, and drops the amber so it does not read as an
+   active state. Until the films are uploaded this is what the list
+   shows, so it has to be a calm label rather than an error. */
+.town-index__item.is-filmless .town-index__name::after{
+  content:"No film yet";
+  color:rgba(22,25,28,.42);
+}
+
+@media (prefers-reduced-motion:reduce){
+
+   .town-film__video{ transition:none; }
+}
+
+
+/* ===================================================================
+   THE OPENING — a title stack, then the film under it
+
+   Replaces the full-bleed banner. The difference is not decorative: in
+   a banner the words sit ON the picture, so the picture has to be
+   darkened until the type survives it and you end up with a dim clip
+   and grey-white text. Here the words sit on the page and the clip sits
+   below them with its own edges, so the type is black on paper and the
+   clip keeps its own contrast.
+
+   Everything is centred and everything shares .wrap's measure, so the
+   heading, the film and the paragraph all line up on the same two
+   margins.
+   =================================================================== */
+.hero-lead{
+  padding:clamp(3rem,8vw,6.5rem) 0 clamp(2rem,5vw,3.5rem);
+  text-align:center;
+}
+
+.hero-lead__eyebrow{
+  display:block;
+  margin-bottom:clamp(.8rem,2vw,1.25rem);
+  font-family:'Poppins', Arial, sans-serif;
+  font-weight:700; font-size:.72rem;
+  letter-spacing:.3em; text-transform:uppercase;
+  color:var(--orange);
+}
+
+/* .96 line-height, not 1. At this size the default leading opens a gap
+   under a one-line heading that reads as a spacing mistake. */
+.hero-lead__title{
+  margin:0;
+  font-weight:800;
+  font-size:clamp(2.4rem,8vw,5.75rem);
+  line-height:.96;
+  letter-spacing:-.02em;
+  text-transform:uppercase;
+}
+
+.hero-lead__body{
+  max-width:44rem;
+  margin:clamp(2rem,5vw,3.25rem) auto 0;
+  font-size:clamp(1rem,1.3vw,1.15rem);
+  line-height:1.75;
+  opacity:.78;
+}
+
+/* --- the film ------------------------------------------------------ */
+.hero-film{ margin:clamp(2rem,5vw,3.25rem) 0 0; }
+
+/* aspect-ratio rather than a height: the box is the shape of the film
+   before the file arrives, so nothing on the page moves when it does.
+   The shadow is thrown down and short — a soft halo on all four sides
+   makes a rectangle look like it is floating rather than sitting. */
+.hero-film__frame{
+  position:relative;
+  aspect-ratio:16/9;
+  overflow:hidden;
+  background:var(--navy);
+  box-shadow:0 26px 55px -28px rgba(10,12,14,.5);
+}
+
+.hero-film__video{
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  object-fit:cover;
+}
+
+/* Weighted to the bottom, where the label and the button are. The top
+   gets a much lighter pass only so the frame has an edge against the
+   pale page above it. Nothing in the middle — that is the picture. */
+.hero-film__scrim{
+  position:absolute; inset:0; z-index:2;
+  background:linear-gradient(to bottom,
+              rgba(10,12,14,.28) 0%,
+              rgba(10,12,14,.02) 30%,
+              rgba(10,12,14,.04) 55%,
+              rgba(10,12,14,.62) 100%);
+  pointer-events:none;
+}
+
+/* Deliberately not white. At this size solid white competes with the
+   heading above it; three-quarter white reads as a caption on the
+   picture rather than a second title. */
+.hero-film__place{
+  position:absolute; z-index:3;
+  left:clamp(1rem,3vw,2.4rem);
+  bottom:clamp(.9rem,2.5vw,1.8rem);
+  margin:0;
+  font-family:'Poppins', Arial, sans-serif;
+  font-weight:800;
+  font-size:clamp(1.25rem,3.2vw,2.4rem);
+  letter-spacing:.05em; text-transform:uppercase;
+  color:rgba(255,255,255,.72);
+  text-align:left;
+  pointer-events:none;
+}
+
+.hero-film__place:empty{ display:none; }
+
+.hero-film__sound{
+  position:absolute; z-index:4;
+  right:clamp(1rem,3vw,2.4rem);
+  bottom:clamp(.9rem,2.5vw,1.8rem);
+  display:grid; place-items:center;
+  width:2.85rem; height:2.85rem;
+  padding:0; margin:0;
+  border:0; border-radius:50%;
+  background:rgba(10,12,14,.62); color:#fff;
+  cursor:pointer;
+  transition:background .25s ease, transform .25s ease;
+}
+
+.hero-film__sound:hover{ background:rgba(10,12,14,.88); transform:scale(1.07); }
+
+.hero-film__sound:focus-visible{ outline:2px solid var(--orange); outline-offset:3px; }
+
+/* The rule above sets a display, which beats the browser's own [hidden]
+   rule. Any element given a display needs this pair or the attribute
+   stops working. */
+.hero-film__sound[hidden]{ display:none; }
+
+.hero-film__icon{ width:20px; height:20px; }
+
+/* Clipped, not display:none. A hidden label is not announced, and this
+   button has no visible text — the icon is all a sighted reader gets,
+   so the name has to come from here. */
+.hero-film__sound-label{
+  position:absolute;
+  width:1px; height:1px;
+  margin:-1px; padding:0; border:0;
+  overflow:hidden; white-space:nowrap;
+  clip-path:inset(50%);
+}
+
+/* Off is the resting state, so the crossed-out speaker is what shows
+   until the button is pressed. */
+.hero-film__icon--on{ display:none; }
+.hero-film__sound[aria-pressed="true"] .hero-film__icon--on{ display:block; }
+.hero-film__sound[aria-pressed="true"] .hero-film__icon--off{ display:none; }
+
+/* 16:9 on a phone is a letterbox strip about 190px tall with a label
+   and a button fighting over it. Squarer gives both room. */
+@media (max-width:640px){
+
+   .hero-film__frame{ aspect-ratio:4/5; }
+
+   .hero-film__sound{ width:2.5rem; height:2.5rem; }
+}
+
+@media (prefers-reduced-motion:reduce){
+
+   .hero-film__sound{ transition:none; }
+
+   .hero-film__sound:hover{ transform:none; }
+}
+
+
+/* ===================================================================
+   GETTING HERE — three routes
+
+   The old version of this was three paragraphs with a hairline over
+   each, which is the layout you reach for when you have not decided
+   what the section is. The content did not change; what changed is
+   that each route now has something to look at before you read it.
+
+   THREE THINGS DO THAT WORK, and each is doing a different job:
+     the numeral   gives the eye somewhere to land, and makes the count
+                   in "Three ways in" visible instead of just stated
+     the icon      tells you which route this is before the label does
+     the route line  the one place a fact can go. Manila to Daet is not
+                   a decoration; it is where the operator and the
+                   journey time belong once you have them.
+
+   The numeral and the icon are both aria-hidden. A screen reader gets
+   "By bus" and the paragraph, which is the whole content — reading out
+   "zero one" first would be noise.
+   =================================================================== */
+.ways{ background:var(--navy); color:#fff; }
+
+.ways__head{
+  display:grid; gap:1.25rem;
+  margin-bottom:clamp(2.5rem,5vw,3.75rem);
+}
+
+/* The lead sits beside the title rather than under it, and drops to the
+   baseline of it — level with the title it competes, level with the
+   bottom it reads as a subordinate clause. */
+@media (min-width:900px){
+
+   .ways__head{ grid-template-columns:minmax(0,1fr) minmax(0,22rem); align-items:end; gap:2rem clamp(2rem,6vw,5rem); }
+}
+
+.ways__title{ font-weight:800; font-size:clamp(1.9rem,4.5vw,2.6rem); line-height:1.12; margin:0; }
+
+.ways__lead{ margin:0; color:rgba(255,255,255,.6); font-size:.92rem; line-height:1.8; }
+
+.ways__grid{
+  display:grid; grid-template-columns:1fr; gap:1rem;
+  list-style:none; margin:0; padding:0;
+}
+
+@media (min-width:768px){
+
+   .ways__grid{ grid-template-columns:repeat(3,1fr); gap:1.25rem; }
+}
+
+/* --- one route ----------------------------------------------------- */
+/* overflow:hidden is load-bearing: the numeral is deliberately larger
+   than the corner it sits in and would otherwise print over the card
+   beside it. */
+.way{
+  position:relative; overflow:hidden;
+  padding:clamp(1.5rem,3vw,2rem);
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.025);
+  transition:background .35s ease, border-color .35s ease, transform .35s cubic-bezier(.16,.84,.44,1);
+}
+
+.way:hover{
+  background:rgba(255,255,255,.05);
+  border-color:rgba(255,255,255,.22);
+  transform:translateY(-4px);
+}
+
+/* The amber rule across the top grows on hover, the same gesture the
+   cards in Best of Cam Norte use. One vocabulary, not two. */
+.way::before{
+  content:""; position:absolute; top:0; left:0; height:2px;
+  width:2.5rem; background:var(--orange);
+  transition:width .6s cubic-bezier(.16,.84,.44,1);
+}
+
+.way:hover::before{ width:100%; }
+
+/* Big, faint, and clipped by the corner. It is a texture, not a number
+   anyone needs to read — which is also why it is aria-hidden. */
+.way__index{
+  position:absolute; top:-.35em; right:.15em;
+  font-family:'Poppins', Arial, sans-serif;
+  font-weight:800; font-size:clamp(4rem,9vw,5.5rem);
+  line-height:1; letter-spacing:-.04em;
+  color:rgba(255,255,255,.045);
+  pointer-events:none;
+}
+
+.way:hover .way__index{ color:rgba(255,255,255,.07); }
+
+.way__icon{
+  position:relative;
+  display:grid; place-items:center;
+  width:2.75rem; height:2.75rem;
+  margin-bottom:1.5rem;
+  border:1px solid rgba(255,255,255,.16); border-radius:50%;
+  color:var(--orange);
+  transition:border-color .35s ease, background .35s ease;
+}
+
+.way:hover .way__icon{ border-color:var(--orange); background:rgba(255,255,255,.04); }
+
+.way__icon svg{ width:20px; height:20px; }
+
+.way__label{
+  position:relative;
+  margin:0 0 .35rem;
+  font-weight:700; font-size:1.1rem; line-height:1.3;
+}
+
+/* Tabular figures because this is where a departure time or a fare
+   ends up, and proportional digits make a column of them ragged. */
+.way__route{
+  position:relative;
+  margin:0 0 1rem;
+  font-size:.7rem; font-weight:600; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--orange);
+  font-variant-numeric:tabular-nums;
+}
+
+.way__body{
+  position:relative;
+  margin:0;
+  font-size:.88rem; line-height:1.8; color:rgba(255,255,255,.66);
+}
+
+@media (prefers-reduced-motion:reduce){
+
+   .way,
+   .way::before,
+   .way__icon{ transition:none; }
+
+   .way:hover{ transform:none; }
+}
+
+
+/* ===================================================================
+   THE END OF THE PAGE
+
+   The whole line is the link — headline, arrow and all. A pill button
+   makes the click target the smallest thing on a page of very large
+   things; this makes it the largest, and it says where it goes instead
+   of just how many are there.
+
+   IT SITS ON THE SAME DARK BAND as Getting Here above it, deliberately.
+   Two navy sections running together read as one closing movement, and
+   the hairline is all the separation the two need.
+   =================================================================== */
+.onward{
+  background:var(--navy); color:#fff;
+  border-top:1px solid rgba(255,255,255,.09);
+}
+
+.onward__inner{
+  display:grid; gap:2rem;
+  align-items:end;
+}
+
+@media (min-width:768px){
+
+   .onward__inner{ grid-template-columns:minmax(0,1fr) auto; gap:2rem clamp(2rem,6vw,4rem); }
+}
+
+/* --- the headline link --------------------------------------------- */
+/* inline-flex, not block: the arrow has to sit on the last line of the
+   headline and travel with it when the text wraps, which it will do at
+   narrow widths. align-items:baseline would drop it below the descender
+   line, so it is centred against the text instead. */
+.onward__link{
+  display:inline-flex; align-items:center; flex-wrap:wrap;
+  gap:.4em 1rem;
+  margin-top:.9rem;
+  text-decoration:none; color:#fff;
+}
+
+.onward__title{
+  position:relative;
+  font-weight:800; font-size:clamp(1.75rem,5.5vw,3.25rem);
+  line-height:1.08; letter-spacing:-.02em;
+}
+
+/* Drawn under the text rather than text-decoration, so it can be
+   animated and can sit clear of the descenders. Grows from the left on
+   hover — the same direction the arrow moves, so the two read as one
+   gesture rather than two effects firing at once. */
+.onward__title::after{
+  content:""; position:absolute; left:0; bottom:-.12em;
+  width:0; height:2px; background:var(--orange);
+  transition:width .55s cubic-bezier(.16,.84,.44,1);
+}
+
+.onward__link:hover .onward__title::after,
+.onward__link:focus-visible .onward__title::after{ width:100%; }
+
+.onward__link:focus-visible{ outline:2px solid var(--orange); outline-offset:.6rem; }
+
+/* Sized in em so it scales with the headline it belongs to instead of
+   being a fixed lump beside a fluid one. */
+.onward__arrow{
+  flex:none;
+  width:2.1em; height:.75em;
+  color:var(--orange);
+  transition:transform .45s cubic-bezier(.16,.84,.44,1);
+}
+
+.onward__link:hover .onward__arrow,
+.onward__link:focus-visible .onward__arrow{ transform:translateX(.35em); }
+
+/* --- back to the top ------------------------------------------------ */
+.onward__back{
+  justify-self:start;
+  text-decoration:none;
+  font-size:.68rem; font-weight:500;
+  letter-spacing:.22em; text-transform:uppercase;
+  color:rgba(255,255,255,.45);
+  transition:color .3s ease;
+  padding-bottom:.4rem;
+}
+
+@media (min-width:768px){
+
+   .onward__back{ justify-self:end; }
+}
+
+.onward__back:hover{ color:#fff; }
+
+.onward__back:focus-visible{ outline:2px solid var(--orange); outline-offset:.4rem; }
+
+.onward__back-arrow{
+  display:inline-block; margin-right:.35rem;
+  transition:transform .3s ease;
+}
+
+.onward__back:hover .onward__back-arrow{ transform:translateX(-.25rem); }
+
+@media (prefers-reduced-motion:reduce){
+
+   .onward__title::after,
+   .onward__arrow,
+   .onward__back-arrow{ transition:none; }
+
+   .onward__link:hover .onward__arrow{ transform:none; }
+
+   .onward__back:hover .onward__back-arrow{ transform:none; }
+}

@@ -1,0 +1,635 @@
+/* ===================================================================
+   assets/css/search.css
+
+   Two things live here:
+     1. .sitesearch  — the overlay the header icon opens
+     2. .searchpage  — the full results page
+
+   Loaded from header.php right after nav.css, so it can reach the
+   overlay on every page. search.php ALSO matches the page-name rule in
+   header.php, which would load this file a second time — the header
+   suppresses that. See the note there.
+
+   Colours are read from your variables where you have them and fall
+   back to literals where you may not, so this file cannot render
+   invisible on a page whose tokens are named differently.
+   =================================================================== */
+
+.sitesearch {
+  --ss-ink:    #0F1417;
+  --ss-panel:  #161C21;
+  --ss-line:   rgba(255, 255, 255, .12);
+  --ss-text:   #F4ECDD;
+  --ss-muted:  rgba(244, 236, 221, .58);
+  --ss-accent: var(--gold, var(--accent, #F5A623));
+
+  position: fixed;
+  inset: 0;
+  z-index: 1200;              /* above the nav, below nothing */
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.sitesearch[hidden] { display: none; }
+
+/* ---------- backdrop ---------- */
+.sitesearch__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 11, 13, .72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: ss-fade .22s ease both;
+}
+
+/* ---------- the sheet ---------- */
+.sitesearch__panel {
+  position: relative;
+  background: var(--ss-panel);
+  border-bottom: 1px solid var(--ss-line);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
+  animation: ss-drop .28s cubic-bezier(.22, 1, .36, 1) both;
+  max-height: 100vh;
+  max-height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.sitesearch__inner {
+  width: min(880px, 100% - 2.5rem);
+  margin: 0 auto;
+  padding: 1.75rem 0 1.5rem;
+}
+
+/* ---------- the field ----------
+   The horizon line under the input is the same idea as #horizonLine on
+   the page behind it: one hairline that draws itself across. It is the
+   one flourish in this file; everything else is kept flat on purpose. */
+.sitesearch__form {
+  display: flex;
+  align-items: center;
+  gap: .85rem;
+  position: relative;
+  padding-bottom: .85rem;
+}
+
+.sitesearch__form::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 1px;
+  background: var(--ss-accent);
+  transform-origin: left;
+  animation: ss-draw .5s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.sitesearch__icon {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  color: var(--ss-accent);
+}
+
+.sitesearch__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--ss-text);
+  font-family: var(--font-display, 'Archivo', system-ui, sans-serif);
+  font-size: clamp(1.35rem, 3.2vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: -.01em;
+  line-height: 1.2;
+}
+
+.sitesearch__input::placeholder { color: rgba(244, 236, 221, .34); }
+.sitesearch__input:focus { outline: none; }          /* the rule below is the focus ring */
+.sitesearch__form:focus-within::after { height: 2px; }
+
+/* Chrome draws its own clear button and it sits badly on a dark
+   field at this size. The Esc key and the close button both do it. */
+.sitesearch__input::-webkit-search-cancel-button { display: none; }
+
+.sitesearch__close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--ss-line);
+  border-radius: 50%;
+  background: none;
+  color: var(--ss-muted);
+  cursor: pointer;
+  transition: color .18s, border-color .18s, background-color .18s;
+}
+.sitesearch__close svg { width: 17px; height: 17px; }
+.sitesearch__close:hover {
+  color: var(--ss-text);
+  border-color: rgba(255, 255, 255, .3);
+  background: rgba(255, 255, 255, .05);
+}
+
+/* ---------- hint row ---------- */
+.sitesearch__hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  margin: .95rem 0 0;
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-size: .78rem;
+  color: var(--ss-muted);
+}
+
+.sitesearch__hint kbd {
+  font: inherit;
+  padding: .12em .45em;
+  border: 1px solid var(--ss-line);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, .04);
+  color: var(--ss-text);
+}
+
+/* ---------- quick links, shown before anything is typed ---------- */
+.sitesearch__quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: 1.1rem;
+}
+
+.sitesearch__tag {
+  display: inline-block;
+  padding: .42rem .8rem;
+  border: 1px solid var(--ss-line);
+  border-radius: 999px;
+  background: none;
+  color: var(--ss-muted);
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-size: .82rem;
+  cursor: pointer;
+  transition: color .18s, border-color .18s;
+}
+.sitesearch__tag:hover {
+  color: var(--ss-text);
+  border-color: var(--ss-accent);
+}
+
+/* ---------- results ---------- */
+.sitesearch__results { margin-top: 1.1rem; }
+.sitesearch__results:empty { display: none; }
+
+.sitesearch__item {
+  display: flex;
+  align-items: center;
+  gap: .95rem;
+  padding: .7rem .6rem;
+  margin: 0 -.6rem;
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+  transition: background-color .14s;
+}
+
+/* Hover and keyboard selection are the same state deliberately: the
+   arrow keys move a highlight that looks exactly like the one the
+   mouse makes, so nobody has to learn a second visual language. */
+.sitesearch__item:hover,
+.sitesearch__item.is-on { background: rgba(255, 255, 255, .06); }
+.sitesearch__item.is-on { outline: 1px solid rgba(245, 166, 35, .35); }
+
+.sitesearch__thumb {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, .06);
+  display: grid;
+  place-items: center;
+  color: var(--ss-muted);
+}
+.sitesearch__thumb svg { width: 22px; height: 22px; }
+
+.sitesearch__body { min-width: 0; flex: 1 1 auto; }
+
+.sitesearch__kind {
+  display: block;
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-size: .66rem;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ss-accent);
+  margin-bottom: .15rem;
+}
+
+.sitesearch__name {
+  display: block;
+  font-family: var(--font-display, 'Archivo', system-ui, sans-serif);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ss-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sitesearch__snip {
+  display: block;
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-size: .82rem;
+  line-height: 1.45;
+  color: var(--ss-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* what the visitor typed, inside a result */
+.sitesearch mark {
+  background: none;
+  color: var(--ss-accent);
+  font-weight: 600;
+}
+
+.sitesearch__more {
+  display: inline-block;
+  margin-top: .9rem;
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--ss-accent);
+  text-decoration: none;
+}
+.sitesearch__more:hover { text-decoration: underline; }
+
+.sitesearch__msg {
+  margin: 1.2rem 0 .3rem;
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-size: .92rem;
+  color: var(--ss-muted);
+}
+
+/* Announced but never seen. The visible count is in the results list
+   itself; this is what a screen reader hears when it changes. */
+.sitesearch__sr {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+body.ss-open { overflow: hidden; }   /* stop the page scrolling behind */
+
+@keyframes ss-fade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes ss-drop {
+  from { opacity: 0; transform: translateY(-14px) }
+  to   { opacity: 1; transform: none }
+}
+@keyframes ss-draw { from { transform: scaleX(0) } to { transform: scaleX(1) } }
+
+/* ===================================================================
+   THE RESULTS PAGE
+   =================================================================== */
+
+.searchpage {
+  /* The nav is fixed, so the first thing on the page has to clear it
+     by hand or it starts underneath. */
+  padding: clamp(7.5rem, 14vh, 10rem) 0 5rem;
+  min-height: 70vh;
+  background: var(--cream, #F4ECDD);
+}
+
+.searchpage .wrap { max-width: 880px; }
+
+.searchpage__eyebrow {
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--gold, var(--accent, #C98A12));
+  margin: 0 0 .9rem;
+}
+
+.searchpage__form {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  padding: .55rem .55rem .55rem 1rem;
+  border: 1px solid rgba(15, 20, 23, .16);
+  border-radius: 999px;
+  background: #fff;
+  transition: border-color .18s, box-shadow .18s;
+}
+.searchpage__form:focus-within {
+  border-color: var(--gold, #F5A623);
+  box-shadow: 0 0 0 4px rgba(245, 166, 35, .16);
+}
+
+.searchpage__form-icon { width: 20px; height: 20px; flex: none; color: rgba(15, 20, 23, .45); }
+
+.searchpage__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: none;
+  padding: .5rem 0;
+  font-family: var(--font-display, 'Archivo', system-ui, sans-serif);
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: #0F1417;
+}
+.searchpage__input:focus { outline: none; }
+.searchpage__input::-webkit-search-cancel-button { display: none; }
+
+.searchpage__submit {
+  flex: none;
+  border: 0;
+  border-radius: 999px;
+  padding: .7rem 1.4rem;
+  background: var(--gold, #F5A623);
+  color: #1A1206;
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-size: .9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter .18s;
+}
+.searchpage__submit:hover { filter: brightness(1.06); }
+
+.searchpage__count {
+  margin: 1.15rem 0 0;
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-size: .95rem;
+  color: rgba(15, 20, 23, .66);
+}
+.searchpage__count strong { color: #0F1417; }
+
+.searchpage__filters,
+.searchpage__suggest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: 1rem;
+}
+
+.searchpage__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .42rem .85rem;
+  border: 1px solid rgba(15, 20, 23, .18);
+  border-radius: 999px;
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-size: .84rem;
+  color: rgba(15, 20, 23, .72);
+  text-decoration: none;
+  transition: border-color .18s, color .18s, background-color .18s;
+}
+.searchpage__chip span { opacity: .5; font-variant-numeric: tabular-nums; }
+.searchpage__chip:hover { border-color: #0F1417; color: #0F1417; }
+.searchpage__chip.is-on {
+  background: #0F1417;
+  border-color: #0F1417;
+  color: #F4ECDD;
+}
+
+.searchpage__list {
+  list-style: none;
+  margin: 2rem 0 0;
+  padding: 0;
+}
+
+.searchpage__row + .searchpage__row { border-top: 1px solid rgba(15, 20, 23, .1); }
+
+.searchpage__card {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  padding: 1.1rem .6rem;
+  margin: 0 -.6rem;
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  transition: background-color .16s;
+}
+.searchpage__card:hover { background: rgba(15, 20, 23, .045); }
+.searchpage__card:hover .searchpage__go { transform: translateX(3px); opacity: 1; }
+
+.searchpage__thumb {
+  flex: none;
+  width: 76px;
+  height: 76px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: rgba(15, 20, 23, .07);
+}
+.searchpage__thumb--none {
+  display: grid;
+  place-items: center;
+  color: rgba(15, 20, 23, .3);
+}
+.searchpage__thumb--none svg { width: 28px; height: 28px; }
+
+.searchpage__text { min-width: 0; flex: 1 1 auto; }
+
+.searchpage__kind {
+  display: block;
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-size: .67rem;
+  font-weight: 700;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--gold, #B8790A);
+  margin-bottom: .25rem;
+}
+
+.searchpage__title {
+  display: block;
+  font-family: var(--font-display, 'Archivo', system-ui, sans-serif);
+  font-size: 1.16rem;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  color: #0F1417;
+}
+
+.searchpage__snip {
+  display: block;
+  margin-top: .3rem;
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-size: .9rem;
+  line-height: 1.5;
+  color: rgba(15, 20, 23, .62);
+}
+
+.searchpage__go {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  opacity: .35;
+  transition: transform .18s, opacity .18s;
+}
+
+.searchpage__empty { padding: 3rem 0 1rem; }
+
+.searchpage__empty-lead {
+  margin: 0;
+  font-family: var(--font-display, 'Archivo', system-ui, sans-serif);
+  font-size: clamp(1.35rem, 3.5vw, 1.85rem);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: #0F1417;
+}
+
+.searchpage__empty-sub {
+  margin: .55rem 0 0;
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-size: .98rem;
+  color: rgba(15, 20, 23, .6);
+}
+
+/* ---------- phones ---------- */
+@media (max-width: 640px) {
+  .sitesearch__inner { width: calc(100% - 1.75rem); padding-top: 1.25rem; }
+  .sitesearch__snip  { display: none; }         /* the name is what matters at this width */
+  .sitesearch__thumb { width: 44px; height: 44px; }
+
+  .searchpage__form { padding-left: .85rem; }
+  .searchpage__submit { padding: .7rem 1.05rem; }
+  .searchpage__thumb { width: 58px; height: 58px; }
+  .searchpage__card  { gap: .85rem; padding: .95rem .5rem; }
+  .searchpage__title { font-size: 1.04rem; }
+  .searchpage__snip  {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* ---------- people who asked for less movement ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .sitesearch__scrim,
+  .sitesearch__panel,
+  .sitesearch__form::after { animation: none; }
+  .sitesearch *, .searchpage * { transition-duration: .01ms !important; }
+}
+
+/* ===================================================================
+   THE SIGN-IN GATE
+
+   Shown on search.php to a visitor without an account. It reuses
+   .searchpage__empty-lead / __empty-sub / __chip / __submit rather
+   than inventing a parallel set — a refusal should look like the rest
+   of the site, not like an error page from somewhere else.
+   =================================================================== */
+
+.searchpage__gate {
+  padding: 3rem 0 1rem;
+  max-width: 34rem;
+}
+
+.searchpage__gate-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 1.35rem;
+  border: 1px solid rgba(15, 20, 23, .16);
+  border-radius: 50%;
+  color: var(--gold, #B8790A);
+}
+.searchpage__gate-icon svg { width: 24px; height: 24px; }
+
+.searchpage__gate .searchpage__empty-sub strong { color: #0F1417; font-weight: 600; }
+
+.searchpage__gate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem;
+  margin-top: 1.5rem;
+}
+
+/* .searchpage__submit is a <button> on the form and an <a> here, and
+   an anchor does not inherit the button's line-height or centring. */
+a.searchpage__submit {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  line-height: 1;
+}
+
+/* The chips under the gate are a second thought, not a second action —
+   the sign-in button is the one thing being asked for. */
+.searchpage__gate .searchpage__suggest {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(15, 20, 23, .1);
+}
+
+/* ---------- the tag · town line under a result name ---------- */
+.searchpage__meta {
+  display: block;
+  margin-top: .25rem;
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-size: .78rem;
+  color: rgba(15, 20, 23, .5);
+}
+
+.sitesearch__meta {
+  display: block;
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-size: .72rem;
+  color: rgba(244, 236, 221, .45);
+}
+
+/* ===================================================================
+   LANDING ON A DESTINATION CARD
+
+   A search result for a place links to destinations.php#dest-<slug>.
+   These two rules are what make that arrival make sense — without
+   them the link still works, but badly.
+   =================================================================== */
+
+/* The nav is fixed. Without this the browser scrolls the card to y=0,
+   which is underneath the header — so the visitor arrives looking at
+   the card's own photo with its name hidden behind the menu bar. */
+.dest-card {
+  scroll-margin-top: 7rem;
+}
+
+/* And this says which one. Twenty-four near-identical cards in a grid,
+   arriving mid-page with nothing marked, leaves you scanning for the
+   thing you just clicked on. The ring fades after a few seconds
+   because it has done its job by then and permanent highlighting on a
+   browsable page is just noise. */
+.dest-card:target {
+  animation: dest-found 2.8s ease-out 1 both;
+}
+
+@keyframes dest-found {
+  0%, 55% {
+    box-shadow: 0 0 0 3px var(--gold, #F5A623), 0 14px 40px rgba(0, 0, 0, .18);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 166, 35, 0), 0 0 0 rgba(0, 0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No fade — but still say which card, or the link loses its point
+     for exactly the people least able to hunt for it. */
+  .dest-card:target {
+    animation: none;
+    box-shadow: 0 0 0 3px var(--gold, #F5A623);
+  }
+}

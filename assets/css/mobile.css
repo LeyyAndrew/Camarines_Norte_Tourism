@@ -1,0 +1,2212 @@
+/* ===================================================================
+   assets/css/mobile.css
+
+   Loaded LAST by includes/header.php, after responsive.css.
+
+   WHAT THIS IS FOR, AND HOW IT DIFFERS FROM responsive.css
+
+   responsive.css fixes things that were BROKEN on a phone — overflow,
+   a missing gutter, tap targets you could miss. Everything in it was a
+   bug with a measurement behind it.
+
+   This file fixes things that were WORKING but not GOOD. The site is
+   built desktop-first, and a lot of desktop decisions are still
+   sitting on the phone unchanged: the spacing between sections, the
+   height of the photographs, the copy that asks you to hover. None of
+   it is broken. All of it makes the phone version feel like a desktop
+   page that has been squeezed rather than a page meant for a phone.
+
+   MEASURED BEFORE (390px viewport, real browser):
+
+     homepage.php     14083px   18.1 screens of scrolling
+     about.php        11303px   14.5 screens
+     destinations.php  8840px   11.3 screens
+     gallery.php       7466px    9.6 screens
+
+   Roughly 1500px of the homepage was section padding alone — eight
+   sections at 96px top and 96px bottom, which on a 780px screen means
+   a quarter of a screen of nothing, eight times over.
+
+   NOTHING HERE CHANGES THE DESKTOP. Every rule is inside a
+   max-width:767px or a (hover:none) query.
+   =================================================================== */
+
+
+/* ===================================================================
+   0. THE PAGE DOESN'T FIT THE SCREEN — GLOBAL OVERFLOW SAFETY NET
+
+   SEEN ON A REAL DEVICE, not a resized desktop browser: the About
+   section's body copy is sliced off mid-word on the right
+   ("...climbs into forest wit—", "...traditions intact — islands
+   still—") and the photo under it loses its right edge the same way.
+   That is not a wrapping problem — the words that got cut would wrap
+   fine at 390px. It is the PAGE itself rendering wider than the phone
+   screen, with everything past the true edge simply off in space
+   where a thumb has to scroll sideways to find it.
+
+   This file's own header comment above says overflow is
+   responsive.css's job, not this file's — and that's still the right
+   place to fix WHICH element is the culprit. But mobile.css loads
+   after responsive.css, so if that fix isn't reaching every case (a
+   different section, a build that hasn't picked up the latest
+   responsive.css yet, a plugin-inserted widget nobody wrote a rule
+   for), this file is the last thing that runs before the browser — so
+   it is where a blanket safety net belongs regardless of source.
+
+   FOUR LAYERS, cheapest and safest first:
+
+   1. box-sizing:border-box on everything. THE most common cause of
+      "100% wide, plus padding" quietly becoming wider than 100%. If
+      base.css already sets this globally, this rule matches it
+      exactly and changes nothing; if some component was missed, this
+      is where it gets caught.
+
+   2. Media (img/video/svg/iframe) capped at 100% of its box instead
+      of its own intrinsic size — a photo uploaded at its native pixel
+      width, with nothing constraining it, is the single most common
+      real offender on a photo-heavy site like this one.
+
+   3. Known layout containers explicitly capped at 100%, so a fixed
+      px width slipping in from a desktop rule (a grid, a flex row,
+      an inner wrapper) can't push the viewport wider than it is.
+
+   4. overflow-x:hidden on html and body, LAST because it is a
+      symptom-hider, not a cause-fixer — anything still wider than the
+      screen after 1-3 gets clipped instead of creating a sideways
+      scrollbar. Belt and braces: 1-3 stop content from being wider
+      than the screen in the first place; 4 makes sure nothing slips
+      through anyway.
+   =================================================================== */
+@media (max-width:767px){
+
+  *, *::before, *::after{ box-sizing:border-box; }
+
+  img, video, svg, iframe, picture, canvas{
+    max-width:100%;
+    height:auto;
+  }
+
+  .wrap, .hero, .hero__inner, .hero__content,
+  .story, .story__grid, .story__body,
+  .hexplore, .hexplore__inner, .hexplore__intro,
+  .craft, .craft__grid,
+  .dest-spotlight, .dest-spotlight__inner,
+  .cta, .cta__inner,
+  .footer, .footer__inner,
+  section{
+    max-width:100%;
+  }
+
+  html, body{
+    overflow-x:hidden;
+    max-width:100vw;
+  }
+}
+
+
+/* ===================================================================
+   0B. BREATHING ROOM IN EVERY CORNER
+
+   Two different problems, both about the edges of the screen:
+
+   THE SIDES. .wrap is what's supposed to be keeping content off the
+   left and right edges everywhere on the site. This is a floor under
+   it, not a replacement — if .wrap already sets a bigger gutter on
+   some page this changes nothing (max() keeps whichever number is
+   larger); if it was sitting at 0 anywhere, content no longer touches
+   glass.
+
+   THE TOP AND BOTTOM, on a phone specifically. env(safe-area-inset-*)
+   is 0 on a phone with no notch and no home-indicator gesture bar, so
+   this costs nothing there — but on an iPhone with a Dynamic Island or
+   a bottom gesture bar, it adds exactly enough real padding to keep
+   the hero's first line and the footer's last line from sitting under
+   that hardware. max() again: it only ever adds space, never removes
+   the padding-block this file already sets in section 1 or 12.
+   =================================================================== */
+@media (max-width:767px){
+  .wrap{
+    padding-inline:
+      max(1.25rem, env(safe-area-inset-left))
+      max(1.25rem, env(safe-area-inset-right));
+  }
+
+  .hero__content{
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+
+  .footer{
+    padding-bottom: max(2.5rem, env(safe-area-inset-bottom));
+  }
+}
+
+
+/* ===================================================================
+   0C. THE PAGE SHRINKS ITSELF ON SOME ANDROID PHONES — NO USER ACTION
+
+   CONFIRMED live on a Xiaomi Poco F3, not just in a screenshot: the
+   page renders at roughly 83% of the actual screen width, the same
+   gap from the top of the page to the bottom, with plain white where
+   the missing ~17% should be. That shape — smaller than the viewport,
+   same ratio everywhere, not a wrapping or overflow problem — is the
+   signature of the page being SCALED, not laid out narrow.
+
+   viewport meta tag is already correct (width=device-width,
+   initial-scale=1 — checked in header.php), and nothing in
+   homepage.js touches document-, body-, or html-level width, zoom, or
+   transform. That rules out the two most common code-side causes,
+   which points at Android Chrome's own TEXT AUTOSIZING engine: on
+   some Android/Chrome builds it tries to boost small text for
+   readability by scaling a block's rendering, and depending on the
+   container it's evaluating, it can visibly shrink the whole page
+   canvas rather than just the font. It's a browser behavior, not
+   something in this codebase — but it's also something CSS can simply
+   turn off, so nobody visiting the site ever has to touch a zoom
+   setting to see it correctly:
+
+     text-size-adjust: 100%   — the standard, purpose-built switch
+                                 for exactly this Android engine.
+
+   Paired with a zoom/transform reset on html and body as a second
+   layer, in case the shrink is instead coming from a CSS rule in
+   base.css or responsive.css (not in hand here) rather than the
+   browser itself — same visual symptom, different cause, same fix
+   either way from this point forward since mobile.css loads last.
+   =================================================================== */
+@media (max-width:767px){
+  html{
+    -webkit-text-size-adjust:100%;
+    -moz-text-size-adjust:100%;
+    text-size-adjust:100%;
+  }
+
+  html, body{
+    zoom:1 !important;
+    transform:none !important;
+    width:100% !important;
+    max-width:100vw !important;
+  }
+}
+
+
+/* ===================================================================
+   1. VERTICAL RHYTHM
+
+   The single biggest change, and the reason the pages get shorter.
+
+   96px of air between two sections is right on a 1440px monitor: it is
+   a small share of a wide, shallow viewport, and it is what separates
+   one idea from the next. On a 390px phone the viewport is tall and
+   narrow, the same 96px is a much bigger share of what you can see,
+   and stacked top-and-bottom it becomes 192px — a quarter screen — of
+   blank between every pair of sections.
+
+   Cut to 56px, the sections still read as separate. What goes is the
+   dead scrolling between them.
+
+   padding-block, NOT padding. The shorthand is exactly what blanked
+   the side gutter across four pages (see section 5 of responsive.css);
+   padding-block writes top and bottom only and cannot repeat that.
+
+   The selectors are enumerated rather than generic because these are
+   the section classes this site actually uses, measured off the live
+   pages. Add a section class and add it here.
+   =================================================================== */
+@media (max-width:767px){
+
+  .section,
+  .section--lg,
+  .story,
+  .craft,
+  .gal-set,
+  .hexplore,
+  .exp,
+  .notes,
+  .dest-spotlight,
+  .intro-split,
+  .crack-band,
+  .best,
+  .ways{ padding-block:3.5rem; }
+
+  /* Closing bands — the last thing before the footer. They get less
+     still, because the footer's own 5rem of top padding is already
+     doing half the job of separating them from it. */
+  .onward,
+  .dest-outro,
+  .gal-end,
+  .statbar{ padding-block:2.75rem; }
+
+  .footer{ padding-top:3.25rem; }
+}
+
+
+/* ===================================================================
+   2. THE PAGE BANNER
+
+   MEASURED: .page-hero carries 144px of top padding on about.php and
+   152px on gallery.php. That number exists to clear the fixed nav —
+   but the nav is now about 70px tall, so half of it is clearing
+   nothing. The eyebrow starts most of a thumb below the bar.
+
+   6.5rem leaves a comfortable gap under the nav without the banner
+   opening on emptiness.
+   =================================================================== */
+@media (max-width:767px){
+  .page-hero{ padding-top:6.5rem; }
+
+  .page-hero--short{ padding-top:6rem; }
+}
+
+
+/* ===================================================================
+   3. PHOTOGRAPH PROPORTIONS
+
+   The tall portrait crops are a desktop composition: in a three-column
+   grid a 5:7 photo is a column-width tall and sits beside two other
+   columns. On a phone the grid is one column, so that same 5:7 becomes
+   the full width of the screen and 480px tall — most of the viewport
+   spent on one picture, with the text that explains it pushed off the
+   bottom.
+
+   4:5 keeps the photograph clearly portrait — the shape is part of the
+   design and it should stay — while giving back about 130px per photo.
+   Across the intro blocks that is close to a full screen of scrolling.
+
+   The squircle radii are left alone. They are the site's signature and
+   they read the same at any height.
+   =================================================================== */
+@media (max-width:767px){
+  .intro-media--tall{ aspect-ratio:4/5; }
+
+  .intro-shot--tall{ aspect-ratio:.82; min-height:0; }
+
+  .intro-shot--wide{ aspect-ratio:1.5; min-height:0; }
+}
+
+
+/* ===================================================================
+   4. COPY THAT ASKS FOR A MOUSE
+
+   homepage.php says, under the honeycomb:
+
+     "Hover a tile to see what each one is about."
+
+   There is no hovering on a phone. The instruction is not just useless
+   there, it actively tells the reader the thing in front of them does
+   not work — when in fact tapping a tile opens it perfectly well.
+
+   THIS IS A CSS PATCH FOR A MARKUP PROBLEM, and it is worth knowing
+   which. The honest fix is one line in homepage.php, around line 315:
+
+     <p class="hexplore__note">
+       <span class="u-fine">Hover</span><span class="u-coarse">Tap</span>
+       a tile to see what each one is about.
+     </p>
+
+   with .u-coarse hidden under (hover:hover) and .u-fine hidden under
+   (hover:none). Real text, in the markup, where a translator or a
+   screen reader can find it.
+
+   What is below swaps the sentence from the stylesheet instead, so it
+   reads correctly on a phone today without editing a 1200-line file.
+   The visibility pair — hidden on the element, visible on the
+   pseudo-element — keeps the paragraph's own box in the layout, so the
+   spacing above and below does not shift. Generated content is not
+   selectable and not always announced, which is exactly why this is
+   the stopgap and the markup edit is the fix.
+   =================================================================== */
+@media (hover:none){
+  .hexplore__note{
+    visibility:hidden;
+    position:relative;
+  }
+
+  .hexplore__note::after{
+    content:'Tap a tile to see what each one is about.';
+    visibility:visible;
+    position:absolute;
+    inset:0;
+  }
+}
+
+
+/* ===================================================================
+   5. TOUCH FEEDBACK
+
+   Every card on this site answers a mouse — it lifts, the photo
+   scales, the arrow slides. A finger gets none of that, because
+   :hover either never fires or fires and then sticks until you tap
+   somewhere else.
+
+   So: give the finger its own answer. A card presses IN when held,
+   which is the physical metaphor a touch screen has and a mouse does
+   not. It lasts as long as the finger is down and cannot stick.
+
+   The tap highlight goes because the browser's default is a blue-grey
+   rectangle drawn around the whole element, ignoring the border radius
+   — on a squircle card it looks like a rendering fault. Replacing it
+   with our own :active state means nothing is lost by removing it.
+   =================================================================== */
+@media (hover:none){
+  a, button, .door, .photo-card, .dest-card, .hex-cell{
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  .door:active,
+  .photo-card:active,
+  .dest-card:active,
+  .intro-card:active,
+  .hex-cell:active{
+    transform:scale(.985);
+    transition:transform .12s ease;
+  }
+
+  .btn:active,
+  .nav__cta:active,
+  .intro-link:active{ transform:scale(.96); }
+}
+
+
+/* ===================================================================
+   6. THE HORIZONTAL RAILS
+
+   destinations.php scrolls its filter chips sideways, and a few other
+   rows do the same. They work on touch already — this makes them feel
+   deliberate rather than accidental.
+
+   scroll-snap parks each item against the left edge instead of leaving
+   a row halfway between two chips, which is what tells you at a glance
+   that the row is a row and not a broken grid.
+
+   overscroll-behavior-inline:contain stops a flick that reaches the
+   end of the chips from continuing into the browser's back-navigation
+   gesture. On iOS that mis-swipe leaves the page entirely.
+
+   scroll-padding-inline-start matches the rail's own leading padding,
+   so a snapped chip lands where the first chip sits rather than
+   flush against the edge.
+   =================================================================== */
+@media (hover:none){
+  .dest-chips,
+  .town-jump,
+  .hero-rail{
+    scroll-snap-type:x proximity;
+    overscroll-behavior-inline:contain;
+    scroll-padding-inline-start:1.5rem;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .dest-chips > *,
+  .town-jump > *,
+  .hero-rail > *{ scroll-snap-align:start; }
+}
+
+
+/* ===================================================================
+   7. READING SIZE
+
+   FLUID, not one fixed value — because "phone" now spans a wider
+   range than it used to. A small Android or an iPhone SE is 360-375px
+   wide; a Samsung Ultra or a Xiaomi flagship is 412-430px; some
+   "phablets" run past 430px before this file's own 767px cutoff into
+   tablet territory. One static size is either cramped on the small
+   end or oversized on the large end — clamp() interpolates between
+   the two instead of picking one and living with the compromise.
+
+     clamp(0.88rem, 0.59rem + 1.45vw, 0.98rem)
+
+   0.88rem (14.1px) at ~360px-wide phones, rising smoothly to 0.98rem
+   (15.7px) by ~430px, and held at that 0.98rem ceiling from there up
+   to the 767px edge of this media query — so a big phone never
+   creeps past what a small tablet gets. Slightly smaller everywhere
+   than the flat 1rem this replaced, which is what was asked for, but
+   never so small that it becomes work to read one-handed outdoors,
+   which is why this file bumped it up from the .9-.97rem desktop
+   range in the first place.
+
+   Line height stays high — a longer line needs more space between
+   lines to stay trackable, and a phone column is not short.
+   =================================================================== */
+@media (max-width:767px){
+  .intro__body,
+  .intro-split__body,
+  .story__body,
+  .exp__text,
+  .door__text,
+  .best-card__body{
+    font-size:clamp(0.88rem, 0.59rem + 1.45vw, 0.98rem);
+    line-height:1.75;
+  }
+
+  /* Inputs are deliberately NOT part of the fluid scale above and stay
+     pinned at exactly 1rem (16px): below that, iOS zooms the whole
+     page in when the field takes focus and does not zoom back out.
+     The sign-in form is the one place on this site where that would
+     bite, so this rule wins regardless of how small the phone is. */
+  input, select, textarea{ font-size:1rem; }
+}
+
+
+/* ===================================================================
+   8. HEADINGS
+
+   The display sizes are already fluid — every one of them uses clamp()
+   — so nothing here changes their size. What is off on a phone is the
+   spacing AROUND them: the tracking on the small uppercase eyebrows
+   was set for a wide column and reads as gappy in a narrow one, and
+   the headline is wide enough to strand a single word on its own last
+   line.
+
+   text-wrap:balance evens the lines out. Browsers that do not know it
+   ignore the line, which is the whole reason it is safe to use.
+   =================================================================== */
+@media (max-width:767px){
+  .eyebrow,
+  .hexplore__eyebrow,
+  .intro-split__eyebrow{ letter-spacing:.14em; }
+
+  h1, h2, .intro__title, .intro-split__title, .hexplore__title{
+    text-wrap:balance;
+  }
+}
+
+
+/* ===================================================================
+   9. TWO RULES THIS FILE COULD NOT REACH FROM <head>
+
+   Measured after the fact: .intro-split was still at 72px and
+   .gal-set--mist still at 72px while everything around them had come
+   down to 56px. Two different reasons, worth writing down because
+   both will catch you again.
+
+   .intro-split — assets/css/intro-split.css is not linked in <head>.
+   Its own comment says so: it is linked from inside the BODY of the
+   page that uses it. A stylesheet in the body still loads, and it
+   still counts as later in source order than everything in the head —
+   so it beats this file no matter what order the head links are in.
+   The extra class raises specificity above it.
+
+   .gal-set--mist — plain specificity. gallery.css styles the modifier
+   with two classes; a single class here loses to it. Matching the
+   count is enough.
+
+   IF YOU ADD SECTIONS and one refuses to take the mobile spacing, it
+   will be one of these two causes. Check the load position first, then
+   count the classes.
+   =================================================================== */
+@media (max-width:767px){
+  .intro-split.intro-split{ padding-block:3.5rem; }
+
+  .gal-set.gal-set--mist{ padding-block:3.5rem; }
+}
+
+
+/* ===================================================================
+   10. THE SCROLL ANIMATIONS
+
+   THIS IS THE BIG ONE. Everything above is polish; this is the reason
+   the phone version can look broken rather than merely dense.
+
+   WHAT IS HAPPENING
+
+   The pages carry 106 elements marked data-aos between them — 52 on
+   homepage.php, 29 on about.php, 25 on gallery.php. AOS works by
+   hiding all of them in CSS and then adding a class to each one as it
+   scrolls into view. Nothing appears until its JavaScript says so.
+
+   base.css already spotted the danger and wrote a safety net, in
+   section 29:
+
+     [data-aos], [data-reveal]{ opacity:1; }
+
+   The intent is exactly right. The rule does not work. aos.css writes
+   its own rule with the attribute selector DOUBLED —
+
+     [data-aos^="fade"][data-aos^="fade"]{ opacity:0 }
+
+   — which is two selectors' worth of specificity against base.css's
+   one, so the zero wins and the safety net never applies.
+
+   MEASURED, by loading the real aos.css and not running its script:
+   32 of 32 marked elements on homepage.php sat at opacity 0. Not
+   dimmed — gone. Whole sections of blank page.
+
+   On a desktop with a fast connection this is invisible, because the
+   script arrives and runs before anyone scrolls. A phone is where it
+   shows: the CDN is slower over mobile data, a flick scrolls past the
+   trigger point faster than AOS recalculates, and a browser in data-
+   saver mode may not fetch the script at all. What the reader gets is
+   a page with holes in it.
+
+   TWO RULES, DOING TWO DIFFERENT JOBS.
+
+   --- 10a, everywhere: never invisible because a script did not run.
+
+   AOS puts an .aos-init class on every element it takes control of.
+   So: an element that is marked for animation but has NOT been picked
+   up is forced visible. The moment AOS does initialise, .aos-init
+   lands, this rule stops matching, and the animations run exactly as
+   before — on desktop nothing changes at all.
+
+   That is the difference between this and base.css's version: it
+   fails safe without disabling anything. Triple selector to clear
+   aos.css's double.
+
+   --- 10b, phones: no scroll animation at all.
+
+   Not a fallback — a decision. Fade-up on scroll is a desktop effect.
+   It assumes a slow deliberate scroll down a wide page. On a phone
+   people flick, and content that animates in over 400ms after the
+   scroll has already stopped reads as a page struggling to keep up.
+   Worse, AOS measures offsets against a viewport height that changes
+   every time the address bar hides, so triggers land in the wrong
+   place on exactly the devices where they are least wanted.
+
+   So on a touch device everything is simply present. The page is
+   still and immediate, which on a phone is what professional looks
+   like. The hover micro-interactions and the press states in section
+   5 stay — those answer something the reader did.
+
+   !important is deliberate here and used nowhere else in this file:
+   these two rules have to beat a third-party stylesheet that is
+   loaded before any of ours and cannot be edited.
+
+   THE PROPER FIX for 10b, if you want it out of CSS: AOS.init() takes
+   a disable option, and it is almost certainly in assets/js/homepage.js.
+
+     AOS.init({ disable: 'mobile', once: true });
+
+   Send me homepage.js and I will put it there instead. Until then this
+   does the same job from the stylesheet.
+   =================================================================== */
+
+/* 10a — everywhere */
+[data-aos][data-aos][data-aos]:not(.aos-init),
+[data-reveal][data-reveal][data-reveal]:not(.aos-init){
+  opacity:1 !important;
+  transform:none !important;
+  visibility:visible !important;
+}
+
+/* 10b — touch devices */
+@media (hover:none){
+  [data-aos][data-aos][data-aos],
+  [data-reveal][data-reveal][data-reveal]{
+    opacity:1 !important;
+    transform:none !important;
+    visibility:visible !important;
+    transition:none !important;
+    animation:none !important;
+  }
+}
+
+/* ===================================================================
+   11. MOBILE — HORIZONTAL CAROUSELS + CAPPED REVIEWS — REWRITE
+
+   PASTE THIS AT THE VERY END OF mobile.css. mobile.css is already
+   loaded last (see the file's own header comment), so on selectors of
+   equal specificity this block wins by source order alone. The few
+   places below that don't rely on that are genuine specificity fights
+   against rules in homepage.css — the same kind of fight section 10
+   of this file already documents fighting against aos.css. Same tool,
+   used exactly as sparingly, and noted inline each time.
+
+   WHY FOUR DIFFERENT BREAKPOINTS INSTEAD OF ONE
+
+   Every section rewritten here already has its own point where it
+   leaves single-column and becomes a grid — .hexplore__comb at 640px,
+   .exp__grid at 700px, .notes__grid at 760px (all three read straight
+   off homepage.css). One shared "phone" breakpoint across all four
+   carousels would have to pick a single number, and anywhere between
+   the lowest and highest of those three it would either fight a grid
+   that already looks right or leave a stacked column this rewrite was
+   meant to fix. So each carousel below switches on one pixel BELOW
+   the point its own section already handles itself — it only ever
+   runs where the alternative was a single stacked column, never where
+   a grid was about to take over.
+
+   .masonry has no rule in the homepage.css this was checked against —
+   it must live in a file that wasn't in hand when this was written
+   (base.css or gallery.css, most likely). It gets the general 767px
+   "phone" cutoff this codebase otherwise uses. If it turns out to
+   have its own earlier breakpoint like the other three, narrow the
+   number in 11d the same way.
+   =================================================================== */
+
+
+/* -------------------------------------------------------------------
+   11a. THE HONEYCOMB — .hexplore__comb / .hex-cell
+
+   Below 640px homepage.css itself runs:
+
+     .hexplore__comb{ display:flex; flex-direction:column; }
+     .hex-cell{ width:70%; align-self:flex-start; }
+     .hex-cell:nth-child(even){ align-self:flex-end; }
+     .hex-cell + .hex-cell{ margin-top:-14%; }
+
+   — a single zig-zagging column, each tile overlapping the one above
+   it by 14% of its own height. That overlap and the alternating
+   align-self are exactly what a horizontal row does not want, so
+   both get cancelled. Nothing else about the tile needs to change:
+   .hex-card's aspect-ratio (1 / 1.1547, a true regular hexagon) reads
+   off whatever width .hex-cell ends up with, and .hex-cell keeps
+   position:relative untouched, because .hex-cell::before — the offset
+   shadow hexagon behind each tile — is absolutely positioned against
+   it.
+
+   !important on the two cancellations: `.hex-cell:nth-child(even)`
+   and `.hex-cell + .hex-cell` both carry more specificity than a
+   plain `.hex-cell`, so a same-specificity rule later in the cascade
+   cannot beat them on its own. Two flags, not a blanket rule.
+   ------------------------------------------------------------------- */
+@media (max-width:639px){
+
+  .hexplore__comb{
+    display:flex;
+    flex-direction:row;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-inline:contain;
+    scrollbar-width:none;
+    gap:1.1rem;
+    padding:.4rem 1.25rem 1.7rem;
+    margin:0 -1.25rem;              /* bleed to the screen edge — adjust to match the page's actual mobile gutter if it isn't 1.25rem */
+  }
+
+  .hexplore__comb::-webkit-scrollbar{ display:none; height:0; }
+
+  .hex-cell{
+    flex:0 0 auto;
+    width:66vw;
+    max-width:270px;
+    align-self:auto !important;     /* beats :nth-child(even){align-self:flex-end} */
+    margin-top:0 !important;        /* beats the + .hex-cell{margin-top:-14%} cascade */
+    scroll-snap-align:center;
+  }
+}
+
+
+/* -------------------------------------------------------------------
+   11b. THE THREE EXPERIENCE CARDS — .exp__grid / .exp-card
+
+   Below 700px homepage.css has .exp__grid at
+   display:grid; grid-template-columns:1fr — already one column, so
+   this only has to turn that column into a row. .exp-card is
+   position:relative; display:block with an absolutely-positioned
+   <img> filling it (no fixed height in the base rule), so the row
+   needs to give each card an explicit shape itself or the cards
+   collapse to the height of their absolutely-positioned children,
+   which is 0.
+   ------------------------------------------------------------------- */
+@media (max-width:699px){
+
+  .exp__grid{
+    display:flex;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-inline:contain;
+    scrollbar-width:none;
+    gap:1.25rem;
+    padding:.25rem 1.25rem 1.6rem;
+    margin:0 -1.25rem;
+  }
+
+  .exp__grid::-webkit-scrollbar{ display:none; height:0; }
+
+  .exp-card{
+    flex:0 0 auto;
+    width:78vw;
+    max-width:340px;
+    aspect-ratio:3/4.4;              /* matches the "PORTRAIT, tall, about 3:4.4" note already on these photos in homepage.php */
+    border-radius:1.25rem;           /* drop this line if .exp-card sets its own radius in a rule not covered here */
+    scroll-snap-align:start;
+  }
+}
+
+
+/* -------------------------------------------------------------------
+   11c. TRAVEL NOTES — .notes__grid / .note-card
+
+   Below 760px homepage.css has .notes__grid at
+   display:grid; grid-template-columns:1fr; gap:1.75rem — same shape
+   as the experience grid, same fix. .note-card__media is already
+   aspect-ratio:4/3 with its own image inside, so unlike .exp-card
+   nothing needs to be invented for its height — the card's natural
+   height (image + .note-card__body) is used as-is.
+   ------------------------------------------------------------------- */
+@media (max-width:759px){
+
+  .notes__grid{
+    display:flex;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-inline:contain;
+    scrollbar-width:none;
+    gap:1.25rem;
+    margin:3.25rem -1.25rem 0;      /* the top margin matches .notes__grid's own margin-top:3.25rem, just moved off the flex item and back onto the row */
+    padding:0 1.25rem 1.6rem;
+  }
+
+  .notes__grid::-webkit-scrollbar{ display:none; height:0; }
+
+  .note-card{
+    flex:0 0 auto;
+    width:84vw;
+    max-width:380px;
+    scroll-snap-align:start;
+  }
+}
+
+
+/* -------------------------------------------------------------------
+   11d. GALLERY — .masonry / .masonry-item
+
+   UNVERIFIED — this rule isn't in homepage.css, so its real layout
+   (CSS grid, CSS columns, or something else) and its own breakpoint,
+   if it has one, aren't known here. Send over whichever file defines
+   it (likely base.css or gallery.css) and this can be tightened the
+   same way 11a-11c were. Until then this forces a flex row hard
+   enough to override a grid, CSS-columns, or masonry layout equally.
+
+   Fixed height + object-fit:cover on the photo is what lets six
+   different aspect-ratio classes (ratio-3x4, ratio-4x3, ratio-1x1,
+   ratio-4x5) sit in one clean row without each card being a
+   different height.
+   ------------------------------------------------------------------- */
+@media (max-width:767px){
+
+  .masonry{
+    display:flex !important;
+    flex-wrap:nowrap !important;
+    overflow-x:auto;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-inline:contain;
+    scrollbar-width:none;
+    gap:1rem;
+    columns:auto !important;         /* cancels a CSS-columns masonry, if that's what this turns out to be */
+    padding:.25rem 1.25rem 1.5rem;
+    margin:0 -1.25rem;
+  }
+
+  .masonry::-webkit-scrollbar{ display:none; height:0; }
+
+  .masonry-item{
+    flex:0 0 auto !important;
+    width:78vw;
+    max-width:340px;
+    height:56vw;
+    max-height:280px;
+    grid-row:auto !important;
+    grid-column:auto !important;
+    break-inside:auto !important;
+    scroll-snap-align:start;
+  }
+
+  .masonry-item .photo-layer{
+    width:100%; height:100%;
+    object-fit:cover;
+  }
+}
+
+
+/* -------------------------------------------------------------------
+   11e. VISITOR REGISTER — cap at two rows, reveal the rest in place
+
+   .voice-row is display:grid at every width — still true in
+   homepage.css's own @media(max-width:820px) rewrite of it — so the
+   expanded state below restores the same display value the row
+   already uses, not a guess. Counting by :nth-of-type(article) rather
+   than :nth-child means .voices__legend, a <div> sitting in front of
+   the rows, doesn't throw the count off by one.
+
+   The button and its label text are toggled by the matching addendum
+   at the tail of homepage.js. homepage.php prints an
+   `id="voicesRegister"` on `.voices__register` and a
+   `.voices__more--mobile` button — both already added.
+   ------------------------------------------------------------------- */
+@media (max-width:767px){
+
+  .voices__register .voice-row:nth-of-type(n+3){
+    display:none;
+  }
+
+  .voices__register.is-expanded .voice-row:nth-of-type(n+3){
+    display:grid;
+    opacity:1 !important;      /* clears section 10's [data-aos] opacity:0 fallback, in case a hidden row never got the chance to be marked .aos-init */
+    transform:none !important;
+  }
+
+  .voices__more--mobile{
+    display:flex;
+    justify-content:center;
+    margin-top:-1rem;
+  }
+
+  /* homepage.php only renders .voices__more--full (the "See the full
+     register" modal button) when there are more than six published
+     reviews. Holding it back until the local expand has run means a
+     phone with, say, eight reviews never shows two "see more"-shaped
+     controls stacked on each other before the first tap. */
+  .voices__more--full{ display:none; }
+
+  .voices__register.is-expanded ~ .voices__more--full{ display:flex; }
+}
+
+@media (min-width:768px){
+  .voices__more--mobile{ display:none; }
+}
+
+
+/* ===================================================================
+   12A. THE HERO — TEXT HIERARCHY ON A PHONE
+
+   FROM THE SCREENSHOT: "Welcome to Camarines Norte" (.hero__title, the
+   actual h1) reads SMALLER than the quote under it (.hero__motto) and
+   about the same size as the description (.hero__desc) — backwards
+   from what a headline should do. Whatever sizes those three carry on
+   desktop, on a phone they need to read in order of importance: the
+   title loudest, the quote second (it's a quote, not the headline),
+   the description quietest as supporting copy. All three centered,
+   matching the layout the page is already going for at this width.
+   =================================================================== */
+@media (max-width:767px){
+  .hero__inner{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+
+  /* homepage.css sets this ALL CAPS, weight 800, tracking pulled in
+     to -.03em (line 27) — built for a punchy grotesque headline, which
+     is a fair choice on desktop where it reads as confident. On a
+     phone, stacked across three lines with "WELCOME" as the first
+     word, dense block capitals in front of a photo of people read as
+     loud rather than inviting — the opposite of what the word itself
+     is trying to say. Dropping the caps and easing the tracking back
+     toward normal keeps every letterform intact (still Archivo, still
+     bold, still standing on its own against a busy photo) but lets
+     the shape of the words read as a greeting instead of a shout. The
+     text-shadow is what keeps it looking sharp rather than softer —
+     more separation from the photo behind it, not less. */
+  .hero__title{
+    font-size:clamp(2.35rem, 9.8vw, 3.1rem);
+    line-height:1.16;
+    font-weight:700;
+    letter-spacing:-.008em;
+    text-transform:none;
+    text-shadow:0 2px 10px rgba(0,0,0,.4), 0 14px 34px rgba(0,0,0,.3);
+    text-align:center;
+  }
+
+  .hero__motto{
+    font-size:clamp(1.05rem, 4.2vw, 1.3rem);
+    text-align:center;
+    margin-block:.75rem 1rem;
+  }
+
+  .hero__desc{
+    font-size:clamp(.88rem, 3.4vw, 1rem);
+    line-height:1.6;
+    text-align:center;
+    max-width:30rem;
+    margin-inline:auto;
+  }
+
+  .hero__actions{ justify-content:center; }
+}
+
+
+/* ===================================================================
+   12B. THE CLOSING CTA BAND — "Ready to Experience…"
+
+   FROM THE SCREENSHOT: the title and description already centre
+   themselves, but .cta__actions holds two differently-sized buttons
+   (Explore Destinations / Contact Tourism Office) in a row built for
+   desktop width — on a phone that row either wraps ragged-left or
+   leaves the pair sitting off-centre as a group. Stacked and centred,
+   each one full-width-but-capped, reads as two deliberate choices
+   instead of a leftover desktop row.
+   =================================================================== */
+@media (max-width:767px){
+  .cta__title{ text-align:center; }
+
+  .cta__desc{
+    text-align:center;
+    max-width:28rem;
+    margin-inline:auto;
+  }
+
+  .cta__actions{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:1rem;
+  }
+
+  .cta__actions .btn{
+    width:100%;
+    max-width:20rem;
+    text-align:center;
+  }
+}
+
+
+/* ===================================================================
+   12C. STANDALONE CTA PILLS AND THEIR HEADINGS — CENTERED ON A PHONE
+
+   .story__cta ("Read more"), .hexplore__cta ("View All Destinations")
+   and .craft__cta ("Find places to eat") each close out a column that
+   is set up as a LEFT-aligned desktop text block — fine at that width,
+   sitting beside a photo. Stacked to full width on a phone that same
+   left alignment reads as an accident, especially on the pill button
+   at the end, which ends up hugging the left edge under a headline
+   that (via section 8, above) already balances itself in the centre.
+
+   .hexplore__intro gets the same treatment on all its text, not just
+   the button — eyebrow, heading, the two lead paragraphs, and the
+   stats row — because on a phone it's the whole left column of a
+   two-column desktop layout collapsing to one, and a centred column
+   reads as intentional in a way a left-aligned one only does when it
+   still has a photo to sit beside.
+   =================================================================== */
+@media (max-width:767px){
+  .story__cta{ text-align:center; }
+
+  .craft__cta{ text-align:center; }
+
+  .hexplore__intro{
+    text-align:center;
+  }
+
+  .hexplore__stats{
+    justify-content:center;
+  }
+
+  .hexplore__cta{
+    display:table;
+    margin-inline:auto;
+  }
+
+  /* --- about.php: "Plan around a fiesta" ---------------------------
+     Same situation as the three above, one page over. .crack-copy is
+     the right-hand column of the festivals split — a left-aligned
+     desktop text block sitting beside the cracked photo mosaic. On a
+     phone the mosaic goes above it and the column runs full width, so
+     the button ends up alone against the left edge under a note box
+     that spans the whole screen, which is where it reads as dropped
+     rather than placed.
+
+     display:flex rather than the display:table used above, because
+     .btn is a flex container in base.css — table would take that away
+     and with it the centring of the label inside the pill. flex keeps
+     the inside of the button exactly as it is while making the button
+     itself block-level, which is what lets the auto margins bite.
+
+     width:fit-content stops that block-level button from stretching to
+     the full width of the column. */
+  .crack-copy__cta{
+    display:flex;
+    width:fit-content;
+    margin-inline:auto;
+  }
+
+  /* --- destinations.php: "See all 24 destinations" -----------------
+     The pill at the end of .intro-split__lede, which is the left-hand
+     prose column of the intro split — the same story again: beside a
+     photograph at desktop width, alone and full-width on a phone, with
+     the pill left against the edge under two centred-looking
+     paragraphs.
+
+     DOUBLED CLASS, and section 9 of this file explains why: .intro-link
+     is styled from assets/css/intro-split.css, which destinations.php
+     links from inside the BODY. A stylesheet in the body counts as
+     later in source order than anything in the head, so it beats
+     mobile.css no matter how the head links are ordered. A single
+     .intro-link here would lose to whatever display value that file
+     sets and the auto margins would never bite. Repeating the class
+     doubles the specificity and settles it.
+
+     Section 9 is worth reading if any other rule aimed at this section
+     mysteriously does nothing — it is the same cause every time. */
+  .intro-link.intro-link{
+    display:flex;
+    width:fit-content;
+    margin-inline:auto;
+  }
+}
+
+
+/* ===================================================================
+   16. THE LAKBAI WORDMARK — BROUGHT BACK ON MOBILE
+
+   Confirmed: uploads/lakbai.png loads fine and shows up next to the
+   seal on desktop. Something in nav.css or base.css (not in hand
+   here) is hiding .nav__logo-word below some breakpoint — probably an
+   old decision to leave room for the hamburger/search/profile icons.
+   But there's nothing crowding it on a phone: the seal sits alone on
+   the left, the three icons cluster on the right, and the middle of
+   the bar is empty space doing nothing. Bringing the wordmark back
+   costs no room it doesn't have.
+
+   mobile.css loads last, so this wins over whatever display:none is
+   hiding it, at equal specificity, by source order alone — same
+   mechanism as every other override in this file.
+   =================================================================== */
+@media (max-width:767px){
+  .nav__brand{
+    display:flex;
+    align-items:center;
+    gap:.5rem;
+  }
+
+  .nav__logo-word{
+    display:block;
+    height:1.9rem;
+    width:auto;
+    max-width:38vw;
+    object-fit:contain;
+  }
+}
+
+
+/* ===================================================================
+   17. THE "SIGN IN TO SEARCH" ROW — RUNAWAY ICON
+
+   Its magnifying-glass <svg> has no class and nothing in the site's
+   CSS targets a bare svg inside .nav-drawer__link — only the
+   Destinations row's chevron gets sized, via its second class
+   .nav-drawer__acc-btn. With nothing constraining it, the browser
+   falls back to an SVG's own default size (300×150px), which is the
+   oversized ring in the screenshot. Sized here to match the chevron
+   it sits next to, and kept from ever shrinking in a flex row.
+   =================================================================== */
+@media (max-width:767px){
+  .nav-drawer__link svg{
+    width:1.15rem;
+    height:1.15rem;
+    flex-shrink:0;
+  }
+}
+
+
+/* ===================================================================
+   18. THE DESTINATIONS ACCORDION — COLOR AND ACTUAL COLLAPSE
+
+   TWO SEPARATE BUGS, same accordion:
+
+   1. .nav-drawer__sub rows render near-white on white — invisible
+      against themselves before they're even invisible against the
+      dark drawer around them. Restyled to match the drawer: a faint
+      white tint for the row (so it still reads as a distinct tappable
+      chip, not just bare text) and full white text.
+
+   2. The button already sets aria-expanded="false" and (per its own
+      HTML comment) toggles it on click — that's the standard
+      accessible-accordion pattern. But nothing appears to read that
+      attribute to actually hide the list, which is why it shows open
+      regardless of the arrow's state. Wired here with a pure CSS
+      selector keyed to aria-expanded, so it starts collapsed and only
+      drops open when the button's own state says it should — no
+      guessing at what the site's JS does beyond the one attribute the
+      markup already commits to. The chevron rotates with it as the
+      visual cue the user asked for.
+   =================================================================== */
+@media (max-width:767px){
+  .nav-drawer__acc-body{
+    max-height:0;
+    overflow:hidden;
+    transition:max-height .28s ease;
+  }
+
+  .nav-drawer__acc-btn[aria-expanded="true"] + .nav-drawer__acc-body{
+    max-height:32rem; /* comfortably past five rows + "All destinations" */
+  }
+
+  .nav-drawer__acc-btn svg{
+    transition:transform .2s ease;
+  }
+
+  .nav-drawer__acc-btn[aria-expanded="true"] svg{
+    transform:rotate(180deg);
+  }
+
+  .nav-drawer__sub{
+    display:flex;
+    align-items:center;
+    gap:.65rem;
+    background:rgba(255,255,255,.06);
+    color:#fff;
+    padding:.85rem 1rem;
+    border-radius:.6rem;
+    margin-block-end:.4rem;
+  }
+
+  .nav-drawer__sub:active{
+    background:rgba(255,255,255,.12);
+  }
+
+  /* "All destinations" already reads fine in orange on dark — left
+     alone rather than forced into the same chip treatment as its
+     siblings, since it's meant to stand apart as the "see everything"
+     link, not blend in as a sixth category row. */
+  .nav-drawer__sub--all{
+    background:none;
+    padding-inline:1rem;
+  }
+}
+
+
+/* ===================================================================
+   19. THE ADMIN TOP BAR — TOO MANY ICONS FOR ONE ROW
+
+   Signed out, the top bar has three things: search, sign-in, burger.
+   Signed in as admin, it has five: search, the dashboard grid icon,
+   the avatar, sign-out, and the burger — on top of the seal and the
+   LAKBAI wordmark from section 16. Five icon-sized tap targets plus a
+   wordmark do not fit an ~390-430px phone without something being
+   squeezed, and what got squeezed was the burger — the one control
+   that opens the only way to navigate on a phone. Not survivable.
+
+   The dashboard icon now has a home in the drawer itself (Dashboard,
+   added at the top of .nav-drawer__nav in header.php, admin-gated the
+   same way this icon always was). Hidden here rather than removed
+   from header.php, so nothing about the desktop layout — where there
+   is room for it — changes.
+
+   flex-shrink:0 on the burger is the belt-and-braces part: whatever
+   else ends up in this row later, the one button that opens the exit
+   from a crowded row should never be the thing that gives way first.
+   =================================================================== */
+@media (max-width:767px){
+  .nav__admin{ display:none; }
+
+  .nav__burger{ flex-shrink:0; }
+
+  .nav-drawer__link--admin{
+    color:var(--gold, #e0a530);
+    font-weight:700;
+  }
+}
+
+
+/* ===================================================================
+   12. THE FOOTER — MOBILE LAYOUT
+
+   footer.php's own rules live in base.css, which was not in hand when
+   the rest of this file was written. On a phone that footer inherits
+   the desktop's four-across row (.footer__top: brand column plus
+   three link columns) squeezed into 390px — long unbroken lines of
+   centred-nowhere text, columns fighting each other for width, and a
+   bottom row (copyright, legal links, the sign-off, the official
+   line) wrapping wherever the browser happens to break it rather than
+   where a person would.
+
+   THE SHAPE ON A PHONE: one column, generously spaced, centred. A
+   footer is read at the very end of a visit and usually skimmed for
+   one of two things — how to get in touch, or the legal links — so
+   centred and stacked reads as intentional here in a way it would not
+   in the middle of the page.
+
+   mobile.css loads last, so on the equal-specificity single-class
+   selectors below this wins by source order alone, same as every
+   other section in this file.
+   =================================================================== */
+@media (max-width:767px){
+
+  /* padding-bottom is set in section 0B, with a safe-area floor —
+     not repeated here so that rule keeps the last word. */
+
+  /* The strip above the columns — province name + coordinates. Side
+     by side they are the two widest strings on the page fighting over
+     390px; stacked and centred they read as a dateline instead. */
+  .footer__meta{
+    flex-direction:column;
+    align-items:center;
+    gap:.35rem;
+    text-align:center;
+    padding-bottom:1.75rem;
+    font-size:.8rem;
+  }
+
+  /* One column, not four squeezed into one row's width. */
+  .footer__top{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    gap:2.75rem;
+  }
+
+  .footer__brand{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    max-width:26rem;
+  }
+
+  .footer__brand-mark{ justify-content:center; }
+
+  .footer__blurb{
+    font-size:.9rem;
+    line-height:1.7;
+  }
+
+  /* The contact list keeps its icons on the left of each line — that
+     is how an address and an email are actually read — so only the
+     list itself is centred as a block, not every line inside it. */
+  .footer__contact{
+    display:inline-flex;
+    flex-direction:column;
+    align-items:flex-start;
+    text-align:left;
+    gap:.85rem;
+    font-size:.85rem;
+  }
+
+  .footer__top > .footer__col{ width:100%; }
+
+  .footer__head{
+    font-size:.95rem;
+    margin-bottom:.9rem;
+  }
+
+  .footer__list{
+    display:flex;
+    flex-direction:column;
+    gap:.7rem;
+    font-size:.9rem;
+  }
+
+  .footer__social{
+    justify-content:center;
+    gap:1rem;
+  }
+
+  .footer__hours{
+    font-size:.85rem;
+    text-align:center;
+  }
+
+  .footer__rule{ margin-block:2.5rem; }
+
+  /* The bottom row: copyright, legal links, the sign-off, the
+     official line. On desktop this is one wide row; on a phone it
+     becomes a short stack, so the reader's eye lands on the
+     copyright line first and the legal boilerplate last, which is
+     the order those four lines actually matter in. */
+  .footer__bottom{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    gap:1.1rem;
+  }
+
+  .footer__legal{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:.5rem 1.1rem;
+    font-size:.82rem;
+  }
+
+  .footer__copy,
+  .footer__sign{ font-size:.82rem; }
+
+  .footer__official{
+    font-size:.78rem;
+    line-height:1.6;
+    opacity:.8;
+    max-width:22rem;
+  }
+}
+
+/* ===================================================================
+   20. SPOTLIGHT — THE PANEL RESIZES ITSELF ON EVERY SWITCH
+
+   The section this fixes is #destinations: one big text panel on top
+   of the photo, and the thumbnail strip under it.
+
+   Nothing here is wrong on desktop. homepage.css section 32 already
+   diagnosed this exact problem and fixed it there:
+
+     .dest-spotlight__main   { min-height:30rem; }
+     .dest-spotlight__main h3{ min-height:2.4em; }
+
+   A floor height, so one, two or three lines of destination name all
+   occupy the same box and the strip below never moves.
+
+   Then, twelve lines further down, homepage.css switches both of them
+   OFF again for phones — homepage.css:1717-1719:
+
+     @media (max-width:767px){
+       .dest-spotlight__main   { min-height:0; display:block; }
+       .dest-spotlight__main h3{ min-height:0; display:block; }
+     }
+
+   That reset is right to exist. 30rem is a desktop number: on a phone
+   the panel is already taller than that, so an unconditional 30rem
+   floor would only add dead space. But it threw out the h3's reserved
+   space along with it, and the h3 is the part that actually jumps.
+
+   MEASURED, on a 360px-wide phone at .dest-spotlight__main h3's own
+   clamp(2rem,5vw,2.9rem) — which pins to 2rem, since 5vw is 18px:
+
+     "Mt. Panit"                          1 line
+     "Bagasbas Beach"                     1 line
+     "La Maestra Campsite and Resort"     2 lines
+     "St. Francis of Assisi Parish Church" 2 lines
+
+   One line of that heading is ~38px. So the panel is 38px taller on
+   half the destinations than the other half, and every tap on a
+   thumbnail shifts the strip you just tapped — which is what makes it
+   feel broken rather than merely uneven.
+
+   The fix is the desktop fix, re-applied with phone numbers: reserve
+   the space per text block instead of putting one magic floor on the
+   whole panel. mobile.css loads last, so these win over the resets
+   above at equal specificity.
+
+   Three blocks vary, not one, so all three reserve:
+
+     h3     2 lines — covers every name in the current list of 24
+     quote  2 lines — most are one, "Raised before the country had a
+                      name for itself." is two
+     desc   4 lines — these range from 3 lines ("A view deck above
+                      Jose Panganiban...") to 5 (Canimog Island's).
+                      4 is the middle: worst case is now a one-line
+                      wobble instead of a two-line lurch, without
+                      leaving a hole under the short ones.
+
+   If you only want the name fixed and would rather leave the rest
+   alone, delete the __quote and __desc rules — the h3 one is the one
+   answering the complaint.
+
+   The line-heights are set here rather than inherited, because a
+   min-height in em is only exact if the line-height it is counting is
+   known. Changing either number means changing the other to match:
+   the multiplier is lines x line-height.
+   =================================================================== */
+@media (max-width:767px){
+
+  .dest-spotlight__main h3{
+    line-height:1.2;
+    min-height:2.4em;          /* 2 lines x 1.2 */
+    display:block;             /* NOT flex — a flex h3 was one of the
+                                  suspects in homepage.css section 33's
+                                  overflow hunt, and centring is what
+                                  desktop wants, not phones */
+  }
+
+  .dest-spotlight__quote{
+    line-height:1.5;
+    min-height:3em;            /* 2 lines x 1.5 */
+  }
+
+  .dest-spotlight__desc{
+    line-height:1.75;          /* already its value in homepage.css:895
+                                  — restated so the math below is not
+                                  reading a number from another file */
+    min-height:7em;            /* 4 lines x 1.75 */
+  }
+}
+
+
+/* -------------------------------------------------------------------
+   20a. ONE NAME IN THE LIST IS THREE LINES — NOW CAPPED AT TWO
+
+   A correction to what section 20 assumed. Re-measured against the
+   real list of 24, at 2rem on a 360px-wide phone:
+
+     "St. Francis of Assisi Parish Church"   3 lines
+
+   It is the only one — every other name is one or two. But one is
+   enough: it overruns the 2.4em reserved above by a full line, so the
+   panel still grows by ~39px on that destination and shrinks again on
+   the next.
+
+   Reserving three lines everywhere would cost ~38px of empty space
+   under twenty-three destinations to accommodate the twenty-fourth, on
+   the screen where vertical room is tightest. So the heading is capped
+   at two lines instead and the tail ellipses away.
+
+   Little is actually lost: the full name stays in the <h3>, so screen
+   readers and search still get it whole, and the same name is spelled
+   out on the destination's own page. Only the eye is short of it, only
+   on that one card, only on phones.
+
+   TO GO THE OTHER WAY — every name in full, and accept the space —
+   delete this block and change the h3 rule in section 20 to
+   min-height:3.6em (3 lines x 1.2).
+   ------------------------------------------------------------------- */
+@media (max-width:767px){
+  .dest-spotlight__main h3{
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+}
+
+
+/* -------------------------------------------------------------------
+   21. THE LAST THING STILL MOVING — .chip-row
+
+   With section 20 in, the panel holds still on most switches but still
+   jumps between a few particular pairs — Calaguas Island to Mt. Panit
+   is the clearest, and Bagasbas Beach and First Rizal Monument each sit
+   on one side of a jump too.
+
+   It is not the name on any of those four. All four are short names,
+   which is exactly why they are the ones left over. It is the row of
+   chips under the description.
+
+   .chip-row is display:flex; flex-wrap:wrap; gap:1rem 1.5rem holding
+   three chips. In a phone-width column three chips fit on one line or
+   fall onto two purely according to how long the words happen to be:
+
+     Day hike / Coastal views / Guided climb                 1 row
+     Powder-white sand / Boat access only / Beach camping    2 rows
+     Year-round swell / Board rentals / Sunset boardwalk     2 rows
+     Built 1898 / National landmark / Town centre            2 rows
+
+   A chip row is ~20px, plus the 1rem row-gap: about 36px of movement,
+   which is nearly the same amount as the line of heading section 20
+   just took out. Same fix, same reasoning — reserve two rows, so a
+   one-row destination holds the space open anyway.
+
+   .chip gets an explicit line-height for the reason the text blocks in
+   section 20 did: the reserve counts line boxes, so the height of a
+   line box cannot be left to whatever happens to be inherited.
+
+     2 rows x (0.82rem font x 1.5 line-height) + 1rem row-gap
+   ------------------------------------------------------------------- */
+@media (max-width:767px){
+
+  .chip{ line-height:1.5; }
+
+  .chip-row{
+    min-height:calc(2 * 0.82rem * 1.5 + 1rem);
+    align-content:flex-start;   /* a one-row set sits at the top of the
+                                   reserved box rather than floating in
+                                   the middle of it */
+  }
+}
+
+
+/* -------------------------------------------------------------------
+   21a. IF A THIRD CHIP ROW EVER SHOWS UP
+
+   Two rows covers all 24 at 360px. Narrower than that — an SE at
+   320px, or a phone in split view — the longest sets can find a third
+   row, and the reserve stops covering them.
+
+   The cheapest answer is to stop them needing it. The 1.5rem column
+   gap between chips is a desktop number; tightening it on phones buys
+   back most of a chip's width without touching the type:
+
+     .chip-row{ gap:1rem; }
+
+   Add that to the block above if you see it happen. Do not shorten the
+   chip wording to fit — those words are content, and they are the same
+   words the destination pages use.
+   ------------------------------------------------------------------- */
+
+
+/* -------------------------------------------------------------------
+   21b. IF ANY OF SECTIONS 20-21 DO NOT TAKE
+
+   They rely on mobile.css being loaded after homepage.css, the same
+   way sections 9 and 10 of this file rely on it. If the <link> order
+   in includes/header.php ever changes, homepage.css:1719's
+   min-height:0 wins instead and the panel starts jumping again.
+
+   The tell is that the name still shifts the strip while everything
+   else on this page still behaves. The fix is one extra class on the
+   selector, which beats it on specificity regardless of order:
+
+     .dest-spotlight .dest-spotlight__main h3{ ... }
+   ------------------------------------------------------------------- */
+
+
+/* ===================================================================
+   22. THE STATS CARD — TWO COLUMNS THAT DO NOT LINE UP
+
+   The white card with 12 Municipalities / 24 Destinations listed /
+   300+ Years of gold trade / Pacific Facing coastline.
+
+   FROM THE SCREENSHOT: the top row reads clean, the bottom row does
+   not. "300+" and "Pacific" are visibly heavier than "12" and "24",
+   "Pacific" runs almost to the edge of the card, and the four icons do
+   not sit on two straight vertical lines the way four items in a
+   two-column grid should.
+
+   THREE THINGS ARE HAPPENING, AND THEY COMPOUND
+
+   1. Every value is .statbar__num at 1.85rem, numeral or not. Four
+      characters of tabular numerals ("300+") is a much wider object
+      than two ("12"), and a seven-letter WORD is wider still. Same
+      declared size, three very different weights on the page.
+
+   2. .statbar__box is two columns below 820px, and each column is
+      about 123px wide at 360px:
+
+        (323px card - 56px padding - 20px column gap) / 2
+
+      The fourth item needs the 44px icon, its 1rem gap, and then
+      "Pacific" — which at 1.85rem is wider than what is left. It
+      overflows its own column. That is why it nearly touches the card
+      edge.
+
+   3. homepage.css:1059 centres each item inside its column:
+
+        .statbar__item{ justify-content:center; }
+
+      Its comment explains exactly why, and it is right — for the
+      FOUR-across desktop row it was written for, where centring closes
+      the hole the short fourth label leaves on the right.
+
+      Two columns is a different shape. Centring a narrow item ("12" +
+      "Municipalities") and a wide one ("300+" + "Years of gold trade")
+      inside two columns of the same width puts their icons at two
+      different x positions — the narrow one indents further. Stacked
+      vertically, that difference is a mis-alignment you can see, and
+      it is the one in the screenshot.
+
+   THE FIX
+
+   Left-align the pair inside its column, so the icons share an edge —
+   that alone squares the grid up. Then bring the values down enough to
+   fit: the numerals a step smaller, and the one value that is a word a
+   step smaller again, because a word at numeral size is the thing that
+   was overflowing.
+
+   The icon comes down 44px -> 38px too. Six pixels is not much on its
+   own, but in a 123px column it is 5% of the width handed back to the
+   text, and at this size the circle does not read as smaller — only as
+   less crowded.
+
+   THE BREAKPOINT IS 819px, NOT THIS FILE'S USUAL 767px, because that
+   is where .statbar__box's own grid changes: it goes four-across at
+   min-width:820px (homepage.css:136-139). Everything here applies to
+   the two-column layout and must stop exactly where it does, or it
+   would shrink the desktop row that has room for all of it.
+   =================================================================== */
+@media (max-width:819px){
+
+  .statbar__item{
+    justify-content:flex-start;   /* overrides homepage.css:1059 —
+                                     see point 3 above */
+    gap:.75rem;
+  }
+
+  /* let the text block shrink instead of pushing out of its column */
+  .statbar__item > div{ min-width:0; }
+
+  .statbar__icon{ width:38px; height:38px; }
+
+  .statbar__icon svg{ width:18px; height:18px; }
+
+  .statbar__num{ font-size:1.5rem; }
+
+  /* --- the fourth value is a word, not a number ---------------------
+     "Pacific" is the only value in this card that is not numerals, and
+     the only one that has to fit seven characters. It gets its own
+     step down so it occupies about the same visual weight as "300+"
+     beside it rather than overpowering it.
+
+     Positional, because the markup gives these four items no
+     distinguishing class. If a stat is ever added, removed or
+     reordered in homepage.php around line 1163, check that :nth-child(4)
+     is still the word one — the cleaner long-term fix is a modifier
+     class on that span, e.g. .statbar__num--word, and this selector
+     swapped for it. */
+  .statbar__item:nth-child(4) .statbar__num{
+    font-size:1.15rem;
+    letter-spacing:-.01em;
+  }
+}
+
+
+/* ===================================================================
+   23. THE CLOSING CTA BUTTONS — PINNED, NOT PERSUADED
+
+   Section 12B of this file already stacks these two centred at
+   width:100%; max-width:20rem. If that were reaching them, they would
+   be identical widths on one vertical centre line. In the screenshot
+   they are neither: "Explore Destinations" sits about 38px LEFT of
+   centre, "Contact Tourism Office" about 46px RIGHT of it, and the two
+   are different widths.
+
+   Off-centre in OPPOSITE directions is the useful detail. Nothing
+   about flex layout produces that. Two items in a centred column can
+   be too wide, too narrow, or wrapped — they cannot drift apart in
+   opposite directions. Something is moving each one individually,
+   after layout. That is a transform.
+
+   homepage.css:238-241 says so in as many words, in the comment above
+   .cta__actions{ overflow-x:clip }:
+
+     "The buttons scale and slide as they arrive, so the row needs to
+      clip or they briefly widen the page."
+
+   So there is an entrance animation on these two, it slides them in
+   from opposite sides, and on this phone it is either not finishing or
+   not running its final frame. Neither is a layout bug, which is why
+   12B's perfectly correct layout rules did nothing to fix it.
+
+   WHAT THIS SECTION DOES
+
+   Pins the end state. transform, translate, scale and animation are
+   all cleared with !important, which beats an inline style — and an
+   inline style on the element is exactly what a JS animation library
+   writes. Whatever the tween is doing, the buttons land where the
+   layout puts them and stay there.
+
+   The layout half of 12B is restated here rather than relied on, so
+   this section stands on its own: same column, same centring, same
+   20rem cap, plus box-sizing and a shared min-height so the two pills
+   match as a pair — .btn--outline carries a 1.5px border and its own
+   padding that .btn--orange does not, which is where the difference in
+   their widths came from once the transforms were gone.
+
+   overflow-x:clip is also released on phones. It exists to stop the
+   desktop slide widening the page; with the slide pinned there is
+   nothing to clip, and clip on an element this narrow can cut a focus
+   ring off a button that is exactly as wide as its container.
+
+   WHAT THIS DOES NOT DO
+
+   It does not fix the animation, it overrides it. On a phone that is
+   the right trade — a 300ms flourish nobody asked for is not worth two
+   misplaced buttons at the bottom of the page. But the cause is still
+   in homepage.js, and it may well be misbehaving on other elements
+   too. Worth reading whatever tween targets .cta__actions .btn.
+
+   AND IF IT IS STILL WRONG AFTER THIS
+
+   Then the problem is not these rules but whether this file is reached
+   at all: the !important declarations below cannot lose to anything
+   except a stylesheet loaded after mobile.css. If the buttons still
+   drift after a hard reload, do not edit this section — check that
+   includes/header.php still links mobile.css last, and see 21b.
+   =================================================================== */
+@media (max-width:767px){
+
+  .cta__actions{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:1rem;
+    overflow:visible;          /* releases homepage.css:241's clip */
+  }
+
+  .cta__actions .btn{
+    /* --- stop the slide ------------------------------------------- */
+    transform:none !important;
+    translate:none !important;
+    scale:none !important;
+    animation:none !important;
+    transition:none !important;
+    opacity:1 !important;
+
+    /* --- and make the pair match ---------------------------------- */
+    box-sizing:border-box;
+    width:100%;
+    max-width:20rem;
+    margin-inline:auto;
+
+    min-height:3.25rem;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+  }
+}
+
+
+/* ===================================================================
+   24. DESTINATIONS — SIX CARDS, THEN THE REST ON REQUEST
+
+   .dest-grid is two columns on a phone (destinations.css section 6
+   sets that at max-width:560px, and it is deliberate — one column of
+   24 cards is 24 screens of scrolling). Two columns of 24 is still
+   twelve rows, and everything after the grid — the closing section,
+   the footer, the whole rest of the page — sits below all twelve.
+
+   Six is three rows. Enough to show what the grid is and that it
+   continues; not so much that the visitor has to scroll past all of it
+   to reach anything else.
+
+   THE PIECES, and where each one lives:
+
+     the cap                  here
+     the button               destinations.php, after the grid
+     the class toggle         the inline script at the foot of that file
+
+   Same shape as section 11e's visitor register, for the same reasons.
+
+   COUNTING IS SAFE HERE. :nth-child would be the wrong tool if the
+   filter chips hid cards in the browser — it counts every child,
+   including display:none ones, so filtering to eight Islands could
+   leave three on screen under a button promising five more. They do
+   not. Every chip on that page is a real link to a query string and
+   destinations.php:171 filters the array server-side, so the grid only
+   ever contains cards that matched. The nth-child count and the
+   count printed in .dest-result are always the same number.
+
+   THE BREAKPOINT IS 767px, this file's usual one, not the 560px where
+   the grid becomes two columns. Between the two, auto-fill gives three
+   columns, so six cards is two rows rather than three — still a
+   sensible place to stop, and one breakpoint is easier to keep true
+   than two.
+   =================================================================== */
+@media (max-width:767px){
+
+  .dest-grid > .dest-card:nth-child(n+7){ display:none; }
+
+  .dest-grid.is-expanded > .dest-card:nth-child(n+7){
+    display:flex;              /* .dest-card's own value in
+                                  destinations.css — it is a flex column,
+                                  so restoring `block` would collapse the
+                                  card's internals */
+
+    /* GSAP in homepage.js reveals .dest-card on scroll. A card that was
+       display:none when the page loaded has no box for a ScrollTrigger
+       to measure, so it can be left sitting at the tween's opening
+       values — invisible, or 100px low — after it is un-hidden. These
+       two lines are the same insurance section 11e takes for the
+       register rows. */
+    opacity:1 !important;
+    transform:none !important;
+  }
+
+  /* --- the button ------------------------------------------------- */
+  .dest-more{
+    display:flex; align-items:center; justify-content:center; gap:.5rem;
+    width:100%; max-width:20rem;
+    margin:1.25rem auto 0;
+    padding:.85rem 1.3rem;
+    border:0; border-radius:999px;
+    background:var(--navy,#101a2b);
+    color:#fff;
+    font-size:.85rem; font-weight:600;
+    letter-spacing:.02em;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  .dest-more:active{ transform:scale(.98); }
+
+  .dest-more:focus-visible{
+    outline:2px solid var(--orange,#f0a32c);
+    outline-offset:2px;
+  }
+
+  .dest-more__chev{
+    width:1.05rem; height:1.05rem;
+    fill:none; stroke:currentColor; stroke-width:2.2;
+    stroke-linecap:round; stroke-linejoin:round;
+    transition:transform .25s ease;
+  }
+
+  /* the chevron points down at "show all" and up at "show fewer", so
+     the button says which way it goes without reading the label */
+  .dest-more[aria-expanded="true"] .dest-more__chev{ transform:rotate(180deg); }
+}
+
+
+/* Above the cap there is nothing to reveal — every card is already on
+   screen — so the control goes away rather than sitting under a full
+   grid claiming it can do something. */
+@media (min-width:768px){
+  .dest-more{ display:none; }
+}
+
+
+/* ===================================================================
+   25. THE HERO — MAKING THE FIRST SCREEN LAND
+
+   Taken on a real phone, in Messenger's in-app browser, which is how a
+   lot of this audience will arrive. Four things were flattening it,
+   and none of them is the photograph:
+
+   1. THE SCRIM IS BRIGHTEST EXACTLY WHERE THE TEXT IS.
+      homepage.css:794 —
+
+        radial-gradient(120% 90% at 50% 100%, rgba(0,0,0,.12), rgba(0,0,0,.55))
+
+      Read the stops: the centre of that gradient is bottom-centre, and
+      the centre is the LIGHT end (.12). It darkens outward to .55 at
+      the corners. So the darkest part of the overlay is the four
+      corners of the frame and the lightest part is the middle of the
+      bottom half — which is the whole text column. That is why the
+      headline looks hazy and the water looks milky: white type is
+      sitting on the one area that was left bright.
+
+   2. EVERYTHING IS IN THE TOP HALF. .hero__content centres its
+      content, and on a tall phone that leaves roughly forty percent of
+      the frame below the scroll cue as empty turquoise. It reads as a
+      screenshot that has not finished loading rather than as a
+      composition.
+
+   3. THERE IS NOTHING TO PRESS. The only control is "Explore Now": a
+      1px hairline and a letter-spaced label at 85% white. On a desktop
+      with a cursor that is elegant restraint. On a phone in daylight
+      it is close to invisible, and it is the only thing in the hero
+      asking the visitor to do anything.
+
+   4. NOTHING MOVES. On a phone the background video is skipped
+      deliberately (homepage.php:152 explains why, and it is the right
+      call for data), so the hero is a completely still photograph —
+      where a desktop visitor gets drifting water.
+
+   WHAT THIS SECTION DOES, in the same order:
+
+     re-lays the scrim so it is dark where the type is and clear across
+       the horizon, which is the part worth seeing
+     drops the content to the lower third, so the picture keeps its sky
+       and the type has a base
+     adds a real button, and demotes the hairline to the scroll cue it
+       always was
+     drifts the still image slowly, which costs one composited
+       transform and no bytes at all
+
+   Phones only. The desktop hero is not this hero — it has a playing
+   video, a cursor, and room for restraint to read as restraint.
+   =================================================================== */
+@media (max-width:767px){
+
+  /* svh, not vh. Mobile browsers measure 100vh against the viewport
+     with the toolbars RETRACTED, so a 100vh hero is always taller than
+     the screen you are actually looking at — and inside an in-app
+     browser like Messenger's, which adds its own bar on top, the
+     bottom of the hero can be a hundred pixels below the fold before
+     the visitor scrolls. svh is the small viewport height: the one
+     with the toolbars showing. Browsers without it ignore this line
+     and keep the 100vh in homepage.css:792. */
+  .hero{ height:100svh; }
+
+  /* --- 1. the scrim ------------------------------------------------
+     Dark at the top so the logo and burger stay legible against the
+     hill, clear through the middle band where the horizon and the
+     water are, then deepening from about two thirds down into the
+     bed the type sits on. */
+  .hero__vignette{
+    background:linear-gradient(
+      180deg,
+      rgba(6,12,20,.66) 0%,
+      rgba(6,12,20,.20) 22%,
+      rgba(6,12,20,.06) 40%,
+      rgba(6,12,20,.58) 70%,
+      rgba(6,12,20,.90) 100%
+    );
+  }
+
+  /* --- 2. the composition -----------------------------------------
+     Centred, which is where homepage.css:796 already puts it. An
+     earlier version of this section dropped the block to the bottom of
+     the frame to fill the empty water under it; with the button and
+     the kicker in, the block is tall enough that it fills the frame
+     from the middle, and sitting it on the bottom edge only crowded
+     the scroll cue.
+
+     The padding is symmetrical, so the block is centred in the frame
+     and not merely near the middle of it. An earlier version here
+     weighted the top to allow for the fixed header; that is a nudge,
+     and a nudge is exactly what makes something look almost-centred.
+     Dead centre is the more legible choice on a screen this narrow. */
+  .hero__content{
+    align-items:center;
+    padding:4rem 0;
+  }
+
+  /* --- 3. the type ------------------------------------------------
+     Section 12A settled the HIERARCHY of these three — title loudest,
+     motto second, description quietest — and that stands. This only
+     changes the scale, and only the title: 12A was arguing with a
+     desktop rule that set the h1 in dense all-caps, and its job was to
+     make the greeting read as a greeting. Now that the headline has a
+     kicker above it and a button below it, it can carry more size
+     without shouting. Being later in the file, this wins; 12A's
+     weight, casing and shadow are untouched and still doing the work.
+
+     text-wrap:balance evens out the two lines instead of leaving
+     "Camarines Norte" hanging alone under a short first line.
+     Ignored where unsupported. */
+  .hero__title{
+    font-size:clamp(2.6rem, 10.6vw, 3.5rem);
+    line-height:1.06;
+    text-wrap:balance;
+    margin-bottom:.55rem;
+  }
+
+  .hero__kicker{
+    display:flex; align-items:center; gap:.5rem;
+    margin-bottom:.9rem;
+    font-size:.68rem; font-weight:700;
+    letter-spacing:.22em; text-transform:uppercase;
+    color:var(--orange,#f0a32c);
+    text-shadow:0 1px 8px rgba(6,12,20,.7);
+  }
+
+  /* a short rule on each side, so the line reads as a label rather
+     than as a stray sentence above the headline */
+  .hero__kicker::before,
+  .hero__kicker::after{
+    content:'';
+    width:1.4rem; height:1px;
+    background:currentColor;
+    opacity:.5;
+  }
+
+  .hero__desc{ margin-bottom:1.9rem; }
+
+  /* --- 4. the actions ---------------------------------------------
+     Stacked, button first. The cue keeps its hairline but comes down
+     in size and brightness: with a real button above it, its job is
+     no longer to be the thing you notice. */
+  .hero__actions{
+    flex-direction:column;
+    align-items:center;
+    gap:1.6rem;
+  }
+
+  .hero__cta{
+    display:inline-flex; align-items:center; justify-content:center; gap:.55rem;
+    width:100%; max-width:19rem;
+    padding:1rem 1.6rem;
+    border-radius:999px;
+    background:var(--orange,#f0a32c);
+    color:var(--navy,#101a2b);
+    font-size:.95rem; font-weight:700;
+    letter-spacing:.01em;
+    text-decoration:none;
+    box-shadow:0 10px 30px -12px rgba(6,12,20,.9);
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  .hero__cta svg{
+    width:1.05rem; height:1.05rem;
+    fill:none; stroke:currentColor; stroke-width:2.2;
+    stroke-linecap:round; stroke-linejoin:round;
+    transition:transform .25s ease;
+  }
+
+  .hero__cta:active{ transform:scale(.985); }
+  .hero__cta:active svg{ transform:translateX(3px); }
+
+  .hero__cta:focus-visible{
+    outline:2px solid #fff;
+    outline-offset:3px;
+  }
+
+  .hero__scroll{
+    font-size:.66rem;
+    letter-spacing:.24em;
+    color:rgba(255,255,255,.66);
+  }
+
+  .hero__scroll-line{ height:2rem; }
+
+  /* --- 5. the drift ------------------------------------------------
+     A slow scale on the still, alternating so it breathes in and out
+     rather than snapping back to the start every cycle. 26 seconds is
+     long enough that it is never the thing you are watching.
+
+     .photo-layer covers both the <video> and the poster <img>, so this
+     applies to whichever one the phone ends up showing.
+
+     IF THE HERO EVER JUMPS OR JUDDERS ON SCROLL, this is the first
+     thing to remove: homepage.js parallaxes #heroBg, and a transform
+     here on its CHILD is meant to layer with that rather than fight
+     it. If a future tween starts writing to .photo-layer's transform
+     directly, the two will overwrite each other and this loses. */
+  #heroBg .photo-layer{
+    animation:heroDrift 26s ease-in-out infinite alternate;
+    transform-origin:52% 60%;
+    will-change:transform;
+  }
+}
+
+@keyframes heroDrift{
+  from{ transform:scale(1.015); }
+  to  { transform:scale(1.11); }
+}
+
+/* Above the phone breakpoint the two new elements are not part of the
+   design — the desktop hero has a playing video and a cursor, and the
+   restraint it was built with reads correctly there. */
+@media (min-width:768px){
+  .hero__kicker,
+  .hero__cta{ display:none; }
+}
+
+/* A hero that drifts for a visitor who asked the operating system to
+   stop things moving is exactly the kind of motion that setting means.
+   The photograph still shows; it just holds still. */
+@media (prefers-reduced-motion:reduce){
+  #heroBg .photo-layer{ animation:none; transform:none; }
+}
+
+
+/* ===================================================================
+   26. "GATEWAY TO THE NORTHERN BICOL COAST" — A HEADING THAT READS AS
+       BOLD BODY TEXT
+
+   .story__aside-title is the h3 in the right-hand column of the About
+   section, under the small photograph.
+
+   It IS a heading — h3, display face, weight 700 (homepage.css:1635).
+   It just does not look like one on a phone, and the reason is that it
+   has nothing to be a heading NEXT TO. In the desktop three-column
+   layout it sits in a narrow column with a photo above it and its own
+   paragraph below, and the column edges do the work of framing it.
+   Stacked into one full-width phone column, the frame is gone: what is
+   left is dark text at 1.3rem sitting three lines above dark text at
+   .9rem. The only difference between the two is weight, and weight
+   alone is what makes something look like a bold sentence rather than
+   a title.
+
+   So this gives it the two things headings on this site have and this
+   one does not:
+
+     SIZE that is unmistakably a step up, not a nudge. 1.3rem against a
+     .9rem paragraph is a ratio of 1.44 — inside the range a reader
+     files under "emphasis". Taking it to ~1.7rem is nearly double the
+     body size, which is the range they file under "new section".
+
+     AN ORANGE RULE ABOVE IT. The same device as .dest-sheet__label on
+     the map panel and .dest-spotlight's eyebrows: a short accent bar
+     that announces a heading before a single word is read. It is the
+     page's own vocabulary rather than a new invention, which is why it
+     will look like it was always there.
+
+   The <br> tags in the markup stay. Three short lines is what gives it
+   a shape on a narrow screen — it is the styling that was weak, not
+   the line breaks.
+
+   Line-height comes in to 1.12 and tracking to -.02em, because type
+   this size wants to be set tighter than type at 1.3rem does; left
+   alone, a bigger heading on the same loose metrics reads as
+   inflated rather than as confident.
+
+   PHONES ONLY. In the desktop column the current size is correct and
+   an accent bar there would compete with the section's own h2 a few
+   inches to the left.
+   =================================================================== */
+@media (max-width:767px){
+
+  .story__aside-title{
+    font-size:clamp(1.6rem, 6.4vw, 2rem);
+    line-height:1.12;
+    letter-spacing:-.02em;
+    margin-top:1.6rem;
+    margin-bottom:.9rem;
+  }
+
+  .story__aside-title::before{
+    content:'';
+    display:block;
+    width:2.25rem; height:3px;
+    margin-bottom:.9rem;
+    border-radius:999px;
+    background:var(--orange,#f0a32c);
+  }
+
+  /* the paragraph moves the other way by a hair — not smaller, just
+     set at a comfortable reading size so the gap between heading and
+     body is a gap in RANK rather than a gap in legibility */
+  .story__aside-text{
+    font-size:.95rem;
+    line-height:1.75;
+  }
+}
+
+
+
+/* ===================================================================
+   APPEND THIS TO THE END OF assets/css/mobile.css
+
+   Two rules. The first is the one that matters; the second is tidying
+   up after it.
+   =================================================================== */
+
+
+/* ===================================================================
+   X. CLIP, NOT HIDDEN — THE PAGE MUST NOT BE SCROLLABLE SIDEWAYS
+
+   Section 0 of this file ends with html, body { overflow-x:hidden }.
+   That was the right instinct and it is not enough, because of a
+   distinction that almost never comes up and cost a whole afternoon
+   here:
+
+     overflow-x:hidden  makes the box a SCROLL CONTAINER with no
+                        scrollbar. The user cannot scroll it. A script
+                        still can — scrollLeft, scrollTo, scrollBy and
+                        scrollIntoView all work exactly as they would
+                        on a visible scrollbar.
+
+     overflow-x:clip    is not a scroll container at all. There is no
+                        scroll position to set. Anything overflowing is
+                        painted off and that is the end of it.
+
+   With hidden, a single scrollIntoView() anywhere on the page can
+   shove the document sideways and leave it there, and because there is
+   no scrollbar the visitor has no way to put it back. That is exactly
+   what destinations.php was doing: the hero rail centred its active
+   card, the request travelled up to the document, and the page came to
+   rest ~50px to the left. The fixed header and the fixed chat bubble
+   stayed put, which is what makes the screenshot look like a CSS
+   sizing bug when it is nothing of the kind.
+
+   hidden is kept on the line above as the fallback. Any browser new
+   enough to matter takes clip; anything that does not, ignores the
+   second declaration and is no worse off than before.
+
+   NOT A REPLACEMENT FOR FINDING THE OVERFLOW. Both of these hide a
+   page that is too wide rather than making it the right width. The
+   snippet in the note below finds the element actually responsible.
+   =================================================================== */
+@media (max-width:1100px){
+
+  html, body{
+    overflow-x:hidden;      /* fallback, and what was already here */
+    overflow-x:clip;        /* the real fix — not scriptable */
+  }
+}
+
+
+/* ===================================================================
+   X-B. THE HERO KEEPS ITS CLIP
+
+   destinations-hero.css sets overflow:hidden on .hero-feature, and
+   destinations-hero.js used to take it off again — spillRight() writes
+   overflow:visible inline with !important when it thinks the section
+   is short of the window. With the clip gone, the photo layers it had
+   already widened past the section edge became real page width.
+
+   The patched JS no longer runs that pass below 1101px, so this rule
+   should never have anything to fight. It is here so that an older
+   cached copy of the script, or the next person to revive that block,
+   cannot reopen the same hole. Inline !important still beats it — this
+   is a floor, not a lock.
+   =================================================================== */
+@media (max-width:1100px){
+
+  .hero-feature.hero-feature{ overflow:hidden !important; }
+
+  /* the rail is the only thing in the section that is allowed to
+     scroll, and only sideways */
+  .hero-feature .hero-rail{
+    overflow-x:auto !important;
+    overflow-y:hidden !important;
+  }
+}

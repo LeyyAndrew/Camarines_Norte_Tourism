@@ -1,0 +1,272 @@
+/* ===================================================================
+   assets/css/dashboard.css
+
+   The signed-in page. This file did not exist, which is the whole
+   reason dashboard.php was rendering as a wall of default browser
+   text: header.php looks for assets/css/<page name>.css and quietly
+   skips it when it is missing, so the page loaded base.css and
+   nothing else.
+
+   WHY THE .door RULES ARE IN HERE
+
+   dashboard.php uses .doors / .door, and so does homepage.php — but
+   those rules live in assets/css/homepage.css, and homepage.css is
+   never loaded on any page except the homepage. The cards had no
+   styling to inherit.
+
+   They are written here scoped under .dash-doors rather than as bare
+   .door, so that if you later move the homepage's versions into
+   base.css to share them properly, the two sets cannot collide: a
+   scoped rule is more specific and this file loads second, so the
+   dashboard keeps its own look either way.
+
+   If you would rather have ONE set of card rules for the whole site,
+   that is the tidier end state: cut .door* out of homepage.css into
+   base.css section 13, then delete the .dash-doors .door block below.
+
+   THE PALETTE is the site's own — near-black, white, amber. The green
+   glass is the sign-in modal only. A signed-in page that changed
+   accent colour would read as a different website.
+   =================================================================== */
+
+/* ===================================================================
+   1. THE GREETING BAND
+
+   .page-hero in base.css is built for a banner with a photograph
+   behind it: 56vh tall, content pushed to the bottom edge. There is
+   no photo here, so at that height it is a large black rectangle
+   with a name in it and the actual page starts below the fold.
+
+   Cut to roughly a third, and given a light source — a soft warm
+   glow low and left, which is the only thing standing in for the
+   photograph. Flat #16191C across that area reads as a missing
+   image; a gradient reads as a decision.
+   =================================================================== */
+.dash-hero{
+  min-height:0;
+  padding:8.5rem 0 3.25rem;
+  background:
+    radial-gradient(120% 140% at 8% 118%, rgba(240,163,44,.16) 0%, rgba(240,163,44,0) 55%),
+    linear-gradient(168deg, #1D2329 0%, #16191C 58%, #101315 100%);
+  border-bottom:1px solid rgba(255,255,255,.07);
+}
+
+/* The scrim exists to hold a photo down. With no photo it is a black
+   sheet over the gradient, cancelling it out. */
+.dash-hero .page-hero__scrim{ display:none; }
+
+.dash-hero .page-hero__title{ margin-bottom:.9rem; }
+
+.dash-hero .page-hero__lead{ max-width:34rem; }
+
+/* ===================================================================
+   2. SECTION RHYTHM
+
+   base.css gives every .section 5rem top and bottom. Three of them
+   stacked, each holding one short block, leaves the page mostly
+   empty space with the content stranded in the middle of it. These
+   are tightened and the account row is pulled in close, because it
+   is a footer to the page rather than a section of it.
+   =================================================================== */
+.dash-heading{
+  font-size:clamp(1.6rem, 3.4vw, 2.1rem);
+  font-weight:700; line-height:1.1; letter-spacing:-.025em;
+  color:var(--navy);
+  margin-bottom:2.25rem;
+}
+
+.dash-doors{ padding:0; }
+
+section.section:has(.dash-doors){ padding:4rem 0 3.5rem; }
+
+/* ===================================================================
+   3. THE CARDS
+
+   A three-across grid that folds to one on a phone. auto-fit with a
+   minimum means the middle sizes look after themselves — at tablet
+   widths you get two across and the third drops, with no extra
+   breakpoint written for it.
+   =================================================================== */
+.dash-doors{
+  display:grid; gap:1.25rem;
+  grid-template-columns:repeat(auto-fit, minmax(16.5rem, 1fr));
+}
+
+.dash-doors .door{
+  position:relative;
+  display:flex; flex-direction:column;
+  padding:1.85rem 1.75rem 1.6rem;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:1rem;
+  color:var(--navy);
+  transition:transform .3s cubic-bezier(.16,.84,.44,1),
+             box-shadow .3s ease,
+             border-color .3s ease;
+}
+
+.dash-doors .door:hover{
+  transform:translateY(-3px);
+  border-color:rgba(22,25,28,.2);
+  box-shadow:0 18px 40px -22px rgba(22,25,28,.45);
+}
+
+.dash-doors .door__eyebrow{
+  display:block; margin-bottom:1.5rem;
+  font-size:.68rem; font-weight:600;
+  letter-spacing:.18em; text-transform:uppercase;
+  color:var(--orange);
+}
+
+.dash-doors .door__title{
+  font-size:1.4rem; font-weight:700; line-height:1.15;
+  letter-spacing:-.02em;
+  margin-bottom:.6rem;
+}
+
+.dash-doors .door__text{
+  font-size:.88rem; line-height:1.65;
+  color:rgba(22,25,28,.6);
+  margin-bottom:1.75rem;
+}
+
+/* margin-top:auto pins this to the bottom of the card, so the three
+   arrows line up with each other however long the paragraph above
+   each of them runs. Without it, cards with shorter text end early
+   and the row looks ragged. */
+.dash-doors .door__go{
+  display:inline-flex; align-items:center; gap:.5rem;
+  margin-top:auto;
+  font-size:.83rem; font-weight:600;
+  color:var(--navy);
+}
+
+/* The arrow is a masked SVG rather than a → character: the arrow
+   glyph is a different width and weight in every fallback font, so a
+   machine without Inter installed gets a wonky one. A mask always
+   draws the same shape and takes its colour from the text. */
+.dash-doors .door__go::after{
+  content:''; width:15px; height:15px;
+  background:currentColor;
+  -webkit-mask:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h13'/%3E%3Cpath d='M12.5 6l6 6-6 6'/%3E%3C/svg%3E") center/contain no-repeat;
+          mask:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h13'/%3E%3Cpath d='M12.5 6l6 6-6 6'/%3E%3C/svg%3E") center/contain no-repeat;
+  transition:transform .25s cubic-bezier(.16,.84,.44,1);
+}
+
+.dash-doors .door:hover .door__go::after{ transform:translateX(4px); }
+
+/* ---------- the dark one ----------
+   One card carries the accent so the row has somewhere to look
+   first. Three identical white cards is a list; two white and one
+   dark is a recommendation. */
+.dash-doors .door--accent{
+  background:var(--navy);
+  border-color:var(--navy);
+  color:#fff;
+}
+
+.dash-doors .door--accent .door__text{ color:rgba(255,255,255,.62); }
+
+.dash-doors .door--accent .door__go{ color:var(--orange); }
+
+.dash-doors .door--accent:hover{
+  border-color:var(--navy);
+  box-shadow:0 18px 44px -20px rgba(22,25,28,.7);
+}
+
+/* ===================================================================
+   4. SAVED PLACES — the empty state
+
+   An empty state is an invitation, not an apology, so it gets a real
+   panel and a real button rather than a line of grey text. The
+   dashed border is doing one job: saying this box is waiting to be
+   filled, as opposed to being broken.
+   =================================================================== */
+.dash-saved{
+  padding:3.5rem 0 4rem;
+  background:var(--mist);
+}
+
+.dash-empty{
+  display:flex; flex-direction:column; align-items:center;
+  gap:1.4rem; text-align:center;
+  padding:3.5rem 1.5rem;
+  background:rgba(255,255,255,.6);
+  border:1.5px dashed rgba(22,25,28,.16);
+  border-radius:1rem;
+}
+
+.dash-empty__text{
+  max-width:26rem;
+  font-size:.92rem; line-height:1.7;
+  color:rgba(22,25,28,.62);
+}
+
+.dash-empty .btn{ padding:.85rem 1.9rem; }
+
+/* ===================================================================
+   5. ACCOUNT ROW
+
+   The last thing on the page and the least important, so it is a
+   single quiet line rather than a section with a heading of its own.
+   =================================================================== */
+.dash-account{ padding:2.75rem 0 4.5rem; }
+
+.dash-account__row{
+  display:flex; flex-wrap:wrap; align-items:center;
+  justify-content:space-between; gap:1.25rem;
+  padding-top:2rem;
+  border-top:1px solid var(--line);
+}
+
+.dash-account__name{
+  font-size:.95rem;
+  color:rgba(22,25,28,.6);
+}
+
+.dash-account__name strong{ font-weight:600; color:var(--navy); }
+
+/* ---------- the sign-out button ----------
+   dashboard.php asks for .btn--outline-dark and nothing anywhere
+   defined it, so the link rendered as bare blue text. Outline rather
+   than filled on purpose: signing out is not the thing you want
+   anyone doing by accident, so it does not compete with the amber
+   buttons that lead further in. */
+.btn--outline-dark{
+  background:transparent;
+  border:1px solid rgba(22,25,28,.25);
+  color:var(--navy);
+  transition:background .25s ease, border-color .25s ease, color .25s ease;
+}
+
+.btn--outline-dark:hover{
+  background:var(--navy); border-color:var(--navy); color:#fff;
+  transform:none; box-shadow:none;
+}
+
+/* ===================================================================
+   6. SMALL SCREENS AND STILLNESS
+   =================================================================== */
+@media (max-width:640px){
+
+    .dash-hero{ padding:7rem 0 2.5rem; }
+
+    .dash-doors .door{ padding:1.6rem 1.4rem 1.4rem; }
+
+    .dash-doors .door__eyebrow{ margin-bottom:1.1rem; }
+
+    .dash-empty{ padding:2.5rem 1.25rem; }
+
+    .dash-account__row{ align-items:flex-start; flex-direction:column; }
+}
+
+@media (prefers-reduced-motion: reduce){
+
+    .dash-doors .door,
+    .dash-doors .door__go::after,
+    .btn--outline-dark{ transition:none; }
+
+    .dash-doors .door:hover{ transform:none; }
+
+    .dash-doors .door:hover .door__go::after{ transform:none; }
+}

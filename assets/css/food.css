@@ -1,0 +1,341 @@
+/* ===================================================================
+   assets/css/food.css
+
+   Loaded automatically by includes/header.php, which derives the
+   stylesheet name from the page filename — food.php gets food.css and
+   nothing else needs saying anywhere.
+
+   IT ONLY STYLES WHAT IS NEW. The banner is .page-hero from base.css,
+   the picture boxes are .media / .gradient-fill / .photo-layer from
+   base.css, and the type scale is base.css too. Everything here is
+   prefixed .food- so nothing in this file can reach another page.
+
+   The variables are the site's: --ink, --quiet, --quieter, --rule,
+   --rule-soft, --sheet, --plate, --orange, --navy, --lift-1..3,
+   --font-display. Nothing new is invented, so a change to the palette
+   in base.css carries through here without this file being touched.
+   =================================================================== */
+
+/* ---- 1. the page shell -----------------------------------------
+   The same plate the destination list sits on, so the two pages read
+   as the same site: a bordered, tinted panel rather than content
+   floating on the background. */
+.food-layout{
+  position:relative;
+  padding:1.6rem 1.4rem 2.4rem;
+  border:1px solid var(--rule);
+  border-radius:1.35rem;
+  background:var(--sheet);
+  scroll-margin-top:6.5rem;   /* clears the fixed nav on #foodList */
+}
+
+/* the amber seam along the top edge, saying where the section starts —
+   the same accent the cards use on hover */
+.food-layout::before{
+  content:"";
+  position:absolute; left:1.35rem; right:1.35rem; top:-1px;
+  height:2px;
+  border-radius:2px;
+  background:linear-gradient(90deg, transparent, var(--orange), transparent);
+  opacity:.55;
+}
+
+/* ---- 2. the filter bar -----------------------------------------
+   Same object as .dest-filters on the destinations page: label on the
+   left, chips filling the rest. Written here rather than shared
+   because destinations.css is only loaded on that page, and moving the
+   rule into base.css would put it on Home, About and Gallery too. */
+.food-filters{
+  display:flex; align-items:flex-start; gap:.9rem;
+  padding:1rem 1.1rem;
+  margin-bottom:1.5rem;
+  border:1px solid var(--rule);
+  border-radius:1.1rem;
+  background:var(--plate);
+  box-shadow:var(--lift-1);
+  scroll-margin-top:6.5rem;
+}
+
+.food-filters__label{
+  flex:0 0 auto;
+  padding-top:.55rem;
+  font-size:.72rem; font-weight:600;
+  letter-spacing:.12em; text-transform:uppercase;
+  color:var(--quieter);
+}
+
+.food-chips{
+  display:flex; flex-wrap:wrap; gap:.5rem;
+  margin:0; padding:0; list-style:none;
+  min-width:0;
+}
+
+.food-chips a{
+  display:inline-flex; align-items:center; gap:.45rem;
+  padding:.5rem .95rem;
+  border:1px solid var(--rule);
+  border-radius:999px;
+  background:var(--plate);
+  color:var(--ink);
+  font-size:.9rem; font-weight:500;
+  text-decoration:none;
+  transition:border-color .18s ease, background .18s ease, color .18s ease;
+}
+
+/* the count, quieter than the label it follows */
+.food-chips em{
+  font-style:normal;
+  font-size:.78rem;
+  color:var(--quieter);
+  transition:color .18s ease;
+}
+
+.food-chips a:hover{ border-color:var(--orange); }
+
+.food-chips a.is-on{
+  background:var(--navy);
+  border-color:var(--navy);
+  color:#fff;
+}
+.food-chips a.is-on em{ color:rgba(255,255,255,.62); }
+
+.food-chips a:focus-visible{
+  outline:2px solid var(--orange);
+  outline-offset:2px;
+}
+
+/* ---- 3. the count line -----------------------------------------
+   One line saying what is on screen and how to get back to all of it. */
+.food-result{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:1rem; flex-wrap:wrap;
+  padding-bottom:.9rem;
+  margin-bottom:1.4rem;
+  border-bottom:1px solid var(--rule-soft);
+}
+
+.food-result__count{
+  margin:0;
+  font-size:1rem;
+  color:var(--quiet);
+}
+
+.food-result__count strong{
+  font-family:var(--font-display);
+  font-size:1.6rem;
+  font-weight:800;
+  color:var(--ink);
+  margin-right:.15rem;
+}
+
+.food-result__clear{
+  font-size:.82rem; font-weight:600;
+  letter-spacing:.08em; text-transform:uppercase;
+  color:var(--quiet);
+  text-decoration:none;
+  padding:.5rem .9rem;
+  border:1px solid var(--rule);
+  border-radius:999px;
+  background:var(--plate);
+  transition:color .18s ease, border-color .18s ease;
+}
+.food-result__clear:hover{ color:var(--ink); border-color:var(--orange); }
+.food-result__clear:focus-visible{ outline:2px solid var(--orange); outline-offset:2px; }
+
+/* ---- 4. the grid -----------------------------------------------
+   auto-fill with a 16rem floor rather than a fixed column count, so
+   the number of columns follows the width of the screen and there is
+   no breakpoint to maintain for each step. */
+.food-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(16rem, 1fr));
+  gap:1.15rem;
+}
+
+/* ---- 5. the card -----------------------------------------------
+   Same anatomy as .dest-card so the two pages feel like one site:
+   picture with a tag on it, then a body that ends on a single line of
+   practical information. */
+.food-card{
+  display:flex; flex-direction:column;
+  border:1px solid var(--rule);
+  border-radius:1.1rem;
+  background:var(--plate);
+  overflow:hidden;
+  box-shadow:var(--lift-1);
+  transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.food-card:hover{
+  transform:translateY(-3px);
+  box-shadow:var(--lift-2);
+  border-color:var(--orange);
+}
+
+/* 4:3. Food photographed square tends to read as a stock ingredient
+   shot; a little width lets the plate and its surroundings in. */
+.food-card__media{
+  aspect-ratio:4 / 3;
+  position:relative;
+}
+
+.food-card__tag{
+  position:absolute; top:.7rem; left:.7rem;
+  display:inline-flex; align-items:center;
+  padding:.3rem .7rem;
+  border-radius:999px;
+  background:rgba(11,22,38,.78);
+  color:#fff;
+  font-size:.66rem; font-weight:700;
+  letter-spacing:.11em; text-transform:uppercase;
+  backdrop-filter:blur(4px);
+}
+
+.food-card__body{
+  display:flex; flex-direction:column;
+  gap:.55rem;
+  padding:1rem 1.1rem 1.15rem;
+  flex:1 1 auto;
+}
+
+.food-card__name{
+  margin:0;
+  font-size:1.18rem;
+  font-weight:700;
+  color:var(--ink);
+  line-height:1.25;
+}
+
+/* the pull quote — the only voice on the card, so it is set apart
+   with a rule rather than left as another grey paragraph */
+.food-card__quote{
+  margin:0;
+  padding-left:.7rem;
+  border-left:2px solid var(--orange);
+  font-style:italic;
+  font-size:.94rem;
+  color:var(--quiet);
+  line-height:1.45;
+}
+
+.food-card__desc{
+  margin:0;
+  font-size:.9rem;
+  line-height:1.6;
+  color:var(--quiet);
+}
+
+.food-card__facts{
+  display:flex; flex-wrap:wrap; gap:.35rem;
+  margin:.15rem 0 0; padding:0;
+  list-style:none;
+}
+
+.food-card__facts li{
+  padding:.25rem .6rem;
+  border:1px solid var(--rule-soft);
+  border-radius:.5rem;
+  font-size:.74rem;
+  color:var(--quieter);
+  background:var(--sheet);
+}
+
+/* pinned to the bottom by margin-top:auto, so cards in the same row
+   end on the same line however long the descriptions above them run */
+.food-card__where{
+  display:flex; align-items:flex-start; gap:.4rem;
+  margin:auto 0 0;
+  padding-top:.85rem;
+  border-top:1px solid var(--rule-soft);
+  font-size:.82rem;
+  line-height:1.45;
+  color:var(--quieter);
+}
+
+.food-card__where svg{
+  flex:0 0 auto;
+  width:.95rem; height:.95rem;
+  margin-top:.12rem;
+  fill:var(--orange);
+}
+
+/* ---- 6. the closing note ---------------------------------------
+   Dark, so it reads as the end of the page rather than as one more
+   card that happens to be last. */
+.food-note{
+  margin-top:2rem;
+  padding:1.6rem 1.7rem;
+  border-radius:1.1rem;
+  background:var(--navy);
+  color:#fff;
+}
+
+.food-note__title{
+  margin:0 0 .6rem;
+  font-size:1.5rem;
+  font-weight:800;
+}
+
+.food-note__body{
+  margin:0 0 1rem;
+  max-width:58ch;
+  font-size:.95rem;
+  line-height:1.7;
+  color:rgba(255,255,255,.78);
+}
+
+.food-note__link{
+  display:inline-flex; align-items:center; gap:.5rem;
+  color:var(--orange);
+  font-weight:600;
+  font-size:.95rem;
+  text-decoration:none;
+}
+
+.food-note__link svg{
+  width:1.05rem; height:1.05rem;
+  fill:none; stroke:currentColor; stroke-width:2;
+  stroke-linecap:round; stroke-linejoin:round;
+  transition:transform .18s ease;
+}
+.food-note__link:hover svg{ transform:translateX(3px); }
+.food-note__link:focus-visible{ outline:2px solid var(--orange); outline-offset:3px; }
+
+/* ---- 7. narrow screens -----------------------------------------
+   The label stacks above the chips rather than sitting beside them:
+   at this width a left-hand label costs more room than it earns. The
+   chip row then scrolls sideways instead of wrapping to four lines,
+   the same behaviour .dest-chips has on the destinations page. */
+@media (max-width:760px){
+  .food-layout{ padding:1.2rem 1rem 1.8rem; }
+
+  .food-filters{
+    flex-direction:column;
+    align-items:stretch;
+    gap:.6rem;
+    padding:.9rem .75rem;
+  }
+  .food-filters__label{ padding-top:0; }
+
+  .food-chips{
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    padding-bottom:.3rem;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .food-chips::-webkit-scrollbar{ display:none; }
+  .food-chips a{ white-space:nowrap; }
+
+  .food-grid{ grid-template-columns:repeat(auto-fill, minmax(14rem, 1fr)); }
+
+  .food-note{ padding:1.3rem 1.2rem; }
+}
+
+/* Someone who has asked the operating system to reduce motion should
+   not get the card lift on hover either. */
+@media (prefers-reduced-motion:reduce){
+  .food-card,
+  .food-note__link svg{ transition:none; }
+  .food-card:hover{ transform:none; }
+}
