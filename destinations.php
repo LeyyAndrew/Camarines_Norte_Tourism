@@ -706,12 +706,49 @@ $showIntro = true;
 
   <div class="hero-feature__scrim"></div>
 
+  <!-- The swap fade. Local to this page on purpose, same reasoning as
+       the destinations-detail.css link at the foot of the file: no
+       other page has a filter bar to swap.
+
+       The results dim and lift very slightly while the request is in
+       the air, rather than showing a spinner. At the speed this
+       responds a spinner would flash and be gone, which reads as a
+       glitch. The map is outside #destMain and never dims, so the
+       page never looks like it is reloading wholesale.
+
+       ::view-transition-* is the crossfade for browsers that have
+       View Transitions; the opacity rule is what everything else
+       gets. -->
+  <style>
+    #destMain, #destFilters {
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .is-swapping #destMain {
+      opacity: .38;
+      transform: translateY(3px);
+      pointer-events: none;
+    }
+    .is-swapping #destFilters { opacity: .6; pointer-events: none; }
+
+    ::view-transition-old(root),
+    ::view-transition-new(root) { animation-duration: .22s; }
+
+    /* Anyone who has asked the system for less movement gets the new
+       cards with no fade and no slide. The swap still happens. */
+    @media (prefers-reduced-motion: reduce) {
+      #destMain, #destFilters { transition: none; }
+      .is-swapping #destMain { transform: none; opacity: .6; }
+      ::view-transition-old(root),
+      ::view-transition-new(root) { animation: none; }
+    }
+  </style>
+
   <!-- ---- search ----
        A GET form, so a search is a URL: destinations.php?q=falls can be
        bookmarked and sent to someone. The hidden inputs carry whatever
        filters are already on, otherwise searching would silently throw
        away the sidebar selection. -->
-  <form class="hero-search" method="get" action="destinations.php" role="search">
+  <form class="hero-search" id="destSearchForm" method="get" action="destinations.php" role="search">
     <?php if ($type !== ''): ?><input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>"><?php endif; ?>
     <?php if ($cat  !== ''): ?><input type="hidden" name="cat"  value="<?= htmlspecialchars($cat) ?>"><?php endif; ?>
     <?php if ($town !== ''): ?><input type="hidden" name="town" value="<?= htmlspecialchars($town) ?>"><?php endif; ?>
@@ -727,6 +764,289 @@ $showIntro = true;
       </svg>
     </button>
   </form>
+
+  <!-- ===================================================================
+       SEARCHING AND FILTERING WITHOUT THE PAGE BLINKING
+
+       WHAT WAS WRONG. Every search and every chip was a full document
+       load: the banner video re-decoded, Leaflet rebuilt the map, the
+       photographs came back off the network, and the window went white
+       in between. Then the scroll correction ran and dropped you at the
+       filter bar — which worked, but you watched the whole page be
+       destroyed and rebuilt to change nine cards.
+
+       WHAT HAPPENS NOW. The page fetches ITSELF at the new URL, takes
+       two regions out of the response and writes them into the page it
+       is already showing:
+
+         #destFilters   the chips — their hrefs carry ?q= so they go
+                        stale the moment a search runs
+         #destMain      the count, the empty state, the grid, Show all
+
+       THE MAP IS DELIBERATELY NOT TOUCHED. Leaflet owns that subtree,
+       and tearing it out from under the library is how you get a grey
+       box. The pin data is refreshed in its island and an event is
+       fired — see the note under destinations:swapped below.
+
+       IT IS STILL A REAL GET FORM. No fetch, no URLSearchParams, no
+       History API, a non-200, a response missing either region, or any
+       thrown error, and this hands straight back to window.location —
+       the ordinary reload, which already works. Nothing here is load
+       bearing.
+       =================================================================== -->
+  <script>
+  (function () {
+    /* DEFERRED, and this is not optional.
+
+       This script is printed in the banner, roughly 20,000 characters
+       above #destMain and #destToast. Run it at parse time and both
+       lookups return null, the guard below trips, and the whole swap
+       silently never installs — the page keeps hard-reloading and
+       nothing indicates why.
+
+       It stays HERE, next to the form it belongs to, rather than being
+       moved to the foot of the page: this is where anyone looking for
+       the search behaviour will look for it. */
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+
+    function init() {
+      var form = document.getElementById('destSearchForm');
+      var main = document.getElementById('destMain');
+      var bar  = document.getElementById('destFilters');
+
+      /* every one of these has to exist AND be supported, or we simply
+         never intercept anything and the page behaves as it did. */
+      if (!form || !main || !bar) return;
+      if (!window.fetch || !window.URLSearchParams || !window.DOMParser) return;
+      if (!window.history || !history.pushState) return;
+
+      var REGIONS = ['destFilters', 'destMain'];
+      var inflight = null;
+
+      /* mirrors destUrl() in the PHP above: empty values dropped, same
+         parameter names. Kept in step by hand — if you add a filter,
+         add it to both. */
+      function formUrl() {
+        var params = new URLSearchParams();
+        new FormData(form).forEach(function (value, key) {
+          value = String(value).trim();
+          if (value !== '') params.append(key, value);
+        });
+        var qs = params.toString();
+        return 'destinations.php' + (qs ? '?' + qs : '') + '#destFilters';
+      }
+
+      /* View Transitions gives a real crossfade between the old cards and
+         the new ones for free. Where it is missing the swap is instant,
+         which is what the CSS fade under .is-swapping is covering. */
+      function paint(mutate) {
+        if (document.startViewTransition) {
+          document.startViewTransition(mutate);
+        } else {
+          mutate();
+        }
+      }
+
+      function settle() {
+        main.setAttribute('aria-busy', 'false');
+        document.documentElement.classList.remove('is-swapping');
+      }
+
+      /* THE INDICATOR.
+
+         role="status" rather than role="alert": a search returning
+         nothing is information, not an emergency, and alert interrupts
+         whatever a screen reader is mid-sentence on. status waits its
+         turn.
+
+         The element is reused rather than rebuilt so that searching three
+         wrong things in a row re-announces each one instead of stacking
+         three boxes up the screen. */
+      /* looked up on first use, not here: #destToast is printed at the
+         foot of the page and does not exist while this runs. */
+      var toastEl = null;
+      var toastTimer = null;
+
+      function toast(message) {
+        if (!toastEl) toastEl = document.getElementById('destToast');
+        if (!toastEl) return;
+
+        clearTimeout(toastTimer);
+
+        /* blank it first: re-setting a live region to the text it already
+           holds announces nothing, so the second identical miss would be
+           silent. */
+        toastEl.textContent = '';
+        toastEl.textContent = message;
+        toastEl.classList.add('is-on');
+
+        toastTimer = setTimeout(function () {
+          toastEl.classList.remove('is-on');
+        }, 4000);
+      }
+
+      function go(url, push) {
+        /* a second search while the first is still in the air wins.
+           Without this the slower response can land last and put the
+           wrong results on screen. */
+        if (inflight) inflight.abort();
+        var ctl = new AbortController();
+        inflight = ctl;
+
+        main.setAttribute('aria-busy', 'true');
+        document.documentElement.classList.add('is-swapping');
+
+        fetch(url, { signal: ctl.signal, credentials: 'same-origin' })
+          .then(function (res) {
+            if (!res.ok) throw new Error(res.status);
+            return res.text();
+          })
+          .then(function (html) {
+            var doc = new DOMParser().parseFromString(html, 'text/html');
+
+            /* verify BEFORE touching the page. A half-applied swap is
+               worse than a reload. */
+            var next = REGIONS.map(function (id) {
+              var el = doc.getElementById(id);
+              if (!el) throw new Error('missing #' + id);
+              return el;
+            });
+
+            /* ---- NOTHING MATCHED: SAY SO, CHANGE NOTHING ----
+
+               A search that finds nothing used to replace the whole page
+               with the absence of a result: the grid emptied, the chips
+               all read against a set of none, and the map went to "0 of 0
+               mapped — No mapped destinations in this filter", which is a
+               large dark rectangle telling you about a typo.
+
+               The results you were looking at were fine. A misspelling is
+               not a reason to take them away — you cannot even see what
+               you had, to work out what to try instead.
+
+               So a zero-result response is reported and DISCARDED. No
+               swap, no pushState, so the URL still describes what is
+               actually on screen. The typed text is left in the box to be
+               corrected.
+
+               A DIRECT LOAD of destinations.php?q=pasas is untouched by
+               this and still gets the .dest-empty message from the PHP
+               above — there is nothing on screen to preserve in that case,
+               and a toast over a blank page would be worse. */
+            var grid = doc.getElementById('destGrid');
+            var found = grid ? grid.querySelectorAll('.dest-card').length : 0;
+
+            if (found === 0) {
+              settle();
+              var term = new URL(url, location.href).searchParams.get('q');
+              toast(term
+                ? 'Nothing matches \u201c' + term + '\u201d'
+                : 'Nothing matches that combination');
+
+              /* put the caret back where the fix has to happen */
+              var box = document.getElementById('destSearch');
+              if (box && term) { box.focus(); box.select(); }
+              return;
+            }
+
+            paint(function () {
+              REGIONS.forEach(function (id, i) {
+                document.getElementById(id).innerHTML = next[i].innerHTML;
+              });
+
+              /* the pin data, refreshed in place. */
+              var isle = doc.getElementById('destMapPoints');
+              var cur  = document.getElementById('destMapPoints');
+              if (isle && cur) cur.textContent = isle.textContent;
+
+              if (doc.title) document.title = doc.title;
+            });
+
+            if (push) history.pushState({ destSwap: true }, '', url);
+
+            /* keep the box in step when the back button drives this */
+            var field = document.getElementById('destSearch');
+            if (field) field.value = new URL(url, location.href).searchParams.get('q') || '';
+
+            settle();
+
+            /* THE HOOK FOR EVERYTHING THAT BINDS TO A CARD.
+
+               saved-places.js, the data-detail handler in
+               destinations-map.js and the GSAP reveals in homepage.js all
+               bind on DOMContentLoaded, which will never fire again. Each
+               needs one line listening for this to re-bind, and the map
+               additionally needs to re-read #destMapPoints to move its
+               pins. Until those lines exist the cards render correctly
+               but the map pins stay on the previous result. */
+            document.dispatchEvent(new CustomEvent('destinations:swapped', {
+              detail: { url: url }
+            }));
+
+            /* only chase the results if they are off the top of the
+               screen. Someone already looking at the grid should not have
+               the page yanked out from under them. */
+            var top = bar.getBoundingClientRect().top;
+            if (top < 0) bar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          })
+          .catch(function (err) {
+            if (err && err.name === 'AbortError') return;
+            settle();
+            window.location.href = url;   /* the ordinary reload */
+          });
+      }
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        go(formUrl(), true);
+      });
+
+      /* the chips are plain <a href> and reload for the same reason the
+         form did. Delegated, because the bar replaces its own contents. */
+      bar.addEventListener('click', function (e) {
+        var a = e.target.closest('a[href]');
+        if (!a || !bar.contains(a)) return;
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+
+        var url = new URL(a.href, location.href);
+        if (url.origin !== location.origin) return;
+        if (!/destinations\.php$/.test(url.pathname)) return;
+
+        e.preventDefault();
+        go(url.pathname + url.search + url.hash, true);
+      });
+
+      /* "Clear filters" and the empty-state link live in #destMain */
+      main.addEventListener('click', function (e) {
+        var a = e.target.closest('.dest-result__clear, .dest-empty a');
+        if (!a) return;
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+
+        e.preventDefault();
+        var field = document.getElementById('destSearch');
+        if (field) field.value = '';
+        go(new URL(a.href, location.href).pathname +
+           new URL(a.href, location.href).search +
+           new URL(a.href, location.href).hash, true);
+      });
+
+      /* back and forward. Only ours — a state we did not push is a real
+         navigation and the browser should handle it. */
+      window.addEventListener('popstate', function (e) {
+        if (!e.state || !e.state.destSwap) return;
+        go(location.pathname + location.search + location.hash, false);
+      });
+
+      history.replaceState({ destSwap: true }, '',
+        location.pathname + location.search + location.hash);
+
+    }
+  }());
+  </script>
 
   <div class="hero-feature__inner">
 
@@ -974,7 +1294,11 @@ $showIntro = true;
 
   </div>
 
-  <div class="dest-main">
+  <!-- id and aria-live are for the swap: destinations.php fetches
+       itself and replaces the INNARDS of this element, so the
+       element itself has to survive or the live region announcing
+       the new count dies with it. -->
+  <div class="dest-main" id="destMain" aria-live="polite" aria-busy="false">
 
     <!-- one line saying what is on screen, and how to get back to
          everything. -->
@@ -1278,7 +1602,16 @@ $showIntro = true;
      =================================================================== -->
 <script>
 (function () {
-  if (window.location.hash !== '#destFilters') return;
+  /* A SEARCH ALWAYS LANDS ON THE RESULTS, hash or not. The handler
+     up in the banner adds #destFilters, but a bookmarked or pasted
+     ?q=falls carries no fragment and neither does a no-JS submit —
+     and in both cases the person wants the matches, not the banner.
+
+     FILTERS ARE DELIBERATELY LEFT OUT of this. The homepage trip
+     finder sends ?type=Beach with no fragment and should keep opening
+     at the top of the page as it does today. */
+  var isSearch = <?= $q !== '' ? 'true' : 'false' ?>;
+  if (!isSearch && window.location.hash !== '#destFilters') return;
 
   window.addEventListener('load', function () {
     var target = document.getElementById('destFilters');
@@ -1313,17 +1646,30 @@ $showIntro = true;
      nth-child counts every card in the grid, and PHP has already
      filtered them, so nothing here has to know anything about filters.
      =================================================================== -->
+<!-- DELEGATED, not bound to the button.
+
+     The button is inside #destMain, which the swap above replaces
+     wholesale — a handler attached to the element goes in the bin with
+     it and Show all silently stops working from the second search on.
+     Listening on document means the button can come and go as often as
+     it likes.
+
+     The count is read at CLICK TIME for the same reason: it changes
+     every time the filter changes, and a number captured at load would
+     be the count of whatever was on screen when the page first
+     opened. -->
 <script>
 (function () {
-  var grid = document.getElementById('destGrid');
-  var btn  = document.getElementById('destMore');
-  if (!grid || !btn) return;
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('#destMore');
+    if (!btn) return;
 
-  var label = btn.querySelector('.dest-more__label');
-  var total = grid.querySelectorAll('.dest-card').length;
+    var grid = document.getElementById('destGrid');
+    if (!grid) return;
 
-  btn.addEventListener('click', function () {
-    var open = grid.classList.toggle('is-expanded');
+    var label = btn.querySelector('.dest-more__label');
+    var total = grid.querySelectorAll('.dest-card').length;
+    var open  = grid.classList.toggle('is-expanded');
 
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     if (label) label.textContent = open ? 'Show fewer' : 'Show all ' + total + ' destinations';
@@ -1332,6 +1678,61 @@ $showIntro = true;
   });
 }());
 </script>
+<!-- ===================================================================
+     THE NO-RESULTS INDICATOR
+
+     A DIRECT CHILD OF THE PAGE, not of .hero-feature where the search
+     box lives. position:fixed resolves against the nearest ancestor
+     carrying a transform, and the hero has crossfading photo layers —
+     put this inside it and the toast would be pinned to the banner and
+     scroll away with it.
+
+     Bottom CENTRE, kept clear of the Bud.Ai widget in the bottom right.
+     ================================================================== -->
+<div id="destToast" class="dest-toast" role="status" aria-live="polite"></div>
+
+<style>
+  .dest-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    z-index: 900;          /* under the nav, over the page */
+    max-width: min(30rem, calc(100vw - 8rem));
+    padding: .8rem 1.35rem;
+    border-radius: 999px;
+    background: rgba(17, 24, 39, .94);
+    color: #fff;
+    font-size: .95rem;
+    line-height: 1.35;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .28);
+    -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
+
+    /* hidden by default, and NOT with display:none — a live region has
+       to stay in the accessibility tree to be able to announce. */
+    opacity: 0;
+    transform: translate(-50%, 10px);
+    pointer-events: none;
+    transition: opacity .2s ease, transform .2s ease;
+  }
+
+  .dest-toast.is-on {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  /* the widget sits bottom-right, so on a phone the toast lifts above
+     it rather than sliding underneath */
+  @media (max-width: 600px) {
+    .dest-toast { bottom: 92px; max-width: calc(100vw - 2.5rem); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dest-toast { transition: none; transform: translate(-50%, 0); }
+  }
+</style>
+
 <?php require __DIR__ . '/includes/bud-widget.php'; ?>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>
