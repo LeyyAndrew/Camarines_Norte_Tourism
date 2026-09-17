@@ -1,0 +1,125 @@
+# =====================================================================
+# .htaccess  —  goes in your WEB ROOT (next to homepage.php)
+#
+# This is a NEW file. It is not the one you sent me — that one lives in
+# uploads/ and does a different job (turning PHP off in the upload
+# folder). Keep that one exactly where it is. This is a second file.
+#
+# Save it as ".htaccess" with the leading dot and no .txt on the end.
+# On Windows, Explorer will fight you about the extension; save it from
+# VS Code instead, or use:  ren htaccess.txt .htaccess
+#
+# WHAT IT DOES
+#   1. gzip/brotli compresses text as it leaves the server
+#   2. tells browsers and Cloudflare to hold static files for a year
+#
+# WHY A YEAR IS SAFE HERE
+# includes/header.php has an assetUrl() helper that appends
+# ?v=<file modification time> to every stylesheet and script. Edit
+# base.css and its URL changes by itself, so a stale cache cannot
+# happen. This is exactly the setup a long cache is designed for.
+# =====================================================================
+
+
+# ---------------------------------------------------------------------
+# COMPRESSION
+# Text compresses about 4:1. On a home upload link that is the
+# difference between a page arriving and a page seeming to hang.
+# Images and video are already compressed — do not add them here, you
+# would burn CPU to make the file very slightly bigger.
+# ---------------------------------------------------------------------
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE text/javascript
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/json
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE image/svg+xml
+    AddOutputFilterByType DEFLATE font/woff2
+</IfModule>
+
+
+# ---------------------------------------------------------------------
+# CACHE LIFETIMES
+# ---------------------------------------------------------------------
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    # Fingerprinted by assetUrl(), so a year is correct and safe.
+    ExpiresByType text/css                "access plus 1 year"
+    ExpiresByType application/javascript  "access plus 1 year"
+    ExpiresByType text/javascript         "access plus 1 year"
+
+    # NOT fingerprinted — these are written into the markup as plain
+    # paths. A month is the compromise: long enough that repeat
+    # visitors stop re-downloading your photos, short enough that
+    # replacing one is not a disaster. If you replace a photo and need
+    # it live immediately, rename the file rather than shortening this.
+    ExpiresByType image/jpeg              "access plus 1 month"
+    ExpiresByType image/png               "access plus 1 month"
+    ExpiresByType image/webp              "access plus 1 month"
+    ExpiresByType image/svg+xml           "access plus 1 month"
+    ExpiresByType image/x-icon            "access plus 1 year"
+
+    ExpiresByType font/woff2              "access plus 1 year"
+    ExpiresByType font/woff               "access plus 1 year"
+
+    ExpiresByType video/mp4               "access plus 1 month"
+
+    # HTML is never cached — it is session-dependent. The signed-in and
+    # signed-out header markup differ, and a cached page would show the
+    # wrong one.
+    ExpiresByType text/html               "access plus 0 seconds"
+</IfModule>
+
+
+# ---------------------------------------------------------------------
+# immutable on the fingerprinted assets
+#
+# "immutable" tells the browser not to even send a revalidation request
+# — no If-Modified-Since, no 304, no round trip at all. A 304 is a tiny
+# response but it still costs a full request across your tunnel, and on
+# a page with a dozen assets that is a dozen pointless round trips per
+# repeat visit.
+# ---------------------------------------------------------------------
+<IfModule mod_headers.c>
+    <FilesMatch "\.(css|js|woff2?)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+
+    <FilesMatch "\.(jpg|jpeg|png|webp|gif|svg|mp4)$">
+        Header set Cache-Control "public, max-age=2592000"
+    </FilesMatch>
+
+    # Never let a signed-in page get cached anywhere in between.
+    <FilesMatch "\.php$">
+        Header set Cache-Control "private, no-cache, no-store, must-revalidate"
+    </FilesMatch>
+
+    Header set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+
+# ---------------------------------------------------------------------
+# Correct MIME type for WebP. Older Apache builds do not know it, and
+# a WebP served as text/plain will not render.
+# ---------------------------------------------------------------------
+<IfModule mod_mime.c>
+    AddType image/webp .webp
+    AddType font/woff2 .woff2
+</IfModule>
+
+
+# Keep config/ unreachable from the browser. database.php holds
+# credentials; a server misconfiguration that stops parsing PHP would
+# otherwise serve them as plain text.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^config/ - [F,L]
+</IfModule>
+
+Options -Indexes

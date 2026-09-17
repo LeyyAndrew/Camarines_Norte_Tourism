@@ -629,10 +629,42 @@ require __DIR__ . '/_header.php';
           if (!$ph['is_visible'] || $ph['filename'] === '') { $needs++; }
       }
   ?>
-  <button type="button" class="adm-town" data-set="<?= (int) $set['id'] ?>">
-    <span class="adm-town__initial adm-town__initial--icon"><?= chapter_icon($set['slug']) ?></span>
+  <button type="button" class="adm-town adm-town--chapter" data-set="<?= (int) $set['id'] ?>">
+
+    <!-- ---------- the strip ----------
+         A chapter of a photo gallery is its photographs, so the card
+         shows them. An icon told you the coast chapter was about the
+         coast, which the heading underneath already said; four
+         thumbnails tell you what is actually in it and whether
+         anything is missing.
+
+         Four at most. Beyond that they get too small to read and the
+         count underneath does the job better. -->
+    <span class="adm-chapstrip">
+      <?php
+        $shown = array_slice($list, 0, 4);
+        foreach ($shown as $ph):
+      ?>
+        <span class="adm-chapstrip__cell<?= $ph['is_visible'] ? '' : ' is-off' ?>">
+          <?php if ($ph['filename'] !== ''): ?>
+            <img src="<?= gallery_url($ph['filename'], '../') ?>" alt="" loading="lazy"
+                 onerror="this.remove()">
+          <?php endif; ?>
+        </span>
+      <?php endforeach; ?>
+
+      <?php /* Keeps the strip a straight edge when a chapter is short. */ ?>
+      <?php for ($i = count($shown); $i < 4; $i++): ?>
+        <span class="adm-chapstrip__cell adm-chapstrip__cell--empty"></span>
+      <?php endfor; ?>
+    </span>
 
     <span class="adm-town__body">
+      <span class="adm-chap__eyebrow">
+        <?= chapter_icon($set['slug']) ?>
+        <?= e($set['eyebrow']) ?>
+      </span>
+
       <span class="adm-town__name"><?= e($set['title']) ?></span>
       <span class="adm-town__desc"><?= e($set['note']) ?></span>
 
@@ -644,6 +676,10 @@ require __DIR__ . '/_header.php';
         <?php if ($needs): ?>
           <span class="adm-town__flag" title="<?= $needs ?> need attention"><?= $needs ?></span>
         <?php endif; ?>
+
+        <span class="adm-town__go" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+        </span>
       </span>
     </span>
   </button>

@@ -2032,8 +2032,12 @@ summary:focus-visible{
    =================================================================== */
 .adm-towns{
   display:grid;
-  grid-template-columns:repeat(auto-fill, minmax(15rem, 1fr));
-  gap:.85rem;
+  /* Narrower minimum than before, because the card is now a row
+     rather than a poster. Four across on a laptop puts all twelve
+     municipalities on one screen — which is the whole point of a
+     grid you are meant to choose from. */
+  grid-template-columns:repeat(auto-fill, minmax(14.5rem, 1fr));
+  gap:.7rem;
 }
 
 .adm-town{
@@ -2136,6 +2140,140 @@ summary:focus-visible{
   font-size:.72rem; font-weight:700;
 }
 
+
+
+/* ===================================================================
+   23b. THE MUNICIPALITY CARD  —  .adm-town--crest
+
+   The destinations grid only. The gallery's chapter cards keep the
+   plain .adm-town above, which is why every rule here is scoped to
+   the modifier: two pages, one class, no drift.
+
+   ---------------------------------------------------------------
+   WHY THE COLOURED BANNER WENT
+
+   Each card used to open with a 9.5rem field carrying three blurred
+   colours drawn from the town. The colours were chosen carefully and
+   the idea was sound — but a municipal seal is already a dense,
+   full-colour object with its own ring and heraldry, and putting one
+   on a saturated field means two colourful things competing inside
+   200 pixels. Twelve of those in a grid stops reading as twelve
+   towns and starts reading as noise.
+
+   It also cost height. The field was mostly empty — the seal filled
+   perhaps a quarter of it — and it pushed the grid to eight cards on
+   screen when there are twelve municipalities.
+
+   THE TINT SURVIVES, at a fraction of the volume: one town colour,
+   washed to 10%, on the disc behind the seal. Enough that Paracale
+   reads gold and Vinzons reads turquoise; not enough to compete with
+   the crest sitting on it. --town-1/2/3 still arrive from
+   destinations.php, so a thirteenth municipality still needs no CSS.
+
+   THE DISC ITSELF IS NOT DECORATION. Twelve seals are twelve unknown
+   images — some dark-ringed, some nearly white. A pale disc under all
+   of them guarantees the crest separates from the card whatever it
+   turns out to be.
+   =================================================================== */
+.adm-town--crest{
+  display:flex;
+  align-items:center;
+  gap:.85rem;
+  padding:.95rem 1rem;
+  text-align:left;
+  cursor:pointer;
+}
+
+/* The disc. Sized to the seal rather than to the card, so the card
+   can be short. */
+.adm-town__field{
+  position:relative;
+  display:grid; place-items:center;
+  width:64px; height:64px; flex:none;
+  border-radius:50%;
+  overflow:visible;
+  background:
+    radial-gradient(circle,
+      color-mix(in srgb, var(--town-1, #1F6A4F) 14%, transparent) 0%,
+      color-mix(in srgb, var(--town-1, #1F6A4F) 6%, transparent) 70%),
+    var(--adm-sunk);
+}
+
+/* No blur layer and no glow ring any more — at 64px there is nothing
+   for them to do but soften the crest. */
+.adm-town__field::before,
+.adm-town__field::after{ content:none; }
+
+.adm-town--crest .adm-town__seal{
+  width:56px; height:56px;
+  object-fit:contain;
+  transition:transform var(--adm-in) var(--adm-ease-out);
+}
+
+.adm-town--crest .adm-town__initial{
+  position:static;
+  width:auto; height:auto;
+  background:none;
+  color:var(--adm-muted);
+  font-family:var(--adm-font-display);
+  font-size:1.05rem; font-weight:700;
+  letter-spacing:-.02em;
+}
+
+.adm-town--crest .adm-town__body{
+  display:block;
+  min-width:0; flex:1;
+  padding:0;
+}
+
+.adm-town--crest .adm-town__name{
+  display:block;
+  font-family:var(--adm-font-display);
+  font-size:.95rem; font-weight:600;
+  letter-spacing:-.01em;
+  color:var(--adm-ink);
+}
+
+/* Left-aligned, and clamped to two lines. Centred text gave every
+   card a different ragged shape on both edges; down a column of
+   twelve that is hard to scan. One straight edge to read down is
+   worth more than symmetry inside each card. */
+.adm-town--crest .adm-town__desc{
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  margin-top:.2rem;
+  font-size:.82rem; line-height:1.5;
+  color:var(--adm-muted);
+}
+
+/* The count used to have its own row and its own divider in all
+   twelve cards, always saying nearly the same thing. It is a fact,
+   not a heading, so it sits on one line with no rule above it. */
+.adm-town--crest .adm-town__foot{
+  display:flex; align-items:center; gap:.5rem;
+  margin-top:.45rem; padding:0;
+  border:0;
+  font-family:var(--adm-font-display);
+  font-size:.79rem; font-weight:500;
+  color:var(--adm-leaf);
+}
+
+/* Sits with the count rather than floating over the artwork, because
+   there is no artwork left to float over. */
+.adm-town--crest .adm-town__flag{
+  position:static;
+  min-width:1.2rem; height:1.2rem; padding:0 .35rem;
+  font-size:.7rem;
+}
+
+.adm-town--crest:hover .adm-town__seal{ transform:scale(1.05); }
+
+@media (prefers-reduced-motion:reduce){
+  .adm-town--crest .adm-town__seal{ transition:none; }
+  .adm-town--crest:hover .adm-town__seal{ transform:none; }
+}
 
 /* ===================================================================
    24. THE TOWN PANEL — glass
@@ -2452,4 +2590,191 @@ summary:focus-visible{
 @media (max-width:520px){
   .adm-seal{ flex-direction:column; align-items:stretch; }
   .adm-seal__text{ min-width:0; }
+}
+
+/* ===================================================================
+   23c. MAKING THE MUNICIPALITY CARD LOOK PRESSABLE
+
+   Flat and rectangular, the card reads as a list item — something to
+   look at rather than something to press. Four cues fix that, and
+   none of them is a border radius or a shadow:
+
+     a chevron          the universal "this opens something"
+     a hover lift       the card rises and its border takes the accent
+     a moving chevron   it slides right, so the hover feels answered
+     a press state      the card drops back to zero on :active, which
+                        is the difference between a picture of a
+                        button and a button
+
+   THE CHEVRON IS THE IMPORTANT ONE. Colour and lift only appear once
+   the pointer is already there — the chevron is visible at rest, so
+   the card announces itself as clickable before anyone tries.
+   =================================================================== */
+.adm-town__go{
+  flex:none;
+  display:grid; place-items:center;
+  width:1.6rem; height:1.6rem;
+  margin-left:.25rem;
+  border-radius:50%;
+  color:var(--adm-muted);
+  transition:color var(--adm-out) var(--adm-ease-out),
+             background var(--adm-out) var(--adm-ease-out),
+             transform var(--adm-out) var(--adm-ease-out);
+}
+
+.adm-town__go svg{
+  width:1rem; height:1rem;
+  stroke:currentColor; stroke-width:2;
+  fill:none; stroke-linecap:round; stroke-linejoin:round;
+}
+
+.adm-town--crest:hover .adm-town__go{
+  background:var(--adm-leaf-wash);
+  color:var(--adm-leaf);
+  transform:translateX(3px);
+}
+
+.adm-town--crest:hover .adm-town__name{ color:var(--adm-leaf-deep); }
+
+/* The press. Without it the card lifts on hover and then does
+   nothing when clicked, which reads as unresponsive even though the
+   panel is already opening. */
+.adm-town--crest:active{
+  transform:translateY(0);
+  background:var(--adm-sunk);
+}
+
+/* Keyboard users get the same information the pointer does. */
+.adm-town--crest:focus-visible .adm-town__go{
+  background:var(--adm-leaf-wash);
+  color:var(--adm-leaf);
+}
+
+@media (prefers-reduced-motion:reduce){
+  .adm-town__go{ transition:color .01s linear; }
+  .adm-town--crest:hover .adm-town__go{ transform:none; }
+}
+
+
+/* ===================================================================
+   23d. THE CHAPTER CARD  —  .adm-town--chapter
+
+   The gallery only. A chapter of a photo gallery IS its photographs,
+   so the card shows four of them rather than an icon.
+
+   WHAT THE ICON WAS DOING WRONG. It told you the coast chapter was
+   about the coast, which the heading directly underneath already
+   said. The strip says something the heading cannot: what is actually
+   in there, and whether a photograph is missing or hidden. The icon
+   survives at 14px beside the eyebrow, where it costs nothing.
+
+   THE STRIP IS ALWAYS FOUR CELLS, padded with empties when a chapter
+   is short. A ragged strip makes three cards look like three
+   different components; a straight edge makes them a set.
+   =================================================================== */
+.adm-town--chapter{
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:0;
+  padding:0;
+  overflow:hidden;
+  text-align:left;
+  cursor:pointer;
+}
+
+.adm-chapstrip{
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  gap:2px;
+  background:var(--adm-line-soft);
+  border-bottom:1px solid var(--adm-line);
+}
+
+.adm-chapstrip__cell{
+  position:relative;
+  aspect-ratio:1;
+  background:var(--adm-sunk);
+  overflow:hidden;
+}
+
+.adm-chapstrip__cell img{
+  width:100%; height:100%;
+  object-fit:cover;
+  display:block;
+  transition:transform var(--adm-in) var(--adm-ease-out);
+}
+
+/* A hidden photograph is dimmed rather than dropped. Leaving it out
+   would make the strip lie about what the chapter holds. */
+.adm-chapstrip__cell.is-off img{ opacity:.35; }
+
+/* Hatching, not a flat grey — a plain grey cell reads as a photograph
+   that failed to load. This reads as a slot with nothing in it. */
+.adm-chapstrip__cell--empty{
+  background:repeating-linear-gradient(45deg,
+    var(--adm-sunk) 0 6px,
+    var(--adm-line-soft) 6px 12px);
+}
+
+.adm-town--chapter:hover .adm-chapstrip__cell img{ transform:scale(1.05); }
+
+.adm-town--chapter .adm-town__body{
+  display:block;
+  padding:.85rem 1rem 1rem;
+}
+
+/* The chapter number, with the icon shrunk down beside it. */
+.adm-chap__eyebrow{
+  display:flex; align-items:center; gap:.4rem;
+  margin-bottom:.3rem;
+  font-family:var(--adm-font-display);
+  font-size:.76rem; font-weight:600;
+  color:var(--adm-leaf);
+}
+
+.adm-chap__eyebrow svg{
+  width:14px; height:14px;
+  stroke:currentColor;
+}
+
+.adm-town--chapter .adm-town__desc{
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  margin-top:.25rem;
+  font-size:.82rem; line-height:1.5;
+  color:var(--adm-muted);
+}
+
+.adm-town--chapter .adm-town__foot{
+  display:flex; align-items:center; gap:.5rem;
+  margin-top:.6rem; padding:0;
+  border:0;
+  font-family:var(--adm-font-display);
+  font-size:.79rem; font-weight:500;
+  color:var(--adm-leaf);
+}
+
+.adm-town--chapter .adm-town__go{ margin-left:auto; }
+
+.adm-town--chapter:hover .adm-town__go{
+  background:var(--adm-leaf-wash);
+  color:var(--adm-leaf);
+  transform:translateX(3px);
+}
+
+.adm-town--chapter:hover .adm-town__name{ color:var(--adm-leaf-deep); }
+.adm-town--chapter:active{ transform:translateY(0); }
+
+.adm-town--chapter:focus-visible .adm-town__go{
+  background:var(--adm-leaf-wash);
+  color:var(--adm-leaf);
+}
+
+@media (prefers-reduced-motion:reduce){
+  .adm-chapstrip__cell img{ transition:none; }
+  .adm-town--chapter:hover .adm-chapstrip__cell img{ transform:none; }
+  .adm-town--chapter:hover .adm-town__go{ transform:none; }
 }

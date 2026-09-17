@@ -81,6 +81,10 @@ $_SESSION['user_id']   = $user['id'];
 $_SESSION['firstname'] = $user['firstname'];
 $_SESSION['lastname']  = $user['lastname'] ?? '';
 $_SESSION['role']      = $user['role'] ?? 'user';
+$_SESSION['username']  = $user['username'] ?? $user['firstname'];
+
+/* Fresh sign-in, so Bud's welcome pop-up on the homepage shows again. */
+unset($_SESSION['welcome_shown']);
 
 /* ---------- stamp the login ----------
 
@@ -114,15 +118,18 @@ if (array_key_exists('last_login', $user)) {
    sign-in on the real domain, which is exactly when they are least
    suspicious. Only a bare filename in the project root gets through
    — no slashes, no protocol, no going up a directory. Anything else
-   falls back to the dashboard. */
+   falls back to the homepage. */
 $next = $_POST['next'] ?? '';
+
+/* The dashboard is retired. An old link asking for it goes home. */
+if (strpos($next, 'dashboard.php') === 0) { $next = ''; }
 
 if (!preg_match('~^[A-Za-z0-9_-]+\.php(\?[^\s"\'<>]*)?(#[^\s"\'<>]*)?$~', $next)) {
     /* No specific destination: admins land in the panel, everyone
        else on their dashboard. A "next" the visitor was actually
        trying to reach always wins over both — someone who clicked a
        destination wants the destination, not a control panel. */
-    $next = ($_SESSION['role'] === 'admin') ? 'admin/index.php' : 'dashboard.php';
+    $next = ($_SESSION['role'] === 'admin') ? 'admin/index.php' : 'homepage.php';
 }
 
 header('Location: ../' . $next);

@@ -46,9 +46,9 @@
 .sitesearch__panel {
   position: relative;
   background: var(--ss-panel);
-  border-bottom: 1px solid var(--ss-line);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
-  animation: ss-drop .28s cubic-bezier(.22, 1, .36, 1) both;
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .38);
+  animation: ss-drop .24s cubic-bezier(.22, 1, .36, 1) both;
   max-height: 100vh;
   max-height: 100dvh;
   overflow-y: auto;
@@ -58,7 +58,7 @@
 .sitesearch__inner {
   width: min(880px, 100% - 2.5rem);
   margin: 0 auto;
-  padding: 1.75rem 0 1.5rem;
+  padding: 1.5rem 0 1.75rem;
 }
 
 /* ---------- the field ----------
@@ -73,23 +73,34 @@
   padding-bottom: .85rem;
 }
 
+/* Was solid gold edge to edge, which at full width is a lot of accent
+   for a rule that only needs to say "the field ends here". Now it sits
+   at low opacity and comes up to full strength on focus — the colour
+   becomes information instead of decoration. */
 .sitesearch__form::after {
   content: "";
   position: absolute;
   left: 0; right: 0; bottom: 0;
   height: 1px;
-  background: var(--ss-accent);
+  background: var(--ss-line);
   transform-origin: left;
   animation: ss-draw .5s cubic-bezier(.22, 1, .36, 1) both;
+  transition: background-color .2s;
 }
 
 .sitesearch__icon {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   flex: none;
   color: var(--ss-accent);
+  opacity: .9;
 }
 
+/* The old size here was clamp(1.35rem … 1.9rem) at weight 700. At that
+   scale the placeholder is the loudest thing on a darkened screen, and
+   a greyed-out instruction shouting in display type reads as unfinished
+   rather than confident. Dropped to a size a person would actually
+   choose for a field they are about to type a place name into. */
 .sitesearch__input {
   flex: 1 1 auto;
   min-width: 0;
@@ -98,15 +109,21 @@
   padding: 0;
   color: var(--ss-text);
   font-family: var(--font-display, 'Archivo', system-ui, sans-serif);
-  font-size: clamp(1.35rem, 3.2vw, 1.9rem);
-  font-weight: 700;
-  letter-spacing: -.01em;
-  line-height: 1.2;
+  font-size: clamp(1.05rem, 2.1vw, 1.3rem);
+  font-weight: 500;
+  letter-spacing: -.005em;
+  line-height: 1.35;
 }
 
-.sitesearch__input::placeholder { color: rgba(244, 236, 221, .34); }
+.sitesearch__input::placeholder {
+  color: rgba(244, 236, 221, .42);
+  font-weight: 400;
+}
 .sitesearch__input:focus { outline: none; }          /* the rule below is the focus ring */
-.sitesearch__form:focus-within::after { height: 2px; }
+
+/* Growing 1px → 2px shifts everything under the field down by a pixel
+   every time you click in. Recolouring does not move the layout. */
+.sitesearch__form:focus-within::after { background: var(--ss-accent); }
 
 /* Chrome draws its own clear button and it sits badly on a dark
    field at this size. The Esc key and the close button both do it. */
@@ -116,8 +133,8 @@
   flex: none;
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   border: 1px solid var(--ss-line);
   border-radius: 50%;
   background: none;
@@ -125,57 +142,85 @@
   cursor: pointer;
   transition: color .18s, border-color .18s, background-color .18s;
 }
-.sitesearch__close svg { width: 17px; height: 17px; }
+.sitesearch__close svg { width: 15px; height: 15px; }
 .sitesearch__close:hover {
   color: var(--ss-text);
   border-color: rgba(255, 255, 255, .3);
   background: rgba(255, 255, 255, .05);
 }
 
-/* ---------- hint row ---------- */
-.sitesearch__hint {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .5rem;
-  margin: .95rem 0 0;
-  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
-  font-size: .78rem;
-  color: var(--ss-muted);
-}
+/* ---------- hint row: REMOVED ----------
+   The "↑ ↓ to move · Enter to open · Esc to close" line is gone. Arrow
+   keys, Enter and Escape all still work — the keyboard handling is in
+   the JS and none of it was touched. What went away is the caption.
 
-.sitesearch__hint kbd {
-  font: inherit;
-  padding: .12em .45em;
-  border: 1px solid var(--ss-line);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, .04);
-  color: var(--ss-text);
-}
+   This display:none is a safety net, not the fix. Delete the
+   <p class="sitesearch__hint"> block from the overlay markup in
+   header.php as well: hidden nodes are still in the accessibility
+   tree in some readers, so a screen-reader user can still be read an
+   instruction that nobody else is being shown. */
+.sitesearch__hint { display: none; }
 
-/* ---------- quick links, shown before anything is typed ---------- */
+/* ---------- quick links, shown before anything is typed ----------
+   These are now navigation, not chips that type into the box, so they
+   are styled to read as things you press and go: a real surface, a
+   real border, and a hover that lifts instead of just recolouring. */
 .sitesearch__quick {
   display: flex;
   flex-wrap: wrap;
-  gap: .5rem;
-  margin-top: 1.1rem;
+  gap: .55rem;
+  margin-top: 1.35rem;
+}
+
+/* A quiet label above the row. Six unexplained pills under a search
+   box is a small puzzle; two words removes it. */
+.sitesearch__quick-label {
+  flex: 0 0 100%;
+  margin: 0 0 .15rem;
+  font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: rgba(244, 236, 221, .38);
 }
 
 .sitesearch__tag {
-  display: inline-block;
-  padding: .42rem .8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .48rem .9rem;
   border: 1px solid var(--ss-line);
   border-radius: 999px;
-  background: none;
-  color: var(--ss-muted);
+  background: rgba(255, 255, 255, .035);
+  color: rgba(244, 236, 221, .78);
   font-family: var(--font-body, 'Inter', system-ui, sans-serif);
-  font-size: .82rem;
+  font-size: .83rem;
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none;
   cursor: pointer;
-  transition: color .18s, border-color .18s;
+  transition: color .18s, border-color .18s, background-color .18s, transform .18s;
 }
-.sitesearch__tag:hover {
+
+.sitesearch__tag:hover,
+.sitesearch__tag:focus-visible {
   color: var(--ss-text);
-  border-color: var(--ss-accent);
+  border-color: rgba(245, 166, 35, .5);
+  background: rgba(245, 166, 35, .1);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+/* The small pin on a place tag. Calaguas opens one destination;
+   Waterfalls opens a grid of them. They behave differently, so they
+   are allowed to look slightly different before you click. */
+.sitesearch__tag svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  color: var(--ss-accent);
+  opacity: .85;
 }
 
 /* ---------- results ---------- */
@@ -290,7 +335,7 @@ body.ss-open { overflow: hidden; }   /* stop the page scrolling behind */
 
 @keyframes ss-fade { from { opacity: 0 } to { opacity: 1 } }
 @keyframes ss-drop {
-  from { opacity: 0; transform: translateY(-14px) }
+  from { opacity: 0; transform: translateY(-8px) }
   to   { opacity: 1; transform: none }
 }
 @keyframes ss-draw { from { transform: scaleX(0) } to { transform: scaleX(1) } }
@@ -502,6 +547,11 @@ body.ss-open { overflow: hidden; }   /* stop the page scrolling behind */
   .sitesearch__snip  { display: none; }         /* the name is what matters at this width */
   .sitesearch__thumb { width: 44px; height: 44px; }
 
+  /* Tags are tap targets on a phone, so they keep their height even
+     as the text shrinks — the padding goes down less than the font. */
+  .sitesearch__quick { gap: .45rem; margin-top: 1.15rem; }
+  .sitesearch__tag   { padding: .5rem .8rem; font-size: .8rem; }
+
   .searchpage__form { padding-left: .85rem; }
   .searchpage__submit { padding: .7rem 1.05rem; }
   .searchpage__thumb { width: 58px; height: 58px; }
@@ -632,4 +682,25 @@ a.searchpage__submit {
     animation: none;
     box-shadow: 0 0 0 3px var(--gold, #F5A623);
   }
+}
+
+.sitesearch__form .sitesearch__submit {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.sitesearch__form .sitesearch__submit:focus-visible {
+  outline: 2px solid rgba(245, 165, 36, .9);
+  outline-offset: 4px;
+  border-radius: 4px;
 }

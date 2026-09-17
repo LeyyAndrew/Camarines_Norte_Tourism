@@ -196,6 +196,40 @@ const TOWN_LINES = [
     'Vinzons'          => 'Calaguas, and the climb above the coast that looks out to it.',
 ];
 
+/* ===================================================================
+   WHAT EACH MUNICIPALITY LOOKS LIKE
+
+   Three colours per town, blurred into a field behind its seal. They
+   are the ground the town stands on, not a decoration: Labo is forest
+   green over wet earth over the near-black under a canopy; Paracale
+   is worked gold against the shoreline it is dug from; Vinzons is the
+   turquoise of Calaguas.
+
+   ORDER MATTERS. The first is the dominant light, the second the
+   answering one, the third the deep shade the other two sit in — so
+   the third should always be the darkest of the three.
+
+   ⚠ EDIT THESE FREELY, the same way as the lines above. A town with
+   no entry falls back to the province's own green.
+   =================================================================== */
+const TOWN_TINTS = [
+    'Basud'            => ['#1B4038', '#2F5A3C', '#0C1C1A'],  /* coast meeting forest   */
+    'Capalonga'        => ['#3A2540', '#1E3A4C', '#12111C'],  /* dusk over a west sea   */
+    'Daet'             => ['#125480', '#5C4E33', '#0A1F30'],  /* surf and Bagasbas sand */
+    'Jose Panganiban'  => ['#1E3644', '#3F4A38', '#0D1A21'],  /* working bay, grey light*/
+    'Labo'             => ['#2E5A2C', '#4A3A22', '#0C160E'],  /* farmland, earth, shade */
+    'Mercedes'         => ['#0F3C46', '#1E5A55', '#08202A'],  /* port water and islands */
+    'Paracale'         => ['#5A4014', '#7A5A1E', '#181206'],  /* gold country           */
+    'San Lorenzo Ruiz' => ['#15423A', '#2E5A38', '#0A211E'],  /* upland falls, a river  */
+    'San Vicente'      => ['#2C401E', '#4A3E28', '#111D0F'],  /* moss and wet ground    */
+    'Santa Elena'      => ['#3F3A1C', '#2A3A2A', '#14170E'],  /* the far northern edge  */
+    'Talisay'          => ['#1E3A2E', '#4A4426', '#0C1D17'],  /* mangrove and boardwalk */
+    'Vinzons'          => ['#0E4A4E', '#2E7A6E', '#07272C'],  /* Calaguas               */
+];
+
+/* The field a town with no entry above gets. */
+const TOWN_TINT_FALLBACK = ['#1F6A4F', '#3E4A2E', '#0B1F16'];
+
 /* The slug destinations-map.js and the card anchors use. Copied from
    destSlug() in destinations.php so the admin can show you the slug a
    name will produce before you commit to it. */
@@ -204,6 +238,46 @@ function dest_slug(string $name): string
     $s = strtolower(trim($name));
     $s = preg_replace('/[^a-z0-9]+/', '-', $s);
     return trim($s, '-');
+}
+
+
+/* ===================================================================
+   THE TWELVE, MATCHED LOOSELY AND STORED EXACTLY
+
+   The municipality field is free text, and every consumer of it is an
+   exact string match: $byTown below, $townCounts on destinations.php,
+   TOWN_LINES, TOWN_TINTS, and the WHERE town = :t in the seal handler.
+   So "labo", "Labo " and "LABO" do not join the Labo card — each one
+   opens a thirteenth card beside it, carrying no seal, no line and the
+   fallback green, and pushes the province's town count to thirteen on
+   a page that says twelve in its own copy.
+
+   dest_slug() already flattens case, spacing and punctuation, so
+   comparing slugs snaps any of those spellings back to the one the
+   rest of the panel is keyed by. A name matching none of the twelve is
+   refused rather than invented: Camarines Norte has twelve
+   municipalities, and a thirteenth is a typo, not a new town.
+
+   WHY TOWN_LINES IS THE LIST. It is already the twelve, already in the
+   spelling the seal folder and the tints use, and already the thing
+   that silently breaks when a name drifts. Keeping a second list here
+   would mean two places to edit and one of them forgotten.
+   =================================================================== */
+function canon_town(string $town): ?string
+{
+    $slug = dest_slug($town);
+
+    if ($slug === '') {
+        return null;
+    }
+
+    foreach (array_keys(TOWN_LINES) as $canon) {
+        if (dest_slug($canon) === $slug) {
+            return $canon;
+        }
+    }
+
+    return null;
 }
 
 
@@ -269,6 +343,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: ' . ($id ? 'destinations.php?edit=' . $id : back_to()));
             exit;
         }
+
+        /* The municipality is stored in one spelling or not at all. This
+           is the only door places come in through, so snapping the name
+           here is what keeps a second Labo card from ever existing —
+           adding a place to Labo now means adding it to the Labo that is
+           already there, however you happen to have typed it. */
+        $canonTown = canon_town($town);
+
+        if ($canonTown === null) {
+            flash('That is not one of the twelve municipalities. Pick one from the suggestions in the field.', 'bad');
+            header('Location: ' . ($id ? 'destinations.php?edit=' . $id : back_to()));
+            exit;
+        }
+
+        $town = $canonTown;
 
         if (dest_slug($name) === '') {
             flash('That name has no letters or numbers in it, so it cannot be linked to.', 'bad');
@@ -445,7 +534,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     /* ---------- show / hide ---------- */
     /* ---------- the municipal seal ---------- */
     if ($action === 'seal') {
-        $town = trim($_POST['town'] ?? '');
+        /* Normally arrives from a card's data-town and is already exact.
+           Snapped anyway, so the count below cannot miss on a difference
+           of case alone and answer "that municipality does not exist"
+           about a town sitting right there on the screen. */
+        $town = canon_town(trim($_POST['town'] ?? '')) ?? '';
 
         /* The town must be one we actually have. Without this, a
            crafted post could name anything and write a file called
@@ -579,9 +672,15 @@ foreach ($rows as $row) {
     if ($row['filename'] === '') { $noPhoto++; }
 }
 
-/* Existing values, so the admin picks from what is already in use
-   rather than inventing a thirteenth spelling of a municipality. */
-$towns = array_keys($byTown);
+/* The twelve, plus anything already stored, so the admin picks from a
+   list rather than inventing a thirteenth spelling of a municipality.
+
+   TOWN_LINES is merged in because array_keys($byTown) alone can only
+   suggest towns that already have a destination — and a town with none
+   is exactly when the name gets typed by hand and the spelling drifts.
+   The save handler refuses anything outside the twelve regardless; this
+   just means you rarely have to be refused. */
+$towns = array_unique(array_merge(array_keys(TOWN_LINES), array_keys($byTown)));
 sort($towns);
 
 $tags = [];
@@ -906,25 +1005,54 @@ require __DIR__ . '/_header.php';
       $initial = count($words) > 1
           ? strtoupper(substr($words[0], 0, 1) . substr($words[1], 0, 1))
           : strtoupper(substr($town, 0, 2));
+
+      /* The town's three colours, handed to the CSS as custom
+         properties. Inline because they belong to this town and to
+         nothing else on the page — putting twelve one-off palettes in
+         the stylesheet means a thirteenth municipality cannot be
+         added without editing CSS. */
+      $tint  = TOWN_TINTS[$town] ?? TOWN_TINT_FALLBACK;
+      $field = sprintf('--town-1:%s;--town-2:%s;--town-3:%s', $tint[0], $tint[1], $tint[2]);
   ?>
-  <button type="button" class="adm-town" data-town="<?= e($town) ?>">
-    <?php if ($seal): ?>
-      <img class="adm-town__seal" src="<?= $seal ?>" alt="" onerror="this.remove()">
-    <?php else: ?>
-      <span class="adm-town__initial"><?= e($initial) ?></span>
-    <?php endif; ?>
+  <button type="button" class="adm-town adm-town--crest" data-town="<?= e($town) ?>"
+          style="<?= e($field) ?>">
 
-    <span class="adm-town__name"><?= e($town) ?></span>
-
-    <?php if (isset(TOWN_LINES[$town])): ?>
-      <span class="adm-town__desc"><?= e(TOWN_LINES[$town]) ?></span>
-    <?php endif; ?>
-
-    <span class="adm-town__foot">
-      <?= count($list) ?> place<?= count($list) === 1 ? '' : 's' ?>
-      <?php if ($needs): ?>
-        <span class="adm-town__flag" title="<?= $needs ?> need attention"><?= $needs ?></span>
+    <!-- The seal on a disc washed with the town's own colour at a
+         tenth of its old strength. Enough that Paracale reads gold
+         and Vinzons turquoise; not enough to compete with the crest
+         sitting on top of it. -->
+    <span class="adm-town__field">
+      <?php if ($seal): ?>
+        <img class="adm-town__seal" src="<?= $seal ?>" alt="" onerror="this.remove()">
+      <?php else: ?>
+        <span class="adm-town__initial"><?= e($initial) ?></span>
       <?php endif; ?>
+    </span>
+
+    <span class="adm-town__body">
+      <span class="adm-town__name"><?= e($town) ?></span>
+
+      <?php if (isset(TOWN_LINES[$town])): ?>
+        <span class="adm-town__desc"><?= e(TOWN_LINES[$town]) ?></span>
+      <?php endif; ?>
+
+      <!-- The count and the attention flag on one line. The flag used
+           to sit over the artwork; there is no artwork now, and it
+           belongs beside the number it qualifies anyway. -->
+      <span class="adm-town__foot">
+        <?= count($list) ?> place<?= count($list) === 1 ? '' : 's' ?>
+        <?php if ($needs): ?>
+          <span class="adm-town__flag" title="<?= $needs ?> need attention"><?= $needs ?></span>
+        <?php endif; ?>
+      </span>
+    </span>
+
+    <!-- The chevron. Visible at rest, not only on hover — the card has
+         to announce that it opens something before the pointer gets
+         there. aria-hidden because the button already has an
+         accessible name from the town it contains. -->
+    <span class="adm-town__go" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
     </span>
   </button>
   <?php endforeach; ?>

@@ -2210,3 +2210,67 @@
     overflow-y:hidden !important;
   }
 }
+
+
+
+/* =====================================================================
+   MOBILE: turn the motion off
+
+   AOS works by setting opacity:0 plus a transform on [data-aos], then
+   adding .aos-animate to release it. If we disable it on mobile we MUST
+   force the finished state ourselves — otherwise every animated element
+   stays invisible forever and the page looks empty.
+
+   That is what the !important flags are for. AOS writes inline styles,
+   and inline beats a stylesheet unless we override it explicitly.
+
+   86 elements on this site carry data-aos. Each one is a scroll
+   listener plus a compositor layer, and on a mid-range phone that is
+   real jank on a page already doing a lot.
+   ===================================================================== */
+@media (max-width: 1023px) {
+
+  [data-aos] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
+
+  /* Decorative entrance animations defined in your own CSS. The hero
+     lines slide up from below on load — nice on a laptop, a stutter on
+     a phone that is still parsing the page. */
+  .hero-in,
+  .page-hero__eyebrow,
+  .page-hero__title,
+  .hero-lead__eyebrow {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Parallax and scroll-linked transforms. These recalculate on every
+     scroll frame, which is the single most expensive thing a phone can
+     be asked to do while also decoding video. */
+  .photo-layer,
+  .gradient-fill {
+    transform: none !important;
+    will-change: auto !important;
+  }
+}
+
+/* Anyone who has asked their OS for less motion gets the same
+   treatment, at any screen size. This is an accessibility requirement,
+   not an optimisation — vestibular disorders are real and parallax can
+   trigger them. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

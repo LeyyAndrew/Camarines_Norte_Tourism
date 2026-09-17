@@ -228,10 +228,15 @@ $navFeatureImg = is_file(__DIR__ . '/../' . $navFeatureImgPath)
 <title><?= htmlspecialchars($pageTitle) ?></title>
 <meta name="description" content="<?= htmlspecialchars($pageDesc) ?>" />
 
+<!-- preconnect opens the TCP + TLS handshake to these hosts while the
+     HTML is still being parsed, so the first request to each does not
+     pay for it. Worth roughly 200-400 ms on a phone connection here in
+     PH. cdnjs was missing from this list and serves AOS on every page. -->
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.1/aos.css" rel="stylesheet">
+
 <!-- Shared styles first, then the header, then whatever this page adds
      on top. The page file is named after the page — about.php loads
      assets/css/about.css — so a new page only needs a matching .css
@@ -625,7 +630,12 @@ if ($pageCss !== 'assets/css/search.css' && is_file(__DIR__ . '/../' . $pageCss)
     <div class="sitesearch__inner">
 
       <form class="sitesearch__form" action="search.php" method="get" role="search" data-search-form>
-        <svg class="sitesearch__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.3" y1="15.3" x2="20.5" y2="20.5"/></svg>
+        <!-- A real submit button. It was a bare <svg> before, which
+             looks clickable but does nothing, so the form had no
+             submit control at all. -->
+        <button type="submit" class="sitesearch__submit" aria-label="Search">
+          <svg class="sitesearch__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.3" y1="15.3" x2="20.5" y2="20.5"/></svg>
+        </button>
 
         <!-- autocomplete off: the browser's own history dropdown would
              cover the live results with a second, unrelated list. -->
@@ -639,17 +649,126 @@ if ($pageCss !== 'assets/css/search.css' && is_file(__DIR__ . '/../' . $pageCss)
         </button>
       </form>
 
-      <p class="sitesearch__hint">
-        <kbd>↑</kbd><kbd>↓</kbd> to move · <kbd>Enter</kbd> to open · <kbd>Esc</kbd> to close
-      </p>
+      <!-- The keyboard hint line that used to sit here is gone.
+           Arrow keys, Enter and Escape all still work — that handling
+           is in search.js and none of it was touched. What went away
+           is the caption telling you so. The matching CSS rule in
+           search.css is now display:none as a belt-and-braces measure
+           for any cached copy of this file. -->
 
-      <!-- Shown until the second character is typed, hidden after. An
+      <!-- ---------- THE QUICK TAGS ----------
+           Shown until the second character is typed, hidden after. An
            empty box that says nothing teaches the visitor nothing
-           about what is in here. -->
+           about what is in here.
+
+           THESE USED TO BE BUTTONS THAT TYPED THEIR OWN TEXT INTO THE
+           FIELD. They are links now, and the two kinds go to different
+           places:
+
+             place  — one destination, so it goes to that destination's
+                      card and detail sheet.
+             theme  — covers several, so it goes to the filtered grid.
+                      Sending "Waterfalls" to a single falls would mean
+                      picking a favourite for the visitor and hiding
+                      the rest.
+
+           <a href> and not <button>: these now go somewhere, so they
+           should be middle-clickable into a new tab, copyable, and
+           announced by a screen reader as links. A button that calls
+           location.assign() is a link in costume and loses all three.
+
+           ⚠ data-search-term IS DELIBERATELY GONE from these. That is
+           the hook search.js uses to catch a tag click and type it
+           into the box. Leave it on and the handler fires, the anchor
+           never navigates, and this whole change does nothing. If the
+           tags still refuse to navigate after this edit, search.js is
+           binding to .sitesearch__tag or to [data-search-quick] a
+           instead — that is the listener to narrow.
+
+           data-search-quick stays on the wrapper. search.js uses it to
+           hide this row once you start typing, which is still wanted.
+      -->
       <div class="sitesearch__quick" data-search-quick>
-        <?php foreach (['Calaguas', 'Bagasbas', 'Waterfalls', 'Paracale', 'Bicol Express', 'Surfing'] as $term): ?>
-          <button type="button" class="sitesearch__tag" data-search-term="<?= htmlspecialchars($term, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($term, ENT_QUOTES, 'UTF-8') ?></button>
+
+        <p class="sitesearch__quick-label">Popular</p>
+
+        <?php
+        /* ⚠ THE THREE 'slug' VALUES BELOW ARE GUESSES. I have not seen
+           includes/destinations-data.php. Open it, find the real slug
+           for each place, and paste it in. If slugs are derived from
+           the name rather than stored, call that same function here so
+           the two cannot drift apart.
+
+           A wrong slug fails silently: the page loads at the top of an
+           unfiltered grid with no card highlighted, which looks like a
+           slow link rather than a broken one. Check all three.
+
+           The 'href' values for themes are NOT guesses — they are the
+           same category URLs the mega-menu above already uses, encoding
+           and #destFilters included. See the long note at the top of
+           this file for why %26 and + are load-bearing there. */
+        $searchQuickLinks = [
+
+            ['label' => 'Calaguas', 'kind' => 'place', 'slug' => 'calaguas-islands'],
+            ['label' => 'Bagasbas', 'kind' => 'place', 'slug' => 'bagasbas-beach'],
+            ['label' => 'Paracale', 'kind' => 'place', 'slug' => 'paracale'],
+
+            ['label' => 'Waterfalls',    'kind' => 'theme', 'href' => 'destinations.php?cat=Falls+%26+Rivers#destFilters'],
+
+            /* food.php, not a cat= filter. A dish is not a destination
+               and has no row in destinations-data.php to filter to —
+               same reasoning as the Food & Delicacies row in the nav. */
+            ['label' => 'Bicol Express', 'kind' => 'theme', 'href' => 'food.php'],
+
+            /* type=Surf, not cat=Stay+%26+Adventure. The nav row is the
+               broad category because a menu needs to be broad; a tag
+               that says "Surfing" should land on the surf spots. */
+            ['label' => 'Surfing',       'kind' => 'theme', 'href' => 'destinations.php?type=Surf#destFilters'],
+        ];
+
+        foreach ($searchQuickLinks as $t):
+            $isPlace = ($t['kind'] === 'place');
+
+            /* destinations.php#dest-<slug> is the scheme search results
+               already use, and search.css is already set up for the
+               arrival: .dest-card has scroll-margin-top so the card
+               clears the fixed nav, and .dest-card:target rings it for
+               a couple of seconds so it is obvious which of twenty-four
+               cards was meant.
+
+               ⚠ IF destinations.php can open the detail balloon
+               straight from the URL — a ?dest= parameter it reads on
+               load — that is the better target and this is the one
+               line to change. Without it the visitor lands on the right
+               card and taps once to open the details. */
+            $href = $isPlace
+                  ? 'destinations.php#dest-' . rawurlencode($t['slug'])
+                  : $t['href'];
+
+            /* The visible label is "Calaguas". What a screen reader
+               should hear is where it goes — six bare place names in a
+               row say nothing about what pressing one does. */
+            $aria = 'Search for ' . $t['label'];
+        ?>
+          <a class="sitesearch__tag"
+             data-search-term="<?= htmlspecialchars($t['label'], ENT_QUOTES, 'UTF-8') ?>"
+             href="<?= htmlspecialchars($href, ENT_QUOTES, 'UTF-8') ?>"
+             aria-label="<?= htmlspecialchars($aria, ENT_QUOTES, 'UTF-8') ?>">
+            <?php if ($isPlace): ?>
+              <!-- aria-hidden: the pin says "one specific place" to the
+                   eye. The aria-label already carries that in words, so
+                   announcing the icon too is a stutter. -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                   aria-hidden="true" focusable="false">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+            <?php endif; ?>
+            <?= htmlspecialchars($t['label'], ENT_QUOTES, 'UTF-8') ?>
+          </a>
         <?php endforeach; ?>
+
       </div>
 
       <div class="sitesearch__results" data-search-results></div>

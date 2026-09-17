@@ -1,7 +1,8 @@
 # Credentials
 /config/database.php
-
+/config/gemini.php
 .env
+
 
 # Large media
 *.mp4
@@ -9,7 +10,7 @@
 
 
 # User uploads (keep the folder, skip contents)
-/uploads/*
+
 !/uploads/.gitkeep
 !/uploads/.htaccess
 
@@ -21,3 +22,6 @@ Thumbs.db
 # Logs
 *.log
 error_log
+
+echo "uploads-original/" >> .gitignore
+uploads-original/

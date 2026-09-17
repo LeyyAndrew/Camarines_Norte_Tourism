@@ -407,6 +407,9 @@
 
 .bud__panel{
   order:-1;                       /* sits above the launcher */
+  /* A faint warm light from the top edge, so the panel has some depth
+     instead of reading as a flat black slab. */
+  background-image:radial-gradient(120% 60% at 0% 0%, rgba(255,110,0,.07), transparent 60%);
   width:min(380px, calc(100vw - 3rem));
   height:min(520px, calc(100vh - 8rem));
   display:flex; flex-direction:column;
@@ -430,10 +433,46 @@
   flex-shrink:0;
 }
 
+/* No disc behind the logo any more: the robot stands on its own, the
+   same way it does on the launcher and beside each message. */
+.bud__head-pic{
+  position:relative;
+  width:42px; height:42px; flex-shrink:0;
+}
+
 .bud__head-avatar{
-  width:38px; height:38px; flex-shrink:0;
-  border-radius:999px; object-fit:cover; object-position:top center;
-  background:var(--orange, #FF6E00);
+  width:100%; height:100%;
+  object-fit:contain;
+  background:transparent;
+  filter:drop-shadow(0 3px 6px rgba(0,0,0,.45));
+}
+
+/* The live dot. Green is the one colour everyone reads as "here". */
+.bud__online{
+  position:absolute; right:1px; bottom:2px;
+  width:11px; height:11px;
+  border-radius:999px;
+  background:#31c46c;
+  border:2px solid #181b1f;
+}
+
+.bud__online::after{
+  content:''; position:absolute; inset:-2px;
+  border-radius:999px;
+  border:2px solid #31c46c;
+  animation:budLive 2.4s ease-out infinite;
+}
+
+@keyframes budLive{
+  0%  { transform:scale(1);   opacity:.7; }
+  70% { transform:scale(2.1); opacity:0; }
+  100%{ transform:scale(2.1); opacity:0; }
+}
+
+.bud__head-status{
+  color:#5ad88d;
+  font-weight:600;
+  margin-right:.3rem;
 }
 
 .bud__head-name{
@@ -682,10 +721,10 @@
    Only once .bud--moved is set: a widget still in its designed corner
    keeps the designed layout exactly as it was.
 
-   min-width:601px, because bud.css:577 already pins the panel to the
-   viewport with inset on phones. It does not follow the launcher there
-   and does not need to — which is why the phone case, the one that
-   needed dragging most, is also the simplest.
+   min-width:601px, because the phone rules already pin the panel to
+   the viewport with inset. See the correction directly below: that
+   reasoning was wrong, and the phone case turned out to be the one
+   that broke.
    =================================================================== */
 @media (min-width:601px){
   .bud--moved .bud__panel{
@@ -722,4 +761,598 @@
 
 @media (prefers-reduced-motion:reduce){
   .bud.is-snapping{ transition:none; }
+}
+/* ===================================================================
+   STRUCTURED REPLIES
+
+   Tables are gone. Three columns in a 380px panel left every cell too
+   narrow to read, and the model kept emitting the whole table on one
+   line, which arrived as a row of pipe characters.
+
+   The shape now is a short paragraph, then lettered sections with
+   bullets underneath. It reads the same at 380px and at 1200px, and
+   there is no layout to break.
+   =================================================================== */
+
+.bud__msg--wide{
+  max-width:100% !important;
+  width:100%;
+}
+
+.bud__h{
+  margin:.7rem 0 .3rem;
+  font-family:var(--font-display, 'Helvetica Neue', Arial, sans-serif);
+  font-weight:600;
+  font-size:.8rem;
+  letter-spacing:.02em;
+  color:var(--orange, #FF6E00);
+}
+
+/* No top margin on a heading that opens the message - the bubble
+   padding already does that job. */
+.bud__msg > .bud__h:first-child{ margin-top:0; }
+
+.bud__list{
+  margin:.1rem 0 .45rem;
+  padding:0;
+  list-style:none;
+}
+
+.bud__list li{
+  position:relative;
+  padding-left:.85rem;
+  margin:.22rem 0;
+  font-size:.84rem;
+  line-height:1.55;
+  color:rgba(255,255,255,.85);
+
+  /* Peso amounts sit inside these lines, and tabular figures stop the
+     digits jittering between one bullet and the next. */
+  font-variant-numeric:tabular-nums;
+}
+
+/* A dash rather than a bullet: quieter, and it suits the plain-text
+   feel of the rest of the panel. */
+.bud__list li::before{
+  content:'';
+  position:absolute;
+  left:0; top:.72em;
+  width:5px; height:1px;
+  background:rgba(255,255,255,.4);
+}
+
+.bud__msg .bud__list + .bud__h{ margin-top:.75rem; }
+.bud__msg p + .bud__h{ margin-top:.65rem; }
+
+/* ===================================================================
+   DESTINATION PHOTOGRAPHS
+
+   A strip under the reply showing the places it mentioned. Scrolls
+   sideways rather than wrapping: one row keeps the answer above it in
+   view, where three stacked cards would push it off the top.
+   =================================================================== */
+
+.bud__places{
+  display:flex;
+  gap:.55rem;
+  margin:.15rem 0 .3rem;
+  padding-bottom:.35rem;
+  overflow-x:auto;
+  overscroll-behavior-x:contain;
+  scrollbar-width:none;                 /* the cards are the affordance */
+}
+
+.bud__places::-webkit-scrollbar{ display:none; }
+
+.bud__place{
+  position:relative;
+  flex:0 0 148px;
+  border-radius:.75rem;
+  overflow:hidden;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.09);
+}
+
+.bud__place-img{
+  display:block;
+  width:100%;
+  height:94px;
+  object-fit:cover;
+
+  /* The photographs are bright and the panel is dark; without this
+     they glare next to the text. */
+  filter:saturate(.95) brightness(.92);
+}
+
+.bud__place-cap{
+  padding:.4rem .5rem .45rem;
+  display:flex;
+  flex-direction:column;
+  gap:.05rem;
+}
+
+.bud__place-name{
+  font-size:.72rem;
+  font-weight:600;
+  color:#fff;
+  line-height:1.3;
+}
+
+.bud__place-town{
+  font-size:.66rem;
+  color:rgba(255,255,255,.45);
+}
+
+@media (max-width:600px){
+  /* Slightly narrower, so a second card peeks in from the right and
+     makes it obvious the strip scrolls. */
+  .bud__place{ flex:0 0 136px; }
+  .bud__place-img{ height:86px; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .bud__places{ scroll-behavior:auto; }
+}
+
+/* ===================================================================
+   PLACE CARDS
+
+   The photograph of a destination Bud just named. The images come from
+   the site's own database via includes/destinations-data.php, so a card
+   can only ever show one of the 24.
+
+   Side by side on the wide panel, stacked on a phone — two 150px cards
+   in a 340px column would leave the captions unreadable.
+   =================================================================== */
+
+.bud__places{
+  display:flex;
+  gap:.5rem;
+  margin:.7rem 0 .15rem;
+}
+
+.bud__place{
+  flex:1 1 0;
+  min-width:0;                     /* lets long names ellipsis instead of stretching the row */
+  border-radius:.7rem;
+  overflow:hidden;
+  background:
+    linear-gradient(150deg, rgba(255,110,0,.18), rgba(255,255,255,.05));
+  border:1px solid rgba(255,255,255,.1);
+}
+
+.bud__place-img{
+  display:block;
+  width:100%;
+  height:82px;
+  object-fit:cover;
+  background:rgba(255,255,255,.04);
+}
+
+.bud__place-body{
+  padding:.45rem .55rem .5rem;
+  display:flex;
+  flex-direction:column;
+  gap:.1rem;
+}
+
+.bud__place-name{
+  font-size:.76rem;
+  font-weight:600;
+  color:#fff;
+  line-height:1.3;
+}
+
+.bud__place-town{
+  font-size:.68rem;
+  color:rgba(255,255,255,.5);
+}
+
+.bud__place-map{
+  margin-top:.25rem;
+  font-size:.68rem;
+  font-weight:600;
+  color:var(--orange, #FF6E00);
+  text-decoration:none;
+}
+
+.bud__place-map:hover{ text-decoration:underline; }
+.bud__place-map:focus-visible{ outline:2px solid var(--orange, #FF6E00); outline-offset:2px; }
+
+@media (max-width:620px){
+  /* Stacked, with a shorter image. Two cards side by side inside a
+     phone-width panel leave about 150px each, which is too narrow for
+     "Mananap Falls ATV Adventure" to read as anything but a stack of
+     single words. */
+  .bud__places{ flex-direction:column; }
+  .bud__place-img{ height:96px; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .bud__place{ transition:none; }
+}
+
+/* ===================================================================
+   SUGGESTIONS, OPTIONS AND THE PLAN
+
+   Three related things: the chips under the greeting, the answer
+   buttons in the itinerary interview, and the generated plan itself.
+   =================================================================== */
+
+/* --- opening chips --- */
+.bud__suggest{
+  display:flex;
+  flex-wrap:wrap;
+  gap:.4rem;
+  margin:.2rem 0 .3rem;
+}
+
+.bud__chip{
+  padding:.45rem .75rem;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:999px;
+  background:rgba(255,255,255,.05);
+  color:rgba(255,255,255,.85);
+  font-family:inherit;
+  font-size:.78rem;
+  cursor:pointer;
+  transition:background .2s ease, border-color .2s ease;
+}
+
+.bud__chip:hover{
+  background:rgba(255,255,255,.1);
+  border-color:rgba(255,255,255,.34);
+}
+
+/* The itinerary chip is the one worth finding, so it carries the
+   accent while the other two stay quiet. */
+.bud__chip--go{
+  border-color:rgba(255,110,0,.5);
+  background:rgba(255,110,0,.14);
+  color:#fff;
+  font-weight:600;
+}
+
+.bud__chip--go:hover{ background:rgba(255,110,0,.24); }
+.bud__chip:focus-visible{ outline:2px solid var(--orange, #FF6E00); outline-offset:2px; }
+
+/* --- interview answers --- */
+.bud__opts{
+  display:flex;
+  flex-wrap:wrap;
+  gap:.35rem;
+  margin-top:.5rem;
+}
+
+.bud__opt{
+  padding:.42rem .7rem;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:.55rem;
+  background:rgba(255,255,255,.06);
+  color:#fff;
+  font-family:inherit;
+  font-size:.78rem;
+  cursor:pointer;
+  transition:background .2s ease, border-color .2s ease;
+}
+
+.bud__opt:hover:not(:disabled){ background:rgba(255,255,255,.12); }
+.bud__opt:focus-visible{ outline:2px solid var(--orange, #FF6E00); outline-offset:2px; }
+
+/* Multi-select uses aria-pressed rather than a class, so the state is
+   announced as well as shown. */
+.bud__opt[aria-pressed="true"]{
+  background:rgba(255,110,0,.22);
+  border-color:rgba(255,110,0,.6);
+  font-weight:600;
+}
+
+.bud__opt--go{
+  background:var(--orange, #FF6E00);
+  border-color:var(--orange, #FF6E00);
+  font-weight:600;
+  text-decoration:none;
+  display:inline-block;
+}
+
+.bud__opt--go:hover:not(:disabled){ background:#ff8329; }
+.bud__opt:disabled{ opacity:.4; cursor:not-allowed; }
+
+/* What they chose, once the buttons are gone. */
+.bud__opt-picked{
+  display:inline-block;
+  padding:.3rem .6rem;
+  border-radius:.5rem;
+  background:rgba(255,110,0,.16);
+  color:var(--orange, #FF6E00);
+  font-size:.75rem;
+  font-weight:600;
+}
+
+/* --- the plan --- */
+.bud__plan-name{
+  font-family:var(--font-display, 'Helvetica Neue', Arial, sans-serif);
+  font-weight:700;
+  font-size:.95rem;
+  color:#fff;
+  margin-bottom:.2rem;
+}
+
+.bud__plan-day{
+  list-style:none;
+  margin:.1rem 0 .5rem;
+  padding:0;
+}
+
+.bud__plan-day li{
+  display:flex;
+  gap:.55rem;
+  padding:.35rem 0;
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+
+.bud__plan-day li:last-child{ border-bottom:0; }
+
+/* Fixed width and tabular figures so the times form a column the eye
+   can run down, instead of stepping in and out with each row. */
+.bud__plan-time{
+  flex:0 0 3rem;
+  font-size:.76rem;
+  font-variant-numeric:tabular-nums;
+  color:var(--orange, #FF6E00);
+  padding-top:.05rem;
+}
+
+.bud__plan-body{ display:flex; flex-direction:column; gap:.06rem; min-width:0; }
+.bud__plan-body b{ font-size:.82rem; color:#fff; font-weight:600; }
+.bud__plan-town{ font-size:.7rem; color:rgba(255,255,255,.45); }
+.bud__plan-note{ font-size:.76rem; color:rgba(255,255,255,.72); line-height:1.5; }
+
+@media (max-width:620px){
+  .bud__plan-time{ flex-basis:2.7rem; }
+}
+
+/* The one typed answer in the interview — the trip name. Sized to sit
+   in the same row as its two buttons without pushing them to a second
+   line on a phone. */
+.bud__opt-text{
+  flex:1 1 9rem;
+  min-width:0;
+  padding:.42rem .65rem;
+  border:1px solid rgba(255,255,255,.2);
+  border-radius:.55rem;
+  background:rgba(255,255,255,.06);
+  color:#fff;
+  font-family:inherit;
+  font-size:.8rem;
+}
+
+.bud__opt-text::placeholder{ color:rgba(255,255,255,.35); }
+
+.bud__opt-text:focus{
+  outline:none;
+  border-color:var(--orange, #FF6E00);
+  background:rgba(255,255,255,.1);
+}
+
+
+/* ===================================================================
+   THE DRAG TRANSFORM vs THE PHONE PANEL   — a real bug, now fixed
+
+   SYMPTOM: on a phone, after the launcher had been dragged even once,
+   tapping it showed the close X and no panel at all. Nothing in the
+   console, nothing in the network tab, the element present and
+   "visible" in the inspector.
+
+   CAUSE: dragging writes a transform on .bud. An element with a
+   transform becomes the CONTAINING BLOCK for its position:fixed
+   descendants — they stop resolving against the viewport and start
+   resolving against it. The phone panel is fixed with
+   inset:.75rem .75rem 5.5rem, so instead of filling the screen it
+   filled the 64px launcher: measured 40x2 pixels.
+
+   The rule above assumed "fixed means viewport" and therefore skipped
+   phones. That assumption is what broke, and it is easy to miss
+   because everything looks correct until the first drag.
+
+   FIX: while the chat is open on a phone, .bud carries no transform,
+   so the panel resolves against the viewport again. The launcher
+   returns to its corner for as long as the panel is open — which is
+   no loss, since the panel covers the screen at that size and the
+   launcher is only a close button at that moment.
+
+   !important because the transform is written inline by the drag
+   code, and an inline style beats any ordinary rule. */
+@media (max-width:600px){
+  .bud--moved.is-open{
+    transform:none !important;
+    transition:transform .2s ease;
+  }
+}
+
+/* ===================================================================
+   MESSENGER-STYLE ROWS
+
+   Bud's bubbles sit in a row with a small copy of the logo beside
+   them, bottom-aligned, the way Messenger does it. The logo has no
+   disc behind it — just the robot, with a drop shadow that follows the
+   PNG's outline so it holds up on the dark panel.
+
+   Only the last bubble in a run keeps its avatar; the ones above it
+   keep the space (visibility, not display) so every bubble in the run
+   lines up on the same left edge.
+   =================================================================== */
+.bud__row{
+  display:flex;
+  align-items:flex-end;
+  gap:.5rem;
+  width:100%;
+  animation:budMsgIn .3s cubic-bezier(.16,.84,.44,1) both;
+}
+
+.bud__row .bud__msg{ animation:none; }
+
+.bud__row-avatar{
+  width:30px; height:30px; flex-shrink:0;
+  object-fit:contain;
+  background:transparent;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));
+  -webkit-user-drag:none; user-drag:none;
+  user-select:none;
+  animation:budAvatarPop .4s cubic-bezier(.3,1.5,.5,1) both;
+}
+
+@keyframes budAvatarPop{
+  from{ transform:scale(.4) translateY(6px); opacity:0; }
+  to  { transform:none; opacity:1; }
+}
+
+/* a run of Bud messages: one face, at the bottom */
+.bud__row--bot:has(+ .bud__row--bot) .bud__row-avatar{ visibility:hidden; }
+
+/* Bubbles inside a run lose the tucked corner except the last one,
+   which is the one pointing at the avatar. */
+.bud__row--bot .bud__msg--bot{
+  max-width:calc(100% - 2.6rem);
+  border-radius:1.1rem;
+  border-bottom-left-radius:.35rem;
+}
+.bud__row--bot:has(+ .bud__row--bot) .bud__msg--bot{ border-bottom-left-radius:1.1rem; }
+.bud__row--bot + .bud__row--bot .bud__msg--bot{ border-top-left-radius:.35rem; }
+.bud__row--bot + .bud__row--bot{ margin-top:-.4rem; }
+
+.bud__row .bud__msg--wide{ flex:1; min-width:0; max-width:none !important; }
+
+/* Slightly lifted bot bubble, so it reads as an object, not a hole. */
+.bud__msg--bot{
+  background:#23272c;
+  border:1px solid rgba(255,255,255,.06);
+  color:rgba(255,255,255,.9);
+}
+
+.bud__msg--user{
+  border-radius:1.1rem;
+  border-bottom-right-radius:.35rem;
+  background:linear-gradient(160deg, #ff8a2b, var(--orange, #FF6E00));
+  box-shadow:0 6px 16px -10px rgba(255,110,0,.8);
+}
+
+/* Things that follow Bud but are not bubbles — the opening chips and
+   the server photo strip — start where his bubbles start. */
+.bud__log > .bud__places{
+  margin-left:calc(30px + .5rem);
+}
+
+/* --- suggestion strip, above the text box ---
+   One row that scrolls sideways. The edges fade so a chip cut off at
+   the right reads as "there is more", not as a layout mistake. */
+.bud__suggest-bar{
+  position:relative;
+  flex-shrink:0;
+  border-top:1px solid rgba(255,255,255,.09);
+  background:rgba(255,255,255,.02);
+}
+
+.bud__suggest--bar{
+  flex-wrap:nowrap;
+  gap:.45rem;
+  margin:0;
+  padding:.65rem .75rem .1rem;
+  overflow-x:auto;
+  overscroll-behavior-x:contain;
+  scroll-behavior:smooth;
+  scrollbar-width:none;
+  cursor:grab;
+  -webkit-user-select:none; user-select:none;
+}
+
+.bud__suggest--bar.is-dragging{ cursor:grabbing; scroll-behavior:auto; }
+.bud__suggest--bar.is-dragging .bud__chip{ pointer-events:none; }
+
+/* Fade only the end that has more behind it. */
+.bud__suggest-bar.can-next .bud__suggest--bar{
+  -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 3.5rem), transparent calc(100% - .5rem));
+          mask-image:linear-gradient(90deg, #000 calc(100% - 3.5rem), transparent calc(100% - .5rem));
+}
+.bud__suggest-bar.can-prev .bud__suggest--bar{
+  -webkit-mask-image:linear-gradient(90deg, transparent .5rem, #000 3.5rem);
+          mask-image:linear-gradient(90deg, transparent .5rem, #000 3.5rem);
+}
+.bud__suggest-bar.can-prev.can-next .bud__suggest--bar{
+  -webkit-mask-image:linear-gradient(90deg, transparent .5rem, #000 3.5rem, #000 calc(100% - 3.5rem), transparent calc(100% - .5rem));
+          mask-image:linear-gradient(90deg, transparent .5rem, #000 3.5rem, #000 calc(100% - 3.5rem), transparent calc(100% - .5rem));
+}
+
+/* --- the arrows --- */
+.bud__suggest-arrow{
+  position:absolute; top:calc(50% + .28rem); z-index:2;
+  width:28px; height:28px;
+  display:flex; align-items:center; justify-content:center;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:999px;
+  background:#2a2f35;
+  color:#fff;
+  cursor:pointer;
+  box-shadow:0 4px 12px -4px rgba(0,0,0,.8);
+  opacity:0; visibility:hidden;
+  transform:translateY(-50%) scale(.8);
+  transition:opacity .2s ease, transform .2s ease, visibility .2s, background .2s ease;
+}
+.bud__suggest-arrow svg{ width:14px; height:14px; }
+.bud__suggest-arrow:hover{ background:var(--orange, #FF6E00); border-color:var(--orange, #FF6E00); }
+.bud__suggest-arrow:focus-visible{ outline:2px solid var(--orange, #FF6E00); outline-offset:2px; }
+.bud__suggest-arrow--prev{ left:.4rem; }
+.bud__suggest-arrow--next{ right:.4rem; }
+
+.bud__suggest-bar.can-prev .bud__suggest-arrow--prev,
+.bud__suggest-bar.can-next .bud__suggest-arrow--next{
+  opacity:1; visibility:visible;
+  transform:translateY(-50%) scale(1);
+}
+
+/* On touch screens swiping is the way; arrows would only cover chips. */
+@media (hover:none){
+  .bud__suggest-arrow{ display:none; }
+}
+
+.bud__suggest--bar::-webkit-scrollbar{ display:none; }
+
+.bud__suggest--bar .bud__chip{
+  flex-shrink:0;
+  white-space:nowrap;
+}
+
+/* the strip and the text box read as one footer */
+.bud__suggest-bar + .bud__compose{
+  border-top:0;
+  padding-top:.55rem;
+}
+
+/* Chips arrive one after another when the panel opens: the one motion
+   here that answers something the visitor did. */
+.bud__suggest .bud__chip{ animation:budMsgIn .35s cubic-bezier(.16,.84,.44,1) both; }
+.bud__suggest .bud__chip:nth-child(1){ animation-delay:.15s; }
+.bud__suggest .bud__chip:nth-child(2){ animation-delay:.25s; }
+.bud__suggest .bud__chip:nth-child(3){ animation-delay:.35s; }
+
+/* The typing bubble stays compact. */
+.bud__msg--typing{ padding:.7rem .85rem; }
+
+@media (prefers-reduced-motion:reduce){
+  .bud__row, .bud__row-avatar,
+  .bud__suggest .bud__chip{ animation:none; }
+  .bud__online::after{ animation:none; opacity:0; }
+}
+
+/* --- Bicol touches --- */
+.bud__marhai{
+  font-weight:700;
+  color:var(--orange, #FF6E00);
+}
+
+.bud__gloss{
+  margin-top:.35rem;
+  font-size:.72rem;
+  line-height:1.45;
+  color:rgba(255,255,255,.5);
 }

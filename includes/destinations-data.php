@@ -226,7 +226,7 @@ function dest_fallback(): array
            'An island off Paracale, reached by boat from the town that has worked gold for three centuries.',
            ['Boat access', 'Island hopping', 'Gold country'], 14.404361, 122.810427),
 
-        $d('paracale-gumaus.jpg', 'Beach', 'Paracale', 'Gumaus Beach',
+        $d('paracale-gumaus.webp', 'Beach', 'Paracale', 'Gumaus Beach',
            'Long, open, and quiet.',
            'A wide stretch of shoreline at Paracale, popular with locals and largely undeveloped.',
            ['Wide shoreline', 'Local favourite', 'Camping'], 14.313018, 122.727897),

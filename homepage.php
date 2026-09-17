@@ -180,13 +180,28 @@ $itephoto  = function (string $f) use ($uploadPath) { return $uploadPath('ITE-SE
          preload="metadata" below means the browser fetches only the
          header until it decides to play — not the whole clip.
          ================================================================ -->
+    <!-- OPTIMISED. Three changes from the original, all about bandwidth:
+
+         1. No autoplay attribute. hero-video.js starts it only when it
+            is on screen AND the connection can take it. A looping
+            autoplay clip re-downloads itself forever, which is what
+            was saturating the tunnel.
+         2. preload="none" - the poster shows instantly, the clip is
+            fetched only if we decide to play it.
+         3. <source media=...> so phones and tablets get the poster
+            and never download the video at all.
+
+         data-hero-video is the hook hero-video.js looks for. -->
     <video class="photo-layer"
-           src="uploads/bg.mp4"
+           data-hero-video
            poster="<?= $homephoto('hero.jpg') ?>"
-           autoplay muted loop playsinline
-           preload="metadata"
+           muted loop playsinline
+           preload="none"
            disablepictureinpicture
-           disableremoteplayback></video>
+           disableremoteplayback>
+            <source src="<?= htmlspecialchars(assetUrl('uploads/bg.mp4')) ?>"
+  type="video/mp4" media="(min-width: 768px)">
+    </video>
 
   </div>
   <div class="hero__vignette"></div>
@@ -268,13 +283,13 @@ $itephoto  = function (string $f) use ($uploadPath) { return $uploadPath('ITE-SE
 
     <!-- middle: the tall photo -->
     <div class="story__tall squircle" data-aos="fade-up" data-aos-delay="80">
-      <img src="<?= $homephoto('photo-2.jpg') ?>" alt="">
+      <img loading="lazy" decoding="async" src="<?= $homephoto('photo-2.jpg') ?>" alt="">
     </div>
 
     <!-- right: small photo, then its own heading and copy -->
     <div class="story__aside" data-aos="fade-up" data-aos-delay="160">
       <div class="story__aside-shot squircle--alt">
-        <img src="<?= $homephoto('photo-3.jpg') ?>" alt="">
+        <img loading="lazy" decoding="async" src="<?= $homephoto('photo-3.jpg') ?>" alt="">
       </div>
       <h3 class="story__aside-title">Gateway to<br>the northern<br>Bicol coast</h3>
       <p class="story__aside-text">Daet is where almost everyone arrives, and nothing in the province is more than a few hours from it. Two or three destinations in a day is an ordinary plan here rather than an ambitious one &mdash; a waterfall in the morning, a beach by the afternoon.</p>
@@ -355,7 +370,7 @@ $itephoto  = function (string $f) use ($uploadPath) { return $uploadPath('ITE-SE
         <div class="hex-card">
           <div class="gradient-fill"></div>
           <!-- [ PHOTO 4 ] TILE 1 — Islands &amp; Beaches — centred subject, 800x920 or larger -->
-          <img class="hex-card__img" src="<?= $homephoto('photo-4.jpg') ?>" alt="Calaguas coastline">
+          <img loading="lazy" decoding="async" class="hex-card__img" src="<?= $homephoto('photo-4.jpg') ?>" alt="Calaguas coastline">
           <span class="hex-card__veil" aria-hidden="true"></span>
           <span class="hex-card__shine" aria-hidden="true"></span>
           <div class="hex-card__body">
@@ -372,7 +387,7 @@ $itephoto  = function (string $f) use ($uploadPath) { return $uploadPath('ITE-SE
         <div class="hex-card">
           <div class="gradient-fill"></div>
           <!-- [ PHOTO 5 ] TILE 2 — Waterfalls &amp; Forest -->
-          <img class="hex-card__img" src="<?= $homephoto('photo-5.jpg') ?>" alt="Falls in the province interior">
+          <img loading="lazy" decoding="async" class="hex-card__img" src="<?= $homephoto('photo-5.jpg') ?>" alt="Falls in the province interior">
           <span class="hex-card__veil" aria-hidden="true"></span>
           <span class="hex-card__shine" aria-hidden="true"></span>
           <div class="hex-card__body">
@@ -389,7 +404,7 @@ $itephoto  = function (string $f) use ($uploadPath) { return $uploadPath('ITE-SE
         <div class="hex-card">
           <div class="gradient-fill"></div>
           <!-- [ PHOTO 8 ] TILE 3 — Food &amp; Festivals — THIS IS THE NEW ONE -->
-          <img class="hex-card__img" src="<?= $homephoto('photo-8.jpg') ?>" alt="Queen pineapples at a Daet market">
+          <img loading="lazy" decoding="async" class="hex-card__img" src="<?= $homephoto('photo-8.jpg') ?>" alt="Queen pineapples at a Daet market">
           <span class="hex-card__veil" aria-hidden="true"></span>
           <span class="hex-card__shine" aria-hidden="true"></span>
           <div class="hex-card__body">
@@ -406,7 +421,7 @@ $itephoto  = function (string $f) use ($uploadPath) { return $uploadPath('ITE-SE
         <div class="hex-card">
           <div class="gradient-fill"></div>
           <!-- [ PHOTO 6 ] TILE 4 — Gold Country -->
-          <img class="hex-card__img" src="<?= $homephoto('photo-6.jpg') ?>" alt="Panned gold held in a hand">
+          <img loading="lazy" decoding="async" class="hex-card__img" src="<?= $homephoto('photo-6.jpg') ?>" alt="Panned gold held in a hand">
           <span class="hex-card__veil" aria-hidden="true"></span>
           <span class="hex-card__shine" aria-hidden="true"></span>
           <div class="hex-card__body">
@@ -423,7 +438,7 @@ $itephoto  = function (string $f) use ($uploadPath) { return $uploadPath('ITE-SE
         <div class="hex-card">
           <div class="gradient-fill"></div>
           <!-- [ PHOTO 7 ] TILE 5 — Surf &amp; Adventure -->
-          <img class="hex-card__img" src="<?= $homephoto('photo-7.jpg') ?>" alt="Surfer at Bagasbas Beach">
+          <img loading="lazy" decoding="async" class="hex-card__img" src="<?= $homephoto('photo-7.jpg') ?>" alt="Surfer at Bagasbas Beach">
           <span class="hex-card__veil" aria-hidden="true"></span>
           <span class="hex-card__shine" aria-hidden="true"></span>
           <div class="hex-card__body">
@@ -859,7 +874,7 @@ $spotPhotos = [
       <!-- PHOTOS: uploads/exp-1.jpg, exp-2.jpg, exp-3.jpg — PORTRAIT, about 3:4.4 -->
       <a class="exp-card" href="destinations.php?type=Island" data-aos="fade-up">
         <!-- [ PHOTO 32 ] EXPERIENCE 1 — island hopping — PORTRAIT, tall, about 3:4.4 -->
-        <img src="<?= $homephoto('Exp-Photo-1.webp') ?>" alt="">
+        <img loading="lazy" decoding="async" src="<?= $homephoto('Exp-Photo-1.webp') ?>" alt="">
         <span class="exp-card__glow" aria-hidden="true"></span>
         <span class="exp-card__view">View</span>
         <div class="exp-card__body">
@@ -871,7 +886,7 @@ $spotPhotos = [
 
       <a class="exp-card" href="destinations.php?type=Waterfall" data-aos="fade-up" data-aos-delay="80">
         <!-- [ PHOTO 33 ] EXPERIENCE 2 — falls and forest — PORTRAIT, tall, about 3:4.4 -->
-        <img src="<?= $photocard('StaElena-BusayFalls.jpg') ?>" alt="">
+        <img loading="lazy" decoding="async" src="<?= $photocard('StaElena-BusayFalls.jpg') ?>" alt="">
         <span class="exp-card__glow" aria-hidden="true"></span>
         <span class="exp-card__view">View</span>
         <div class="exp-card__body">
@@ -883,7 +898,7 @@ $spotPhotos = [
 
       <a class="exp-card" href="destinations.php#paracale" data-aos="fade-up" data-aos-delay="160">
         <!-- [ PHOTO 34 ] EXPERIENCE 3 — gold country — PORTRAIT, tall, about 3:4.4 -->
-        <img src="<?= $homephoto('PhotO-Exp-3.jpg') ?>" alt="">
+        <img loading="lazy" decoding="async" src="<?= $homephoto('PhotO-Exp-3.jpg') ?>" alt="">
         <span class="exp-card__glow" aria-hidden="true"></span>
         <span class="exp-card__view">View</span>
         <div class="exp-card__body">
@@ -1054,7 +1069,7 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
 <?php if ($testimonials): ?>
 <section class="voices">
   <!-- [ PHOTO 35 ] VISITOR QUOTES background — wide landscape. Sits at low opacity behind dark, so mood over detail. -->
-  <div class="voices__bg"><img src="<?= $homephoto('voices-bg.jpg') ?>" alt=""></div>
+  <div class="voices__bg"><img loading="lazy" decoding="async" src="<?= $homephoto('voices-bg.jpg') ?>" alt=""></div>
 
   <div class="wrap voices__inner">
     <div class="voices__head">
@@ -1233,12 +1248,12 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
            ========================================================== -->
 
       <!-- [ PHOTO 36 ] big — using nacalifalls.jpg for now -->
-      <div class="a squircle"><img src="<?= $homephoto('BGB.jpg') ?>" alt=""></div>
+      <div class="a squircle"><img loading="lazy" decoding="async" src="<?= $homephoto('BGB.jpg') ?>" alt=""></div>
       <!-- [ PHOTO 37 ] inset, bottom right — using bagasbas.jpg for now -->
-      <div class="b squircle--soft"><img src="<?= $homephoto('Heritage.jpg') ?>" alt=""></div>
+      <div class="b squircle--soft"><img loading="lazy" decoding="async" src="<?= $homephoto('Heritage.jpg') ?>" alt=""></div>
 
       <!-- [ PHOTO 38 ] small, top right — using black-nazarene.jpg for now -->
-      <div class="c squircle--soft"><img src="<?= $homephoto('Burrito.jpg') ?>" alt=""></div>
+      <div class="c squircle--soft"><img loading="lazy" decoding="async" src="<?= $homephoto('Burrito.jpg') ?>" alt=""></div>
     </div>
 
     <div data-aos="fade-up" data-aos-delay="80">
@@ -1279,7 +1294,7 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
 </section>
 
 <!-- ---------- travel notes ----------
-     Titles and dates below are placeholders. Point each card at a real
+     Titles below are placeholders; all three are marked best in summer. Point each card at a real
      guide once you write one, or delete the section.
      PHOTOS: uploads/note-1.jpg, note-2.jpg, note-3.jpg — landscape 4:3
      -->
@@ -1293,11 +1308,11 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
         <div class="note-card__media">
           <span class="note-card__tag">Islands</span>
           <!-- [ PHOTO 38 ] TRAVEL NOTE 1 — landscape 4:3 -->
-          <img src="<?= $homephoto('Travel-Calaguas.JPG') ?>" alt="">
+          <img loading="lazy" decoding="async" src="<?= $homephoto('Travel-Calaguas.JPG') ?>" alt="">
         </div>
         <div class="note-card__body">
           <h3 class="note-card__title">Getting to Calaguas: boats, timings, and what to bring</h3>
-          <span class="note-card__meta">Guide &middot; Add a date</span>
+          <span class="note-card__meta">Guide &middot; Best in summer (Mar&ndash;May)</span>
         </div>
       </a>
 
@@ -1305,11 +1320,11 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
         <div class="note-card__media">
           <span class="note-card__tag">Seasons</span>
           <!-- [ PHOTO 39 ] TRAVEL NOTE 2 — landscape 4:3 -->
-          <img src="<?= $homephoto('Travel-Quiet-Month.JPG') ?>" alt="">
+          <img loading="lazy" decoding="async" src="<?= $homephoto('Travel-Quiet-Month.JPG') ?>" alt="">
         </div>
         <div class="note-card__body">
           <h3 class="note-card__title">When to visit: swell, rain, and the quiet months</h3>
-          <span class="note-card__meta">Guide &middot; Add a date</span>
+          <span class="note-card__meta">Guide &middot; Best in summer (Mar&ndash;May)</span>
         </div>
       </a>
 
@@ -1317,11 +1332,11 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
         <div class="note-card__media">
           <span class="note-card__tag">Heritage</span>
           <!-- [ PHOTO 40 ] TRAVEL NOTE 3 — landscape 4:3 -->
-          <img src="<?= $homephoto('Travel-Paracale.jpg') ?>" alt="">
+          <img loading="lazy" decoding="async" src="<?= $homephoto('Travel-Paracale.jpg') ?>" alt="">
         </div>
         <div class="note-card__body">
           <h3 class="note-card__title">A day in Paracale: goldsmiths, streets, and the shoreline</h3>
-          <span class="note-card__meta">Guide &middot; Add a date</span>
+          <span class="note-card__meta">Guide &middot; Best in summer (Mar&ndash;May)</span>
         </div>
       </a>
     </div>
@@ -1338,7 +1353,7 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
       <div class="gradient-fill"></div>
       <!-- [ PHOTO 29 ]  Gallery 1  —  PORTRAIT, 3:4  (e.g. 900 x 1200) -->
       <!-- [ PHOTO 41 ] GALLERY 1 — PORTRAIT 3:4 -->
-      <img class="photo-layer" src="<?= $itephoto('ITENE-CALAGUAS.jpg') ?>" alt="Calaguas">
+      <img loading="lazy" decoding="async" class="photo-layer" src="<?= $itephoto('ITENE-CALAGUAS.jpg') ?>" alt="Calaguas">
       <div class="media__label">Calaguas</div>
     </div>
 
@@ -1346,7 +1361,7 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
       <div class="gradient-fill"></div>
       <!-- [ PHOTO 30 ]  Gallery 2  —  LANDSCAPE, 4:3  (e.g. 1200 x 900) -->
       <!-- [ PHOTO 42 ] GALLERY 2 — landscape 4:3 -->
-      <img class="photo-layer" src="<?= $itephoto('ITENE-BAGASBAS.jpg') ?>" alt="Bagasbas">
+      <img loading="lazy" decoding="async" class="photo-layer" src="<?= $itephoto('ITENE-BAGASBAS.jpg') ?>" alt="Bagasbas">
       <div class="media__label">Bagasbas</div>
     </div>
 
@@ -1354,7 +1369,7 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
       <div class="gradient-fill"></div>
       <!-- [ PHOTO 31 ]  Gallery 3  —  SQUARE, 1:1  (e.g. 1000 x 1000) -->
       <!-- [ PHOTO 43 ] GALLERY 3 — SQUARE 1:1 -->
-      <img class="photo-layer" src="<?= $itephoto('ITENE-MANANAP.jpg') ?>" alt="Mananap Falls">
+      <img loading="lazy" decoding="async" class="photo-layer" src="<?= $itephoto('ITENE-MANANAP.jpg') ?>" alt="Mananap Falls">
       <div class="media__label">Mananap Falls</div>
     </div>
 
@@ -1362,7 +1377,7 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
       <div class="gradient-fill"></div>
       <!-- [ PHOTO 32 ]  Gallery 4  —  PORTRAIT, 4:5  (e.g. 1000 x 1250) -->
       <!-- [ PHOTO 44 ] GALLERY 4 — PORTRAIT 4:5 -->
-      <img class="photo-layer" src="<?= $photocard('Labo-TulisPeak.jpg') ?>" alt="Mt. Bagacay, Labo">
+      <img loading="lazy" decoding="async" class="photo-layer" src="<?= $photocard('Labo-TulisPeak.jpg') ?>" alt="Mt. Bagacay, Labo">
       <div class="media__label">Mt. Bagacay</div>
     </div>
 
@@ -1370,7 +1385,7 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
       <div class="gradient-fill"></div>
       <!-- [ PHOTO 33 ]  Gallery 5  —  PORTRAIT, 3:4  (e.g. 900 x 1200) -->
       <!-- [ PHOTO 45 ] GALLERY 5 — PORTRAIT 3:4 -->
-      <img class="photo-layer" src="<?= $itephoto('ITENE-PARACALE.JPG') ?>" alt="Paracale">
+      <img loading="lazy" decoding="async" class="photo-layer" src="<?= $itephoto('ITENE-PARACALE.JPG') ?>" alt="Paracale">
       <div class="media__label">Paracale</div>
     </div>
 
@@ -1378,7 +1393,7 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
       <div class="gradient-fill"></div>
       <!-- [ PHOTO 34 ]  Gallery 6  —  LANDSCAPE, 4:3  (e.g. 1200 x 900) -->
       <!-- [ PHOTO 46 ] GALLERY 6 — landscape 4:3 -->
-      <img class="photo-layer" src="<?= $itephoto('ITENE-MERCEDES.jpg') ?>" alt="Mercedes Islands">
+      <img loading="lazy" decoding="async" class="photo-layer" src="<?= $itephoto('ITENE-MERCEDES.jpg') ?>" alt="Mercedes Islands">
       <div class="media__label">Mercedes Islands</div>
     </div>
 
@@ -1397,7 +1412,7 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
        already, and you can raise it in homepage.css under .quote__overlay
        ================================================================ -->
   <!-- [ PHOTO 47 ] QUOTE BAND background — full width landscape. Big white text sits on it, so pick something calm and dark. -->
-  <img class="photo-layer" src="<?= $homephoto('photo-bg.jpg') ?>" alt="">
+  <img loading="lazy" decoding="async" class="photo-layer" src="<?= $homephoto('photo-bg.jpg') ?>" alt="">
   <div class="quote__overlay"></div>
   <p class="font-display quote__text" data-aos="fade-up">&ldquo;Every journey begins with a single destination. Let Camarines Norte be yours.&rdquo;</p>
 </section>
@@ -1413,7 +1428,7 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
        the overlay darkens from the bottom up.
        ================================================================ -->
   <!-- [ PHOTO 48 ] CONTACT BAND background — full width landscape. Last photo on the page, make it a good one. -->
-  <img class="photo-layer" src="<?= $homephoto('photo-48.jpg') ?>" alt="">
+  <img loading="lazy" decoding="async" class="photo-layer" src="<?= $homephoto('photo-48.jpg') ?>" alt="">
   <div class="cta__overlay"></div>
   <div class="cta__inner">
     <h2 class="font-display cta__title">Ready to Experience Camarines Norte?</h2>
@@ -1428,5 +1443,8 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
 <!-- The Bud.Ai assistant. Same one line goes in destinations.php,
      about.php and anywhere else it should appear. -->
 <?php require __DIR__ . '/includes/bud-widget.php'; ?>
+
+<!-- Bud's one-time welcome after signing in -->
+<?php require __DIR__ . '/includes/welcome-popup.php'; ?>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>

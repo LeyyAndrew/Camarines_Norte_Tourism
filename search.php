@@ -14,6 +14,108 @@
 
 require_once __DIR__ . '/includes/search.php';
 
+/* ---------- NAME MATCHING ----------
+   These two belong in includes/search.php next to search_exact_target()
+   the moment anything else needs them; they sit here so this page is
+   one file to read. function_exists() so moving them later cannot
+   collide. */
+
+if (!function_exists('search_fold')) {
+    /* Lowercase, strip accents and punctuation, squeeze the spaces — so
+       "Bagasbas Beach", "bagasbas beach" and "bagasbas-beach" are one
+       thing to compare against. */
+    function search_fold(string $s): string
+    {
+        $s = mb_strtolower(trim($s), 'UTF-8');
+
+        if (function_exists('transliterator_transliterate')) {
+            $t = transliterator_transliterate('Any-Latin; Latin-ASCII', $s);
+            if ($t !== false) { $s = $t; }
+        }
+
+        $s = preg_replace('/[^\p{L}\p{N}]+/u', ' ', $s);
+        return trim(preg_replace('/\s+/', ' ', $s));
+    }
+}
+
+if (!function_exists('search_sole_place')) {
+
+    /* The one destination this query names, or null.
+
+       search_exact_target() only fires on the whole name, which is what
+       stops it guessing — and also what stops "bagasbas" reaching
+       "Bagasbas Beach". This widens the rule by one step without
+       loosening it: the query still has to leave exactly one winner.
+
+       Reads the results already fetched rather than searching again, and
+       only considers rows pointing at a destination anchor — a matching
+       event or dish must not send anyone to the map. */
+    function search_sole_place(string $q, array $all): ?string
+    {
+        $needle = search_fold($q);
+
+        /* Under three characters the query is a fragment, not a name.
+           "da" would otherwise pick a winner out of Daet by prefix. */
+        if (mb_strlen($needle) < 3) { return null; }
+
+        /* A query made only of these is asking to browse, and the chips
+           on this page do that better than dropping the visitor on
+           whichever single beach happened to match. static so the list
+           is built once no matter how often this runs. */
+        static $generic = [
+            'beach', 'beaches', 'island', 'islands', 'falls', 'fall', 'river',
+            'rivers', 'church', 'park', 'resort', 'cove', 'bay', 'mountain',
+            'hill', 'heritage', 'spring', 'springs', 'lake', 'cave', 'trail',
+            'view', 'point',
+        ];
+
+        $named = false;
+        foreach (explode(' ', $needle) as $w) {
+            if (!in_array($w, $generic, true)) { $named = true; break; }
+        }
+        if (!$named) { return null; }
+
+        $best = 0;
+        $hits = [];
+
+        foreach ($all as $r) {
+            if (!preg_match('/#dest-[a-z0-9\\-]+$/i', (string) $r['url'])) { continue; }
+
+            $title = search_fold((string) $r['title']);
+            $n     = preg_quote($needle, '/');
+
+            /* 4 — the whole name:                 "bagasbas beach"
+               3 — the name starts with it:        "bagasbas"  -> Bagasbas Beach
+               2 — a whole word further in:        "bagasbas"  -> Daet Bagasbas Blvd
+               1 — a prefix landing mid-word:      "bagas"
+
+               3 has to outrank 2 or the two Bagasbas rows tie and
+               nothing jumps at all — which is the case this whole
+               function exists for. Anything below 1 is a substring
+               buried mid-name, a coincidence more often than an
+               intention. */
+            if ($title === $needle) {
+                $score = 4;
+            } elseif (preg_match('/^' . $n . '(?: |$)/', $title)) {
+                $score = 3;
+            } elseif (preg_match('/ ' . $n . '(?: |$)/', $title)) {
+                $score = 2;
+            } elseif (strpos($title, $needle) === 0) {
+                $score = 1;
+            } else {
+                continue;
+            }
+
+            if ($score > $best) { $best = $score; $hits = []; }
+            if ($score === $best) { $hits[] = (string) $r['url']; }
+        }
+
+        /* Two places tied at the top means the query did not pick one of
+           them, so the results page keeps them and the visitor chooses. */
+        return count($hits) === 1 ? $hits[0] : null;
+    }
+}
+
 $q    = isset($_GET['q']) ? trim((string) $_GET['q']) : '';
 $kind = isset($_GET['kind']) ? trim((string) $_GET['kind']) : '';
 
@@ -29,10 +131,13 @@ $kind = isset($_GET['kind']) ? trim((string) $_GET['kind']) : '';
 $searchLocked = !search_allowed();
 
 /* ---------- THE JUMP ----------
-   The query names one place exactly, so go there instead of showing a
-   page of one result and making them click it. search_exact_target()
-   returns null for anything less than an exact name, which is what
-   stops this firing on a guess.
+   The query names one place, so go there instead of showing a page of
+   one result and making them click it. The destination anchor carries
+   the slug, and dest-focus in search.js opens that pin on the map at
+   the other end.
+
+   Both rules return null unless exactly one place is left standing,
+   which is what stops this firing on a guess.
 
    302, not 301: this is a decision about today's content, not a
    permanent move. A 301 gets cached by the browser, and if the place
@@ -42,15 +147,25 @@ $searchLocked = !search_allowed();
    ?list=1 is the way back out: the "show all results instead" link on
    the destination end, and how you check the ranking for a query that
    would otherwise always jump. */
+/* The search runs before the jump so search_sole_place() can read the
+   results that were going to be fetched anyway rather than hitting the
+   index a second time to answer the same question. */
+$all = (!$searchLocked && $q !== '') ? search_site($q, 60) : [];
+
 if (!$searchLocked && $q !== '' && $kind === '' && !isset($_GET['list'])) {
     $jump = search_exact_target($q);
+
+    /* Exact name first, sole match second. Order matters: an exact name
+       should still win even where a longer name also contains it. */
+    if ($jump === null) {
+        $jump = search_sole_place($q, $all);
+    }
+
     if ($jump !== null) {
         header('Location: ' . $jump, true, 302);
         exit;
     }
 }
-
-$all = (!$searchLocked && $q !== '') ? search_site($q, 60) : [];
 
 /* Count every kind BEFORE filtering, so the chips can show real totals
    and stay visible while one of them is active. */

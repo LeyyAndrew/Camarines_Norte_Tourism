@@ -40,13 +40,18 @@ require __DIR__ . '/includes/header.php';
        TO GO BACK TO A PHOTO: delete the <video> and uncomment the
        <img> line below it.
        ================================================================ -->
+  <!-- OPTIMISED - see the long note on homepage.php's hero. Same clip,
+       same treatment: no autoplay, preload="none", desktop only. -->
   <video class="photo-layer"
-         src="uploads/bg.mp4"
+         data-hero-video
          poster="uploads/about-banner.jpg"
-         autoplay muted loop playsinline
-         preload="metadata"
+         muted loop playsinline
+         preload="none"
          disablepictureinpicture
-         disableremoteplayback></video>
+         disableremoteplayback>
+        <source src="<?= htmlspecialchars(assetUrl('uploads/bg.mp4')) ?>"
+            type="video/mp4">
+  </video>
 
   <!-- <img class="photo-layer" src="uploads/about-banner.jpg" alt=""> -->
   <div class="page-hero__scrim"></div>
@@ -126,12 +131,15 @@ require __DIR__ . '/includes/header.php';
 
         <!-- ↓↓↓ THE CLIP. Change this src. ↓↓↓ -->
         <video class="photo-layer hero-film__video" id="heroFilmVideo"
-               src="uploads/0727.mp4"
+               data-hero-video
                poster="uploads/about-banner.jpg"
-               autoplay muted loop playsinline
-               preload="metadata"
+               muted loop playsinline
+               preload="none"
                disablepictureinpicture
-               disableremoteplayback></video>
+               disableremoteplayback>
+                   <source src="<?= htmlspecialchars(assetUrl('uploads/0727.mp4')) ?>"
+                  type="video/mp4">
+        </video>
         <!-- ↑↑↑ THE CLIP. Change this src. ↑↑↑ -->
 
         <!-- <img class="photo-layer hero-film__video" src="uploads/about-banner.jpg" alt=""> -->
@@ -994,7 +1002,7 @@ require __DIR__ . '/includes/header.php';
             <?php foreach (['tl','tr','bl','br'] as $q): ?>
               <div class="crack__shard crack__shard--<?= $q ?>">
                 <div class="gradient-fill"></div>
-                <img class="crack__img" src="<?= $src ?>" alt="<?= $q === 'tl' ? $alt : '' ?>">
+                <img loading="lazy" decoding="async" class="crack__img" src="<?= $src ?>" alt="<?= $q === 'tl' ? $alt : '' ?>">
               </div>
             <?php endforeach; ?>
           </figure>
@@ -1220,7 +1228,7 @@ require __DIR__ . '/includes/header.php';
     <article class="best-card" style="--ratio:1/1; --drop:0rem">
       <div class="best-card__media">
         <div class="gradient-fill"></div>
-        <img class="photo-layer" src="uploads/About-Section-Photo/Why-People.jpg" alt="Manide elder in Camarines Norte">
+        <img loading="lazy" decoding="async" class="photo-layer" src="uploads/About-Section-Photo/Why-People.jpg" alt="Manide elder in Camarines Norte">
       </div>
       <div class="best-card__copy">
         <span class="best-card__material">People</span>
@@ -1233,7 +1241,7 @@ require __DIR__ . '/includes/header.php';
     <article class="best-card" style="--ratio:3/4; --drop:2.5rem">
       <div class="best-card__media">
         <div class="gradient-fill"></div>
-        <img class="photo-layer" src="uploads/About-Section-Photo/Why-Beaches.jpg" alt="White sand beach in Camarines Norte">
+        <img loading="lazy" decoding="async" class="photo-layer" src="uploads/About-Section-Photo/Why-Beaches.jpg" alt="White sand beach in Camarines Norte">
       </div>
       <div class="best-card__copy">
         <span class="best-card__material">Sea</span>
@@ -1246,7 +1254,7 @@ require __DIR__ . '/includes/header.php';
     <article class="best-card" style="--ratio:1/1; --drop:4rem">
       <div class="best-card__media">
         <div class="gradient-fill"></div>
-        <img class="photo-layer" src="uploads/About-Section-Photo/Why-FreeDiving.jpg" alt="Freediver descending off Paracale">
+        <img loading="lazy" decoding="async" class="photo-layer" src="uploads/About-Section-Photo/Why-FreeDiving.jpg" alt="Freediver descending off Paracale">
       </div>
       <div class="best-card__copy">
         <span class="best-card__material">Freediving</span>
@@ -1259,7 +1267,7 @@ require __DIR__ . '/includes/header.php';
     <article class="best-card" style="--ratio:3/4; --drop:1.5rem">
       <div class="best-card__media">
         <div class="gradient-fill"></div>
-        <img class="photo-layer" src="uploads/About-Section-Photo/Why-Forest.jpg" alt="Mananap Falls">
+        <img loading="lazy" decoding="async" class="photo-layer" src="uploads/About-Section-Photo/Why-Forest.jpg" alt="Mananap Falls">
       </div>
       <div class="best-card__copy">
         <span class="best-card__material">Forest</span>
@@ -1272,7 +1280,7 @@ require __DIR__ . '/includes/header.php';
     <article class="best-card" style="--ratio:4/3; --drop:5rem">
       <div class="best-card__media">
         <div class="gradient-fill"></div>
-        <img class="photo-layer" src="uploads/About-Section-Photo/Why-Fiesta.jpg" alt="Street dancers at the Bantayog Festival in Daet">
+        <img loading="lazy" decoding="async" class="photo-layer" src="uploads/About-Section-Photo/Why-Fiesta.jpg" alt="Street dancers at the Bantayog Festival in Daet">
       </div>
       <div class="best-card__copy">
         <span class="best-card__material">Fiesta</span>
@@ -1285,7 +1293,7 @@ require __DIR__ . '/includes/header.php';
     <article class="best-card" style="--ratio:1/1; --drop:4.5rem">
       <div class="best-card__media">
         <div class="gradient-fill"></div>
-        <img class="photo-layer" src="uploads/About-Section-Photo/Why-Food.jpg" alt="Sinantolan cooked in coconut cream">
+        <img loading="lazy" decoding="async" class="photo-layer" src="uploads/About-Section-Photo/Why-Food.jpg" alt="Sinantolan cooked in coconut cream">
       </div>
       <div class="best-card__copy">
         <span class="best-card__material">Food</span>

@@ -39,40 +39,111 @@ if (!isset($_SESSION['user_id'])) {
 
 $firstname = $_SESSION['firstname'] ?? 'there';
 
+/* The name they registered with. Change the key if your login_process.php
+   stores it under something else. Falls back to the first name. */
+$username  = $_SESSION['username'] ?? $firstname;
+
+/* ---------- the welcome pop-up ----------
+   Shown once per sign-in. The flag lives in the session, so it resets
+   by itself when logout.php destroys the session — the next sign-in
+   gets greeted again, but refreshing the dashboard does not. */
+$showWelcome = empty($_SESSION['welcome_shown']);
+$_SESSION['welcome_shown'] = true;
+
+/* Bud's picture. Point this at the same image bud-widget.php uses.
+   If the file is not found, a drawn Bud is used instead. */
+$budAvatar = 'uploads/bud.png';
+
 $pageTitle = 'Your account — Explore Camarines Norte';
 $pageDesc  = 'Your saved places and trip planning for Camarines Norte.';
 
 require __DIR__ . '/includes/header.php';
 ?>
 
+<?php if ($showWelcome): ?>
 <!-- ===================================================================
-     THE GREETING BAND
+     WELCOME POP-UP
 
-     Same shape as the .page-hero used by about.php and destinations
-     .php, minus the photo — the colour band is in dashboard.css. Drop
-     a photo in behind it later by adding an <img> above the scrim,
-     exactly like the other pages do.
+     A native <dialog>: showModal() traps focus, Esc closes it, and the
+     page behind is inert — no library needed.
      =================================================================== -->
-<header class="page-hero dash-hero">
-  <div class="page-hero__scrim"></div>
-
-  <div class="wrap page-hero__inner">
-    <span class="page-hero__eyebrow">Your account</span>
-    <h1 class="font-display page-hero__title">
-      Hi, <?= htmlspecialchars($firstname) ?>
-    </h1>
-    <p class="page-hero__lead">
-      Everything you need to plan a trip across the province. Pick a
-      direction below, or head back to the homepage to keep browsing.
-    </p>
+<dialog class="welcome" id="welcomeDialog" aria-labelledby="welcomeTitle">
+  <div class="welcome__top">
+    <div class="welcome__avatar">
+      <?php if (is_file(__DIR__ . '/' . $budAvatar)): ?>
+        <img src="<?= htmlspecialchars($budAvatar) ?>" alt="Bud.Ai">
+      <?php else: ?>
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+          <line x1="32" y1="6" x2="32" y2="14" stroke="#16191C" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="32" cy="6" r="3.5" fill="#F0A32C"/>
+          <rect x="10" y="14" width="44" height="36" rx="14" fill="#fff" stroke="#16191C" stroke-width="2.5"/>
+          <rect x="16" y="21" width="32" height="20" rx="9" fill="#16191C"/>
+          <circle cx="25" cy="31" r="4" fill="#5FD4E8"/>
+          <circle cx="39" cy="31" r="4" fill="#5FD4E8"/>
+          <path d="M27 44.5q5 3 10 0" fill="none" stroke="#16191C" stroke-width="2.5" stroke-linecap="round"/>
+          <rect x="5" y="26" width="5" height="12" rx="2.5" fill="#F0A32C"/>
+          <rect x="54" y="26" width="5" height="12" rx="2.5" fill="#F0A32C"/>
+        </svg>
+      <?php endif; ?>
+    </div>
+    <p class="welcome__from">Bud<span>.Ai</span></p>
   </div>
-</header>
+
+  <div class="welcome__body">
+    <h2 id="welcomeTitle" class="font-display welcome__title">
+      Welcome, <?= htmlspecialchars($firstname) ?>!
+    </h2>
+
+    <p class="welcome__status">
+      <span class="welcome__dot" aria-hidden="true"></span>
+      Signed in as <strong><?= htmlspecialchars($username) ?></strong>
+    </p>
+
+    <p class="welcome__text">
+      I'm Bud, your guide to Camarines Norte. Beaches, waterfalls and
+      heritage towns across all twelve municipalities are one click
+      away. If you get stuck planning, tap me in the corner and ask.
+    </p>
+
+    <div class="welcome__actions">
+      <button type="button" class="btn btn--orange" data-welcome-close>Start exploring</button>
+      <a href="destinations.php" class="welcome__link">See destinations</a>
+    </div>
+  </div>
+
+  <button type="button" class="welcome__x" aria-label="Close" data-welcome-close>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+  </button>
+</dialog>
+
+<script>
+(function () {
+  var d = document.getElementById('welcomeDialog');
+  if (!d || typeof d.showModal !== 'function') return;
+
+  function close() {
+    d.classList.add('is-closing');
+    setTimeout(function () { d.close(); d.classList.remove('is-closing'); }, 220);
+  }
+
+  d.querySelectorAll('[data-welcome-close]').forEach(function (b) {
+    b.addEventListener('click', close);
+  });
+  /* click on the dimmed backdrop */
+  d.addEventListener('click', function (e) { if (e.target === d) close(); });
+  d.addEventListener('cancel', function (e) { e.preventDefault(); close(); });
+
+  /* a short pause so the page has painted before Bud appears */
+  setTimeout(function () { d.showModal(); }, 350);
+})();
+</script>
+<?php endif; ?>
 
 
 <!-- ===================================================================
      WHERE TO NEXT — the same .door cards the homepage uses
      =================================================================== -->
-<section class="section">
+<section class="section dash-start">
   <div class="wrap">
 
     <span class="eyebrow eyebrow--ocean">Where to next</span>

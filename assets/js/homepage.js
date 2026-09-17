@@ -906,7 +906,13 @@ document.addEventListener('DOMContentLoaded', function(){
      and jitters if you scroll back and forth.
      =================================================================== */
 
-  if (!reduceMotion) {
+  /* Scroll animations run on laptops and desktops only: a wide screen
+     with a mouse or trackpad. Phones and tablets skip this whole block
+     and fall into the else branch below, which shows everything in its
+     finished state straight away. */
+  var isLaptop = window.matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)').matches;
+
+  if (!reduceMotion && isLaptop) {
 
     /* Animate a group of elements with a stagger, once, as their
        container scrolls in. Takes the container and the child selector
@@ -926,6 +932,7 @@ document.addEventListener('DOMContentLoaded', function(){
     // --- headings: lift and sharpen ---
     gsap.utils.toArray('.head-mix, .why-visit__head h2, .voices__title, .exp-heading, .notes h2')
       .forEach(function (el) {
+        if (el.closest('.story__body')) return;   // the About block animates its own heading
         gsap.from(el, {
           y: 34, opacity: 0, duration: 1,   /* blur(6px) removed: repaints every frame */
           ease: 'power3.out',
@@ -934,7 +941,7 @@ document.addEventListener('DOMContentLoaded', function(){
       });
 
     // --- supporting copy: a beat behind the heading ---
-    gsap.utils.toArray('.head-sub, .story__body p, .craft__lead, .voices__sub, .why-visit__head p')
+    gsap.utils.toArray('.head-sub, .craft__lead, .voices__sub, .why-visit__head p')
       .forEach(function (el) {
         gsap.from(el, {
           y: 22, opacity: 0, duration: .85, delay: .08,
@@ -982,27 +989,47 @@ document.addEventListener('DOMContentLoaded', function(){
     }
 
     assemble('.why-visit__grid', '.photo-card', { distance: 80, tilt: 3 });
-    assemble('.exp__grid',       '.exp-card',   { distance: 110, tilt: 5, lift: 40, duration: 1.05 });
-    assemble('.notes__grid',     '.note-card',  { distance: 90, tilt: 4 });
+    /* --- simple, professional reveal ---
+       One shared motion for the About photos, the experience cards, the
+       travel notes and the stats: a short rise and fade, in order, with
+       a gentle ease. No flips, spins or bounces. */
+    function riseIn(targets, trigger, opts) {
+      opts = opts || {};
+      targets = gsap.utils.toArray(targets);
+      if (!targets.length) return;
+      // pause any CSS transition while GSAP moves them, or the two fight
+      gsap.set(targets, { transition: 'none' });
+      gsap.from(targets, {
+        y: opts.y || 30,
+        opacity: 0,
+        duration: opts.duration || .8,
+        stagger: opts.stagger === undefined ? .12 : opts.stagger,
+        delay: opts.delay || 0,
+        ease: 'power2.out',
+        clearProps: 'transform,transition',   // hands control back to the CSS hover
+        scrollTrigger: { trigger: trigger, start: opts.start || 'top 82%', once: true }
+      });
+    }
+
+    // experience cards: rise in one after another
+    gsap.utils.toArray('.exp__grid').forEach(function (grid) {
+      riseIn(grid.querySelectorAll('.exp-card'), grid, { y: 40, duration: .9, stagger: .15 });
+    });
+
+    // travel note cards: same idea
+    gsap.utils.toArray('.notes__grid').forEach(function (grid) {
+      riseIn(grid.querySelectorAll('.note-card'), grid, { y: 40, duration: .9, stagger: .15 });
+    });
 
     // the register is a list, so the rows rise straight up in sequence
     // rather than tilting in — a tilt on a typeset row breaks the
     // alignment that the whole layout depends on
     assemble('.voices__register', '.voice-row', { distance: 26, tilt: 0, lift: 0, duration: .7, stagger: .055 });
 
-    // the stats sit in one pill — they slide in from the sides toward
-    // the middle rather than tilting
+    // stats pill: the box fades up, then the four stats follow
     gsap.utils.toArray('.statbar__box').forEach(function (box) {
-      var items = gsap.utils.toArray(box.querySelectorAll('.statbar__item'));
-      items.forEach(function (el, i) {
-        var mid = (items.length - 1) / 2;
-        gsap.from(el, {
-          x: (i - mid) * 42,
-          opacity: 0, duration: .8, delay: Math.abs(i - mid) * .07,
-          ease: 'power3.out',
-          scrollTrigger: { trigger: box, start: 'top 85%', once: true }
-        });
-      });
+      riseIn(box, box, { y: 30, duration: .8, start: 'top 88%' });
+      riseIn(box.querySelectorAll('.statbar__item'), box, { y: 16, duration: .7, stagger: .1, delay: .2, start: 'top 88%' });
     });
 
     // --- feature rows: alternate sides as they stack up ---
@@ -1022,7 +1049,6 @@ document.addEventListener('DOMContentLoaded', function(){
        stacked ones come from the right. Same idea in the slow-travel
        block, so both read as pieces meeting in the middle. */
     var collages = [
-      { wrap: '.story__grid',  pieces: ['.story__body', '.story__tall', '.story__aside'] },
       { wrap: '.craft__art',   pieces: ['.a', '.b', '.c'] }
     ];
     collages.forEach(function (c) {
@@ -1044,6 +1070,26 @@ document.addEventListener('DOMContentLoaded', function(){
         });
       });
     });
+
+    /* --- About block ---
+       Text first, then the tall photo, then the small photo and its
+       caption, each rising a short way. The pictures drift gently inside
+       their frames as you scroll. */
+    (function () {
+      var wrap = document.querySelector('.story__grid');
+      if (!wrap) return;
+      var body = wrap.querySelector('.story__body');
+      if (body) riseIn(body.children, wrap, { y: 24, stagger: .1 });
+      riseIn(wrap.querySelectorAll('.story__tall, .story__aside-shot, .story__aside-title, .story__aside-text'),
+             wrap, { y: 36, duration: .9, stagger: .14, delay: .15 });
+
+      wrap.querySelectorAll('.story__tall img, .story__aside-shot img').forEach(function (img) {
+        gsap.fromTo(img, { yPercent: -4 }, {
+          yPercent: 4, ease: 'none',
+          scrollTrigger: { trigger: wrap, start: 'top bottom', end: 'bottom top', scrub: true }
+        });
+      });
+    })();
 
     /* --- the honeycomb: the pitch slides in, then the comb builds ---
 
@@ -1331,7 +1377,7 @@ document.addEventListener('DOMContentLoaded', function(){
     });
 
   } else {
-    // reduced motion: make sure nothing is left mid-animation
+    // reduced motion, phones and tablets: show everything as finished
     gsap.utils.toArray('[data-aos]').forEach(function (el) {
       el.style.opacity = 1;
       el.style.transform = 'none';

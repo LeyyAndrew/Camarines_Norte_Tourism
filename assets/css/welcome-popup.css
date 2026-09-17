@@ -1,0 +1,464 @@
+/* ===================================================================
+   assets/css/welcome-popup.css
+   Bud's welcome pop-up — loaded by includes/welcome-popup.php only
+   when the pop-up is shown.
+
+   No card and no background shape: Bud floats over the dimmed page
+   and the bubbles pop in one after another like a real chat.
+   =================================================================== */
+.welcome{
+  --w-teal:#3FC6D0;
+  --w-blue:#5A8FDB;
+
+  width:min(34rem, calc(100% - 1.5rem));
+  max-width:none; max-height:none;
+  margin:auto;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:#fff;
+  overflow:visible;
+}
+.welcome:focus{ outline:none; }
+.welcome::backdrop{
+  background:rgba(10,13,15,.72);
+  backdrop-filter:blur(6px);
+  animation:welcome-fade .3s ease;
+}
+.welcome.is-closing{ animation:welcome-out .2s ease forwards; }
+.welcome.is-closing::backdrop{ animation:welcome-fade .2s ease reverse forwards; }
+
+@keyframes welcome-out{ to{ opacity:0; transform:scale(.97); } }
+@keyframes welcome-fade{ from{ opacity:0; } to{ opacity:1; } }
+
+/* ---------- the scene ---------- */
+.welcome__scene{
+  position:relative;
+  height:33rem;
+}
+
+.welcome__bud{
+  position:absolute;
+  left:50%; top:50%;
+  z-index:2;
+  width:11rem; height:11rem;
+  padding:0;
+  border:0;
+  border-radius:50%;
+  background:transparent;
+  cursor:pointer;
+  transform:translate(-50%, -50%);
+  animation:bud-in .5s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes bud-in{
+  from{ opacity:0; transform:translate(-50%, -40%) scale(.8); }
+  to  { opacity:1; transform:translate(-50%, -50%) scale(1); }
+}
+
+.welcome__bud img{
+  width:100%; height:100%;
+  object-fit:contain;
+  filter:drop-shadow(0 20px 30px rgba(0,0,0,.45));
+  transition:scale .3s cubic-bezier(.34,1.56,.64,1), filter .25s ease;
+}
+
+/* soft glow that appears behind Bud on hover */
+.welcome__bud::before{
+  content:"";
+  position:absolute; inset:12%;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(63,198,208,.55) 0%, rgba(63,198,208,0) 70%);
+  opacity:0;
+  scale:.7;
+  transition:opacity .35s ease, scale .35s ease;
+  z-index:-1;
+}
+
+.welcome__hint{
+  position:absolute;
+  left:50%; top:-2.3rem;
+  z-index:2;
+  translate:-50% 0;
+  display:inline-flex; align-items:center; gap:.35rem;
+  padding:.42rem .85rem;
+  border-radius:999px;
+  background:#fff;
+  color:var(--navy, #16191C);
+  font-size:.78rem; font-weight:700;
+  white-space:nowrap;
+  box-shadow:0 10px 22px -10px rgba(0,0,0,.6);
+  pointer-events:none;
+  opacity:0;
+  animation:bubble-pop .45s cubic-bezier(.34,1.56,.64,1) 2.5s forwards;
+  transition:scale .25s cubic-bezier(.34,1.56,.64,1), background .2s ease;
+}
+/* tail pointing down at Bud */
+.welcome__hint::after{
+  content:"";
+  position:absolute;
+  left:50%; bottom:-5px;
+  width:11px; height:11px;
+  margin-left:-5.5px;
+  background:inherit;
+  transform:rotate(45deg);
+  border-radius:0 0 2px 0;
+}
+.welcome__hint b{ color:var(--orange, #F0A32C); font-weight:800; }
+
+/* ring that pulses around Bud until he is tapped the first time */
+.welcome__bud::after{
+  content:"";
+  position:absolute; inset:14%;
+  border-radius:50%;
+  border:2px solid rgba(63,198,208,.8);
+  opacity:0;
+  pointer-events:none;
+  animation:tap-ring 1.8s ease-out 3s infinite;
+}
+.welcome__bud.was-tapped::after{ animation:none; }
+@keyframes tap-ring{
+  0%  { opacity:.9; transform:scale(.9); }
+  100%{ opacity:0;  transform:scale(1.35); }
+}
+
+.welcome__bud:hover img,
+.welcome__bud:focus-visible img{
+  scale:1.05;
+  filter:drop-shadow(0 26px 34px rgba(0,0,0,.5)) brightness(1.06);
+}
+.welcome__bud:hover::before,
+.welcome__bud:focus-visible::before{ opacity:1; scale:1.15; }
+.welcome__bud:hover .welcome__hint,
+.welcome__bud:focus-visible .welcome__hint{ scale:1.08; background:#FFF4E0; }
+
+/* a happy hop when you hover Bud */
+.welcome__bud:hover img{ animation:bud-hop .55s cubic-bezier(.34,1.56,.64,1); }
+@keyframes bud-hop{
+  0%  { transform:translateY(0); }
+  40% { transform:translateY(-12px); }
+  70% { transform:translateY(2px); }
+  100%{ transform:translateY(0); }
+}
+.welcome__bud:active img{ scale:.94; }
+
+/* shown once by itself after the intro */
+.welcome__bud.is-inviting::before{ opacity:1; scale:1.15; }
+.welcome__bud.is-inviting img{ animation:bud-hop .55s cubic-bezier(.34,1.56,.64,1); }
+
+/* ---------- sparkles and confetti ---------- */
+.particle{
+  position:absolute;
+  z-index:3;
+  pointer-events:none;
+  animation:particle-fly .8s cubic-bezier(.2,.7,.3,1) forwards;
+}
+.particle--sparkle{
+  width:12px; height:12px;
+  margin:-6px 0 0 -6px;
+  clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);
+}
+.particle--confetti{
+  width:7px; height:12px;
+  margin:-6px 0 0 -3px;
+  border-radius:2px;
+  animation-duration:.9s;
+}
+@keyframes particle-fly{
+  0%  { transform:translate(0,0) scale(.4) rotate(0); opacity:1; }
+  70% { opacity:1; }
+  100%{ transform:translate(var(--dx), var(--dy)) scale(1) rotate(var(--spin)); opacity:0; }
+}
+
+/* ---------- bubbles ---------- */
+.bubble{
+  position:absolute;
+  margin:0;
+  border:0;
+  border-radius:1.1rem;
+  color:#fff;
+  font:inherit;
+  text-align:left;
+  box-shadow:0 14px 30px -14px rgba(0,0,0,.6);
+  opacity:0;
+  animation:bubble-pop .45s cubic-bezier(.34,1.56,.64,1) forwards;
+  transition:translate .35s cubic-bezier(.34,1.56,.64,1),
+             scale .35s cubic-bezier(.34,1.56,.64,1),
+             box-shadow .25s ease, filter .2s ease;
+}
+/* hover: springs up a little, deeper shadow, brighter */
+.bubble:hover{
+  translate:0 -5px;
+  scale:1.04;
+  filter:brightness(1.06);
+  box-shadow:0 22px 36px -14px rgba(0,0,0,.65);
+}
+
+/* the hand waves when you hover the hello bubble */
+.wave{ display:inline-block; transform-origin:70% 80%; }
+.b-hello:hover .wave{ animation:wave-hand .9s ease-in-out; }
+@keyframes wave-hand{
+  0%,100%{ rotate:0deg; }
+  20%{ rotate:18deg; }
+  40%{ rotate:-10deg; }
+  60%{ rotate:16deg; }
+  80%{ rotate:-6deg; }
+}
+
+/* Bud typing inside the trivia bubble */
+.typing{ display:inline-flex; gap:.35rem; padding:.3rem 0; }
+.typing i{
+  width:.5rem; height:.5rem; border-radius:50%;
+  background:#fff;
+  animation:typing-hop .6s ease-in-out infinite;
+}
+.typing i:nth-child(2){ animation-delay:.1s; }
+.typing i:nth-child(3){ animation-delay:.2s; }
+@keyframes typing-hop{
+  0%,100%{ transform:translateY(0); opacity:.6; }
+  50%    { transform:translateY(-4px); opacity:1; }
+}
+
+.b-explore__label{
+  display:block;
+  margin-bottom:.25rem;
+  font-size:.68rem; font-weight:700;
+  letter-spacing:.02em;
+  color:rgba(255,255,255,.8);
+}
+.b-explore__label[hidden]{ display:none; }
+
+
+/* a new tip pops in */
+.b-explore.is-new{ animation:tip-pop .4s cubic-bezier(.34,1.56,.64,1) both; }
+@keyframes tip-pop{
+  0%  { opacity:1; transform:scale(.9); }
+  100%{ opacity:1; transform:scale(1); }
+}
+
+.bubble::after{               /* the tail */
+  content:"";
+  position:absolute;
+  width:14px; height:14px;
+  background:inherit;
+  border-radius:0 0 3px 0;
+}
+.bubble--teal{ background:var(--w-teal); }
+.bubble--blue{ background:var(--w-blue); }
+
+@keyframes bubble-pop{
+  from{ opacity:0; transform:scale(.5); }
+  to  { opacity:1; transform:scale(1); }
+}
+
+/* typing dots — top left */
+.bubble--dots{
+  display:flex; gap:.4rem;
+  padding:.85rem 1.05rem;
+}
+.bubble--dots i{
+  width:.55rem; height:.55rem; border-radius:50%;
+  background:#fff;
+  animation:dot-blink 1.2s ease-in-out infinite;
+}
+.bubble--dots i:nth-child(2){ animation-delay:.15s; }
+.bubble--dots i:nth-child(3){ animation-delay:.3s; }
+@keyframes dot-blink{
+  0%,60%,100%{ opacity:1; }
+  30%        { opacity:.35; }
+}
+.b-dots{ left:12%; top:16%; transform-origin:bottom right; animation-delay:.45s; }
+.b-dots::after{ right:16px; bottom:-6px; transform:rotate(45deg); }
+
+/* 1 — hello, top right */
+.b-hello{
+  right:0; top:4%;
+  padding:.8rem 1.2rem .95rem;
+  transform-origin:bottom left;
+  animation-delay:.85s;
+}
+.b-hello::after{ left:22px; bottom:-6px; transform:rotate(45deg); }
+.b-hello small{
+  display:block;
+  font-size:.68rem; font-weight:600;
+  opacity:.85;
+}
+.b-hello h2{
+  margin:.1rem 0 .4rem;
+  font-size:1.35rem; font-weight:800;
+  line-height:1.15; letter-spacing:-.02em;
+  color:#fff;
+}
+.b-hello__user{
+  display:flex; align-items:center; gap:.4rem;
+  font-size:.76rem;
+  color:rgba(255,255,255,.9);
+}
+.b-hello__user strong{ font-weight:700; color:#fff; }
+.welcome__dot{
+  width:.45rem; height:.45rem; border-radius:50%;
+  background:#7CF0A8;
+  box-shadow:0 0 0 3px rgba(124,240,168,.25);
+}
+
+/* 2 — explore, lower left */
+.b-explore{
+  left:0; bottom:10%;
+  max-width:14.5rem;
+  padding:.85rem 1.1rem;
+  font-size:.9rem; font-weight:500; line-height:1.45;
+  transform-origin:top right;
+  animation-delay:1.45s;
+}
+.b-explore::after{ right:26px; top:-6px; transform:rotate(225deg); }
+
+/* 3 — the visitor's reply, lower right, the close button */
+.bubble--reply{
+  right:6%; bottom:3%;
+  padding:.85rem 1.6rem;
+  background:var(--orange, #F0A32C);
+  color:var(--navy, #16191C);
+  font-size:1rem; font-weight:700;
+  cursor:pointer;
+  transform-origin:top left;
+  transition:filter .2s ease, box-shadow .2s ease;
+}
+.b-reply{
+  animation-delay:2.1s;
+}
+.b-reply::after{ left:18px; top:-6px; transform:rotate(225deg); }
+.bubble--reply:hover{
+  translate:0 -5px;
+  scale:1.08;
+  filter:brightness(1.08);
+  box-shadow:0 18px 34px -12px rgba(240,163,44,.95);
+}
+.bubble--reply:active{ translate:0 0; scale:.95; filter:brightness(.97); }
+
+/* ---------- close ---------- */
+.welcome__x{
+  position:absolute; top:-.5rem; right:-.25rem; z-index:2;
+  width:2.4rem; height:2.4rem;
+  display:grid; place-items:center;
+  border:0; border-radius:50%;
+  background:rgba(255,255,255,.12);
+  color:#fff;
+  cursor:pointer;
+  transform:translateY(-100%);
+  transition:background .2s ease;
+}
+.welcome__x:hover{ background:rgba(255,255,255,.24); }
+.welcome__x svg{
+  width:1.05rem; height:1.05rem;
+  fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round;
+}
+
+
+.welcome__bud:focus-visible,
+.bubble--reply:focus-visible,
+.welcome__x:focus-visible{
+  outline:2px solid #fff;
+  outline-offset:3px;
+}
+
+/* ---------- small screens ----------
+   On a phone the bubbles stop being pinned around Bud and stack like
+   a real chat instead: hello, Bud, trivia, reply. Each bubble takes
+   the height its text needs, so a long fact can never run into Bud. */
+@media (max-width:560px){
+  .welcome{
+    width:calc(100% - 1.5rem);
+    max-height:calc(100dvh - 1.5rem);
+    overflow-y:auto;
+    overflow-x:hidden;
+  }
+
+  .welcome__scene{
+    height:auto;
+    display:flex;
+    flex-direction:column;
+    gap:1.1rem;
+    padding:3.25rem .35rem 1rem;
+  }
+
+  .welcome__bud,
+  .bubble{
+    position:relative;
+    top:auto; right:auto; bottom:auto; left:auto;
+  }
+
+  .b-dots{ display:none; }
+
+  .b-hello{
+    order:1;
+    align-self:flex-start;
+    max-width:92%;
+  }
+  .b-hello h2{ font-size:1.2rem; }
+
+  .welcome__bud{
+    order:2;
+    align-self:center;
+    width:8.5rem; height:8.5rem;
+    margin-top:2.6rem;         /* room for the hint bubble */
+    transform:none;
+    animation-name:bud-in-stacked;
+  }
+
+  .b-explore{
+    order:3;
+    align-self:flex-start;
+    max-width:88%;
+    font-size:.88rem;
+  }
+
+  .bubble--reply{
+    order:4;
+    align-self:flex-end;
+    margin-right:.25rem;
+  }
+
+  .welcome__x{
+    position:fixed;
+    top:1.1rem; right:1.1rem;
+    transform:none;
+  }
+}
+@keyframes bud-in-stacked{
+  from{ opacity:0; transform:translateY(10px) scale(.8); }
+  to  { opacity:1; transform:none; }
+}
+
+@media (max-width:360px){
+  .b-hello h2{ font-size:1.08rem; }
+  .welcome__bud{ width:7.5rem; height:7.5rem; }
+}
+
+/* short screens (a phone turned sideways, a small laptop window):
+   keep the scene layout but shrink it to fit the height */
+@media (min-width:561px) and (max-height:620px){
+  .welcome__scene{ height:calc(100dvh - 4rem); min-height:19rem; }
+  .welcome__bud{ width:8rem; height:8rem; top:50%; }
+  .welcome__hint{ top:-2rem; font-size:.72rem; padding:.35rem .75rem; }
+  .b-dots{ top:14%; }
+  .b-hello{ top:0; padding:.6rem 1rem .75rem; }
+  .b-hello h2{ font-size:1.1rem; }
+  .b-explore{ bottom:3%; max-width:15rem; font-size:.82rem; padding:.7rem .95rem; }
+  .bubble--reply{ bottom:2%; padding:.7rem 1.3rem; }
+  .welcome__x{ top:.4rem; right:-3rem; transform:none; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .welcome, .welcome::backdrop,
+  .welcome.is-closing, .welcome.is-closing::backdrop,
+  .welcome__bud, .welcome__bud img, .bubble, .bubble--dots i,
+  .b-explore.is-new, .wave, .typing i,
+  .welcome__bud:hover img, .welcome__bud.is-inviting img{ animation:none; }
+  .particle{ display:none; }
+  .welcome__hint{ animation:none; opacity:1; }
+  .welcome__bud::after{ animation:none; }
+  .bubble{ opacity:1; }
+  .bubble, .welcome__bud img, .welcome__bud::before,
+  .welcome__hint{ transition:none; }
+  .bubble:hover, .bubble--reply:hover{ translate:none; scale:none; }
+  .welcome__bud:hover img{ scale:none; }
+}

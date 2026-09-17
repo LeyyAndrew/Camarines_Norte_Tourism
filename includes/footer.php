@@ -67,7 +67,7 @@ $footerCoords = '14.11° N   122.95° E';
             <img class="footer__seal" src="<?= e_auth($footerSeal) ?>"
                  alt="Seal of the Province of Camarines Norte" width="56" height="56">
           <?php endif; ?>
-          <img class="footer__word" src="<?= e_auth($footerWord) ?>" alt="LAKBAI">
+          <img loading="lazy" decoding="async" class="footer__word" src="<?= e_auth($footerWord) ?>" alt="LAKBAI">
         </div>
 
         <p class="footer__blurb">
@@ -352,7 +352,7 @@ $authPane = in_array($authCode, ['emailtaken', 'missing', 'bademail', 'shortpw',
            mud. -->
       <?php if ($authSeal): ?>
         <div class="auth-media__crest">
-          <img class="auth-media__seal" src="<?= e_auth($authSeal) ?>"
+          <img loading="lazy" decoding="async" class="auth-media__seal" src="<?= e_auth($authSeal) ?>"
                alt="Seal of the Province of Camarines Norte" width="46" height="46">
           <span class="auth-media__crest-text">
             <strong>Provincial Government of</strong>
@@ -691,9 +691,24 @@ $authPane = in_array($authCode, ['emailtaken', 'missing', 'bademail', 'shortpw',
      =================================================================== -->
 <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('assets/css/auth.css')) ?>">
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.1/aos.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<!-- defer on all three. A <script> at the bottom of the body still
+     blocks parsing while it downloads, and on a phone over the tunnel
+     that is real time. Deferred scripts execute in document order, so
+     AOS is still guaranteed to be defined before homepage.js runs.
+
+     THESE THREE ARE 90 KB GZIPPED AND THE BIGGEST REMAINING WIN.
+     A comment in destinations.php says GSAP handles the scroll reveals
+     in homepage.js, so they are staying — but no .php file on this
+     site calls gsap or ScrollTrigger directly. Open assets/js/homepage.js
+     and search it for "gsap". If it is not there either, delete the two
+     gsap lines below and you save 70 KB on every single page load.
+
+     If homepage.js DOES use it, you can still trim: ScrollTrigger is
+     only needed for scroll-linked animation. If the reveals are plain
+     fades, AOS already does that on its own and both GSAP files can go. -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
 
 <!-- The only inline script left on the site. It is one line of server
      state, not behaviour: PHP has to print it, so it cannot live in a
@@ -712,15 +727,15 @@ $authPane = in_array($authCode, ['emailtaken', 'missing', 'bademail', 'shortpw',
      .js file the browser fetches the new one. Without it a cached
      script can sit there for days while the file on disk is perfectly
      correct — which looks exactly like "the code doesn't work". -->
-<script src="<?= htmlspecialchars(assetUrl('assets/js/homepage.js')) ?>"></script>
+<script src="<?= htmlspecialchars(assetUrl('assets/js/homepage.js')) ?>" defer></script>
 
 <!-- the modal's own internals: tabs, password toggle, focus -->
-<script src="<?= htmlspecialchars(assetUrl('assets/js/auth-modal.js')) ?>"></script>
+<script src="<?= htmlspecialchars(assetUrl('assets/js/auth-modal.js')) ?>" defer></script>
 
 <!-- the sign-in gate: nav links stay open, content links ask for a
      sign-in first. Loads last because it needs window.isLoggedIn and
      the modal markup above to already exist. -->
-<script src="<?= htmlspecialchars(assetUrl('assets/js/auth-gate.js')) ?>"></script>
+<script src="<?= htmlspecialchars(assetUrl('assets/js/auth-gate.js')) ?>" defer></script>
 
 
 
@@ -733,6 +748,17 @@ $authPane = in_array($authCode, ['emailtaken', 'missing', 'bademail', 'shortpw',
      includes/saved-places.php, relative, which resolves correctly from
      every page in this project because they all sit at the root. -->
 <script src="<?= htmlspecialchars(assetUrl('assets/js/saved-places.js')) ?>" defer></script>
+
+
+<!-- HERO VIDEO. New file - assets/js/hero-video.js.
+
+     The hero clips no longer carry autoplay; this decides whether to
+     play them at all, based on whether they are on screen and whether
+     the connection can take it. Without this file the heroes show
+     their poster image and never move, which is a degradation and not
+     a break - so if you are mid-deploy and this file is not up yet,
+     nothing is broken. -->
+<script src="<?= htmlspecialchars(assetUrl('assets/js/hero-video.js')) ?>" defer></script>
 
 </body>
 </html>

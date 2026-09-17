@@ -30,34 +30,138 @@
    =================================================================== */
 
 /* ===================================================================
-   1. THE GREETING BAND
+   1. TOP OF PAGE AND THE WELCOME POP-UP
 
-   .page-hero in base.css is built for a banner with a photograph
-   behind it: 56vh tall, content pushed to the bottom edge. There is
-   no photo here, so at that height it is a large black rectangle
-   with a name in it and the actual page starts below the fold.
-
-   Cut to roughly a third, and given a light source — a soft warm
-   glow low and left, which is the only thing standing in for the
-   photograph. Flat #16191C across that area reads as a missing
-   image; a gradient reads as a decision.
+   The greeting band is gone, so the first section has to clear the
+   fixed nav on its own.
    =================================================================== */
-.dash-hero{
-  min-height:0;
-  padding:8.5rem 0 3.25rem;
+section.section.dash-start{ padding:calc(76px + 3.5rem) 0 3.5rem; }
+
+.welcome{
+  width:min(26rem, calc(100% - 2rem));
+  padding:0; margin:auto;
+  border:0; border-radius:1.25rem;
+  background:#fff; color:var(--navy);
+  overflow:hidden;
+  box-shadow:0 30px 80px -30px rgba(0,0,0,.6);
+  animation:welcome-in .38s cubic-bezier(.16,.84,.44,1);
+}
+.welcome::backdrop{
+  background:rgba(16,19,21,.55);
+  backdrop-filter:blur(3px);
+  animation:welcome-fade .3s ease;
+}
+.welcome.is-closing{ animation:welcome-out .22s ease forwards; }
+.welcome.is-closing::backdrop{ animation:welcome-fade .22s ease reverse forwards; }
+
+@keyframes welcome-in{
+  from{ opacity:0; transform:translateY(14px) scale(.97); }
+  to  { opacity:1; transform:none; }
+}
+@keyframes welcome-out{ to{ opacity:0; transform:translateY(8px) scale(.98); } }
+@keyframes welcome-fade{ from{ opacity:0; } to{ opacity:1; } }
+
+/* Dark header strip — same near-black as the nav, so the pop-up
+   reads as part of the site rather than a browser alert. */
+.welcome__top{
+  position:relative;
+  display:flex; flex-direction:column; align-items:center;
+  padding:1.9rem 1.5rem 3.1rem;
   background:
-    radial-gradient(120% 140% at 8% 118%, rgba(240,163,44,.16) 0%, rgba(240,163,44,0) 55%),
-    linear-gradient(168deg, #1D2329 0%, #16191C 58%, #101315 100%);
-  border-bottom:1px solid rgba(255,255,255,.07);
+    radial-gradient(90% 120% at 50% 130%, rgba(240,163,44,.28) 0%, rgba(240,163,44,0) 60%),
+    var(--navy);
+}
+.welcome__from{
+  margin-top:.9rem;
+  font-size:.95rem; font-weight:700; letter-spacing:-.01em;
+  color:#fff;
+}
+.welcome__from span{ color:var(--orange); }
+
+/* Bud sits across the seam between dark and white */
+.welcome__avatar{
+  width:5.25rem; height:5.25rem;
+  display:grid; place-items:center;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:0 0 0 5px rgba(240,163,44,.35), 0 10px 24px -10px rgba(0,0,0,.6);
+  animation:bud-wave 2.4s ease-in-out .6s 2;
+}
+.welcome__avatar img{ width:82%; height:82%; object-fit:contain; }
+.welcome__avatar svg{ width:70%; height:70%; }
+
+@keyframes bud-wave{
+  0%,100%{ transform:rotate(0); }
+  20%{ transform:rotate(-8deg); }
+  40%{ transform:rotate(6deg); }
+  60%{ transform:rotate(-4deg); }
 }
 
-/* The scrim exists to hold a photo down. With no photo it is a black
-   sheet over the gradient, cancelling it out. */
-.dash-hero .page-hero__scrim{ display:none; }
+.welcome__body{
+  position:relative;
+  margin-top:-1.4rem;
+  padding:1.9rem 1.9rem 1.75rem;
+  background:#fff;
+  border-radius:1.25rem 1.25rem 0 0;
+  text-align:center;
+}
+.welcome__title{
+  font-size:1.65rem; font-weight:700; line-height:1.15;
+  letter-spacing:-.025em;
+  margin-bottom:.8rem;
+}
 
-.dash-hero .page-hero__title{ margin-bottom:.9rem; }
+.welcome__status{
+  display:inline-flex; align-items:center; gap:.5rem;
+  padding:.38rem .85rem;
+  border-radius:999px;
+  background:rgba(34,160,95,.1);
+  font-size:.82rem; color:rgba(22,25,28,.7);
+  margin-bottom:1.15rem;
+}
+.welcome__status strong{ color:var(--navy); font-weight:600; }
+.welcome__dot{
+  width:.5rem; height:.5rem; border-radius:50%;
+  background:#22A05F;
+  box-shadow:0 0 0 3px rgba(34,160,95,.2);
+}
 
-.dash-hero .page-hero__lead{ max-width:34rem; }
+.welcome__text{
+  font-size:.92rem; line-height:1.7;
+  color:rgba(22,25,28,.65);
+  margin-bottom:1.6rem;
+}
+
+.welcome__actions{
+  display:flex; flex-direction:column; align-items:center; gap:.85rem;
+}
+.welcome__actions .btn{ width:100%; justify-content:center; padding:.9rem 1.5rem; cursor:pointer; }
+.welcome__link{
+  font-size:.85rem; font-weight:600;
+  color:var(--navy);
+  text-decoration:underline; text-underline-offset:3px;
+  text-decoration-color:rgba(22,25,28,.25);
+}
+.welcome__link:hover{ text-decoration-color:var(--orange); }
+
+.welcome__x{
+  position:absolute; top:.8rem; right:.8rem;
+  width:2.1rem; height:2.1rem;
+  display:grid; place-items:center;
+  border:0; border-radius:50%;
+  background:rgba(255,255,255,.1);
+  color:#fff; cursor:pointer;
+  transition:background .2s ease;
+}
+.welcome__x:hover{ background:rgba(255,255,255,.2); }
+.welcome__x svg{
+  width:1rem; height:1rem;
+  fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round;
+}
+
+.welcome :focus-visible{
+  outline:2px solid var(--orange); outline-offset:3px;
+}
 
 /* ===================================================================
    2. SECTION RHYTHM
@@ -77,7 +181,6 @@
 
 .dash-doors{ padding:0; }
 
-section.section:has(.dash-doors){ padding:4rem 0 3.5rem; }
 
 /* ===================================================================
    3. THE CARDS
@@ -249,7 +352,9 @@ section.section:has(.dash-doors){ padding:4rem 0 3.5rem; }
    =================================================================== */
 @media (max-width:640px){
 
-    .dash-hero{ padding:7rem 0 2.5rem; }
+    section.section.dash-start{ padding:calc(76px + 2.25rem) 0 3rem; }
+
+    .welcome__body{ padding:1.6rem 1.4rem 1.5rem; }
 
     .dash-doors .door{ padding:1.6rem 1.4rem 1.4rem; }
 
@@ -265,6 +370,10 @@ section.section:has(.dash-doors){ padding:4rem 0 3.5rem; }
     .dash-doors .door,
     .dash-doors .door__go::after,
     .btn--outline-dark{ transition:none; }
+
+    .welcome, .welcome::backdrop,
+    .welcome.is-closing, .welcome.is-closing::backdrop,
+    .welcome__avatar{ animation:none; }
 
     .dash-doors .door:hover{ transform:none; }
 

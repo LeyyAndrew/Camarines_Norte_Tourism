@@ -17,13 +17,21 @@ $pageTitle = 'Destinations — Explore Camarines Norte';
 $pageDesc  = '24 places across the twelve municipalities of Camarines Norte: islands, waterfalls, heritage towns, and the coastline in between.';
 require __DIR__ . '/includes/header.php';
 
-$destinations = require __DIR__ . '/includes/destinations-data.php';
+/* Both arrays come through the loader rather than a direct require.
+   The data files end in a return, so they cannot be loaded with
+   require_once — and includes/bud-widget.php, included at the bottom
+   of this page, needs the same destination list. Two plain requires of
+   destinations-data.php redeclared dest_fallback() and killed the page
+   before the footer. See the note at the top of dest-load.php. */
+require_once __DIR__ . '/includes/dest-load.php';
+
+$destinations = dest_data();
 
 /* The long-form fields the map balloon opens into: how to get there,
    what to eat, who to book with. A separate file from the data above
    because homepage.php reads that one and does not use any of this —
    see the header of includes/destination-details.php. */
-$destDetails = require __DIR__ . '/includes/destination-details.php';
+$destDetails = dest_details();
 
 
 /* ===================================================================
@@ -477,13 +485,20 @@ $showIntro = true;
        already cached by the time anyone reaches this page. The poster
        is what shows if it is not, or if the browser refuses autoplay
        — never a blank panel. -->
+  <!-- OPTIMISED. No autoplay, preload="none", and the clip is behind a
+       <source media=> so phones get the poster and download nothing.
+       assets/js/hero-video.js starts it when it is on screen and the
+       connection looks healthy. See the long note on homepage.php. -->
   <video class="photo-layer"
-         src="uploads/bg.mp4"
+         data-hero-video
          poster="uploads/dest-banner.jpg"
-         autoplay muted loop playsinline
-         preload="metadata"
+         muted loop playsinline
+         preload="none"
          disablepictureinpicture
-         disableremoteplayback></video>
+         disableremoteplayback>
+    <source src="<?= htmlspecialchars(assetUrl('uploads/bg.mp4')) ?>"
+            type="video/mp4" media="(min-width: 1024px)">
+  </video>
 
   <div class="page-hero__scrim"></div>
 
@@ -711,13 +726,17 @@ $showIntro = true;
        banner above uses, so it is already decoded and costs nothing
        here. It only becomes visible where a destination photo is
        missing. -->
-  <video class="hero-feature__fallback"
-         src="uploads/bg.mp4"
-         poster="uploads/dest-banner.jpg"
-         autoplay muted loop playsinline
-         preload="metadata"
-         disablepictureinpicture
-         disableremoteplayback></video>
+  <!-- CHANGED TO A STILL. This layer is the floor of the stack - it is
+       only ever visible in the gap where a destination photo is
+       missing. It was downloading and looping a video file to be seen
+       for a fraction of a second, occasionally, by some visitors.
+
+       The poster image alone does the identical job. If you want the
+       motion back, copy the <video> block from the banner above and
+       give it data-hero-video so hero-video.js manages it. -->
+  <img class="hero-feature__fallback"
+       src="<?= htmlspecialchars(assetUrl('uploads/dest-banner.jpg')) ?>"
+       alt="" loading="lazy" decoding="async">
 
   <!-- alt is empty ON PURPOSE: the name is in the heading directly
        below, and a screen reader should not read the same place
@@ -878,11 +897,28 @@ $showIntro = true;
       /* View Transitions gives a real crossfade between the old cards and
          the new ones for free. Where it is missing the swap is instant,
          which is what the CSS fade under .is-swapping is covering. */
-      function paint(mutate) {
+      /* THEN RUNS ONLY AFTER MUTATE HAS FINISHED.
+
+         startViewTransition does not call mutate straight away: it
+         snapshots the old page first and runs mutate a frame later.
+         Anything that read the new DOM right after paint() returned was
+         reading the OLD one, which is how the map kept redrawing the
+         previous filter's pins while the count line (updated inside
+         mutate) already showed the new number. updateCallbackDone
+         resolves once mutate has run, so everything after the swap
+         waits for it. */
+      function paint(mutate, then) {
+        var ran = false;
+        function after() { if (!ran) { ran = true; then(); } }
+
         if (document.startViewTransition) {
-          document.startViewTransition(mutate);
+          var t = document.startViewTransition(mutate);
+          var done = t && (t.updateCallbackDone || t.finished);
+          if (done && done.then) done.then(after, after);
+          else after();
         } else {
           mutate();
+          after();
         }
       }
 
@@ -1033,7 +1069,8 @@ $showIntro = true;
               if (cntNew && cntCur) cntCur.innerHTML = cntNew.innerHTML;
 
               if (doc.title) document.title = doc.title;
-            });
+            }, function () {
+            /* everything below waits for the swap above to be applied */
 
             /* replaceState while typing: the URL stays true to what
                is on screen and stays shareable, without one entry
@@ -1082,6 +1119,7 @@ $showIntro = true;
               var top = bar.getBoundingClientRect().top;
               if (top < 0) bar.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
+            });
           })
           .catch(function (err) {
             if (err && err.name === 'AbortError') return;
@@ -1095,6 +1133,21 @@ $showIntro = true;
         clearTimeout(typeTimer);   /* Enter beats a pending keystroke */
         go(formUrl(), true, false);
       });
+
+      /* THE RESET MAP HOOK.
+
+         destinations-map.js calls this from the Reset map button to
+         bring back all 24. It goes to the bare page rather than
+         pressing the Everything chip, because that chip keeps ?q= and
+         ?town= in its link, so during a search it would not show
+         everything. Same swap as a chip: no reload, one history entry,
+         and destinations:swapped redraws the pins. */
+      window.destGo = function (url) {
+        clearTimeout(typeTimer);   /* a pending keystroke must not re-filter */
+        var field = document.getElementById('destSearch');
+        if (field) field.value = '';
+        go(url, true, false);
+      };
 
       /* ---- FILTERING AS YOU TYPE ----
 
@@ -1312,7 +1365,7 @@ $showIntro = true;
          href="#dest-<?= $rslug ?>"
          data-slide="<?= $i ?>">
         <span class="hero-rail__shade"></span>
-        <img class="photo-layer" src="<?= htmlspecialchars($d['image']) ?>" alt="" loading="lazy">
+        <img loading="lazy" decoding="async" class="photo-layer" src="<?= htmlspecialchars($d['image']) ?>" alt="" loading="lazy">
         <span class="hero-rail__body">
           <span class="hero-rail__loc"><?= $d['town'] ?>, Camarines Norte</span>
           <span class="font-display hero-rail__name"><?= $d['name'] ?></span>
@@ -1414,7 +1467,7 @@ $showIntro = true;
       <ul class="dest-chips">
         <li>
           <a class="<?= ($cat === '' && $type === '') ? 'is-on' : '' ?>"
-             href="<?= destUrl('', $town, '', $q) ?>">
+             href="<?= destUrl('', $town, '', $q) ?>" data-filter-all>
             <span>Everything</span><em><?= count($allPlaces) ?></em>
           </a>
         </li>
@@ -1524,7 +1577,7 @@ $showIntro = true;
                reader announce it twice — and while the photos are
                missing, a filled alt renders as stray text across the
                top of every card. -->
-          <img class="photo-layer" src="<?= htmlspecialchars($d['image']) ?>" alt="" loading="lazy">
+          <img loading="lazy" decoding="async" class="photo-layer" src="<?= htmlspecialchars($d['image']) ?>" alt="" loading="lazy">
           <span class="dest-card__tag"><?= $d['tag'] ?></span>
 
           <!-- ===================================================
@@ -1708,7 +1761,7 @@ $showIntro = true;
 
 <!-- ---------- closing ---------- -->
 <section class="dest-outro dest-outro--photo">
-  <img class="dest-outro__bg"
+  <img loading="lazy" decoding="async" class="dest-outro__bg"
        src="<?= htmlspecialchars(assetUrl('uploads/Destination-Photo/Destination-Outro.jpg')) ?>"
        alt="" aria-hidden="true" loading="lazy" decoding="async">
   <div class="wrap dest-outro__inner">
@@ -2014,6 +2067,102 @@ $showIntro = true;
 
   @media (prefers-reduced-motion: reduce) {
     .dest-toast { transition: none; transform: translate(-50%, 0); }
+  }
+</style>
+
+<!-- ===================================================================
+     LAND ON THE PHOTO CARD  —  #dest-<slug>
+
+     The header search sends every place to destinations.php#dest-<slug>.
+     The browser's own jump happens while the banner, photos and map are
+     still growing, so it lands short and you only see the top of the
+     page. This waits for the page to settle, then:
+
+       1. shows the card even if mobile.css has folded it away
+       2. scrolls it to the middle of the screen
+       3. rings it for a few seconds
+       4. opens its "View details" photo sheet (OPEN_DETAILS)
+
+     Also runs on hashchange, which is what happens when the search is
+     used while already on this page, and is exposed as
+     window.destShowCard(slug) for the same-card-twice case.
+     =================================================================== -->
+<script>
+(function () {
+  var OPEN_DETAILS = true;   /* false = only scroll to and ring the card */
+  var HOLD = 3000;
+
+  function slugFromHash() {
+    var m = /^#dest-([a-z0-9\-]+)$/i.exec(location.hash || '');
+    return m ? m[1].toLowerCase() : null;
+  }
+
+  function show(id) {
+    var slug = String(id || '').replace(/^dest-/, '');
+    if (!slug) return;
+    var card = document.getElementById('dest-' + slug);
+
+    /* The card is not in the grid because a filter or search is active
+       (?q= / ?cat= / ?town=). Reload the unfiltered page at that card. */
+    if (!card) {
+      if (location.search) {
+        location.replace(location.pathname + '#dest-' + slug);
+      }
+      return;
+    }
+
+    /* mobile.css hides cards 7+ until the grid is expanded. */
+    var grid = document.getElementById('destGrid');
+    if (grid && grid.contains(card) && !grid.classList.contains('is-expanded') &&
+        card.offsetParent === null) {
+      grid.classList.add('is-expanded');
+      var more = document.getElementById('destMore');
+      if (more) {
+        more.setAttribute('aria-expanded', 'true');
+        var label = more.querySelector('.dest-more__label');
+        if (label) label.textContent = 'Show fewer';
+      }
+    }
+
+    /* GSAP / AOS reveals can leave a card faded until scrolled to. */
+    card.style.opacity = '1';
+
+    function scroll() { card.scrollIntoView({ behavior: 'auto', block: 'center' }); }
+    scroll();
+    /* images above it may still be loading and push it down: re-aim */
+    setTimeout(scroll, 400);
+    setTimeout(scroll, 1000);
+
+    card.classList.add('is-search-hit');
+    clearTimeout(card._hitTimer);
+    card._hitTimer = setTimeout(function () { card.classList.remove('is-search-hit'); }, HOLD);
+
+    if (OPEN_DETAILS) {
+      var btn = card.querySelector('[data-detail]');
+      if (btn) setTimeout(function () { btn.click(); }, 1100);
+    }
+  }
+
+  window.destShowCard = show;
+
+  function fromHash() { var s = slugFromHash(); if (s) show(s); }
+
+  if (slugFromHash()) {
+    /* stop the browser restoring an old scroll position over ours */
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    if (document.readyState === 'complete') { fromHash(); }
+    else { window.addEventListener('load', function () { requestAnimationFrame(fromHash); }); }
+  }
+  window.addEventListener('hashchange', fromHash);
+}());
+</script>
+<style>
+  .dest-card { scroll-margin-top: 110px; }
+  .dest-card.is-search-hit {
+    outline: 3px solid rgba(245, 165, 36, .9);
+    outline-offset: 4px;
+    box-shadow: 0 0 0 8px rgba(245, 165, 36, .18);
+    transition: outline-color .3s, box-shadow .3s;
   }
 </style>
 

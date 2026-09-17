@@ -12,6 +12,12 @@
 (function () {
   'use strict';
 
+  /* Resolved from this file's own URL (assets/js/search.js -> site
+     root), not from the page. A bare 'api/search.php' breaks on any
+     page inside a subfolder such as auth/. */
+  var ME       = document.currentScript && document.currentScript.src;
+  var API_URL  = ME ? new URL('../../api/search.php', ME).href : 'api/search.php';
+
   var panel = document.getElementById('siteSearch');
   if (!panel) { return; }
 
@@ -25,6 +31,15 @@
   var pending = null;            // in-flight request, so a slow old one
                                  // cannot overwrite a fast new one
   var cursor  = -1;              // index of the arrow-key selection
+  var shownQ  = null;            // the query whose results are on screen
+  var failed  = false;           // last request failed -> let Enter
+                                 // fall back to the full results page
+  var wantGo  = null;            // Enter was pressed before results
+                                 // arrived: open the top one when
+                                 // they do
+  var picked  = false;           // true only when the ARROW KEYS chose
+                                 // cursor. A mouse hover must never
+                                 // decide where Enter goes.
 
   /* ---------- open / close ---------- */
 
@@ -99,6 +114,13 @@
 
   input.addEventListener('input', function () {
     clearTimeout(timer);
+
+    /* The list on screen now belongs to the OLD text. Without this, an
+       arrow-key pick from a previous query survives the typing, and
+       Enter follows a result for something the visitor no longer
+       wants. */
+    clearPick();
+    wantGo = null;
     var q = input.value.trim();
 
     if (q.length < 2) {
@@ -112,15 +134,19 @@
   });
 
   function run(q) {
+    clearTimeout(timer);
     if (pending) { pending.abort(); }
     pending = new AbortController();
+    failed  = false;
+    list.innerHTML = '<p class="sitesearch__msg">Searching…</p>';
+    if (quick) { quick.hidden = true; }
 
-    fetch('api/search.php?q=' + encodeURIComponent(q) + '&limit=8', {
+    fetch(API_URL + '?q=' + encodeURIComponent(q) + '&limit=8', {
       signal: pending.signal,
       headers: { 'Accept': 'application/json' },
       credentials: 'same-origin'        /* send the session cookie */
     })
-      .then(function (r) { return r.json(); })
+      .then(function (r) { pending = null; return r.json(); })
       .then(function (data) {
         /* The session ended while this overlay was open — expired, or
            signed out in another tab. The page still shows a signed-in
@@ -142,6 +168,9 @@
       })
       .catch(function (err) {
         if (err.name === 'AbortError') { return; }
+        pending = null;
+        failed  = true;
+        wantGo  = null;
         /* A network failure is not a dead end: the form still works,
            so say so rather than showing an empty box. */
         list.innerHTML = '<p class="sitesearch__msg">Could not load suggestions. ' +
@@ -167,10 +196,43 @@
     return safe.replace(new RegExp('(' + needle + ')', 'ig'), '<mark>$1</mark>');
   }
 
-  function render(data, q) {
+  /* ---------- going to a result ----------
+     Results point at destinations.php#dest-<slug>, the photo card.
+     Already on destinations.php (unfiltered), only the #hash changes,
+     so the page does not reload — destinations.php listens for that
+     and scrolls to the card. Same card twice in a row fires no
+     hashchange, so it is called directly. */
+  function follow(href) {
+    var to = new URL(href, location.href);
+    var samePage = to.pathname === location.pathname && to.search === location.search;
+
+    if (samePage && to.hash) {
+      close();
+      if (to.hash === location.hash && typeof window.destShowCard === 'function') {
+        window.destShowCard(to.hash.slice(1));
+      } else {
+        location.hash = to.hash;
+      }
+      return;
+    }
+    window.location.href = to.href;
+  }
+
+  function clearPick() {
     cursor = -1;
+    picked = false;
+    list.querySelectorAll('.sitesearch__item.is-on').forEach(function (el) {
+      el.classList.remove('is-on');
+    });
+  }
+
+  function render(data, q) {
+    clearPick();
+
+    shownQ = data ? q : null;
 
     if (!data) {                       // fewer than two characters
+      wantGo = null;
       list.innerHTML = '';
       if (quick) { quick.hidden = false; }
       live.textContent = '';
@@ -180,8 +242,9 @@
     if (quick) { quick.hidden = true; }
 
     if (!data.results.length) {
+      wantGo = null;
       list.innerHTML = '<p class="sitesearch__msg">No matches for “' + esc(q) +
-                       '”. Press Enter to search the whole site.</p>';
+                       '”. Try a shorter word or another spelling.</p>';
       live.textContent = 'No results';
       return;
     }
@@ -208,6 +271,12 @@
 
     list.innerHTML = html;
     live.textContent = data.count + (data.count === 1 ? ' result' : ' results');
+
+    /* Enter was pressed while this was loading: open the top match. */
+    if (wantGo !== null && wantGo === q) {
+      wantGo = null;
+      follow(data.results[0].url);
+    }
   }
 
   /* ---------- arrow keys ---------- */
@@ -226,19 +295,16 @@
          bottom. */
       if (cursor >= items.length) { cursor = -1; }
       if (cursor < -1)            { cursor = items.length - 1; }
+      picked = cursor > -1;
 
       items.forEach(function (el, i) { el.classList.toggle('is-on', i === cursor); });
       if (cursor > -1) { items[cursor].scrollIntoView({ block: 'nearest' }); }
       return;
     }
 
-    /* Enter on a highlighted result follows it. Enter with nothing
-       highlighted submits the form, which is the default — so it is
-       left alone. */
-    if (e.key === 'Enter' && cursor > -1 && items[cursor]) {
-      e.preventDefault();
-      window.location.href = items[cursor].getAttribute('href');
-    }
+    /* Enter is NOT handled here. It reaches the form's submit event
+       below, the same place the search button goes, so the two can
+       never behave differently. */
   });
 
   /* The mouse and the keyboard fight over the highlight otherwise:
@@ -247,26 +313,89 @@
   list.addEventListener('mousemove', function (e) {
     var item = e.target.closest('.sitesearch__item');
     if (!item) { return; }
-    var items = Array.prototype.slice.call(list.querySelectorAll('.sitesearch__item'));
-    cursor = items.indexOf(item);
-    items.forEach(function (el, i) { el.classList.toggle('is-on', i === cursor); });
+    /* Visual only. This used to set cursor, so a pointer merely
+       resting where the dropdown appeared made Enter open that
+       result instead of searching. */
+    list.querySelectorAll('.sitesearch__item').forEach(function (el) {
+      el.classList.toggle('is-on', el === item);
+    });
+    cursor = -1;
+    picked = false;
+  });
+
+  /* A result on the page you are already on only changes the hash, so no
+     navigation happens and the overlay stays parked on top of the very
+     thing it just found. Closing is the navigation, in that case. */
+  list.addEventListener('click', function (e) {
+    var a = e.target.closest('.sitesearch__item, .sitesearch__more');
+    if (!a) { return; }
+
+    if (e.ctrlKey || e.metaKey || e.shiftKey || e.button > 0) { return; }
+    e.preventDefault();
+    follow(a.getAttribute('href'));
   });
 
   /* ---------- the suggested words ---------- */
 
   if (quick) {
     quick.addEventListener('click', function (e) {
-      var tag = e.target.closest('[data-search-term]');
+      /* The Popular chips are links (so they still work without JS),
+         but clicking one searches in place like typing it would,
+         instead of leaving the page. Ctrl/Cmd/middle-click still opens
+         the link in a new tab. */
+      var tag = e.target.closest('[data-search-term], .sitesearch__tag');
       if (!tag) { return; }
-      input.value = tag.getAttribute('data-search-term');
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.button > 0) { return; }
+      e.preventDefault();
+      var term = tag.getAttribute('data-search-term') || tag.textContent;
+      input.value = term.replace(/\s+/g, ' ').trim();
       input.focus();
-      input.dispatchEvent(new Event('input'));   // same path as typing it
+      clearPick();
+      run(input.value);
     });
   }
 
   /* Blank submissions would land on an empty results page for no
      reason. Keep the visitor here and let them finish the word. */
+  /* ---------- Enter and the search button ----------
+     Both land here, on every page.
+
+       arrow-key pick        -> open that result
+       results already shown -> open the TOP result
+       still loading         -> open the top result when it arrives
+       no results            -> stay, the box says "No matches"
+       request failed        -> fall back to the full results page */
   form.addEventListener('submit', function (e) {
-    if (input.value.trim() === '') { e.preventDefault(); input.focus(); }
+    var q = input.value.trim();
+
+    if (failed && q.length >= 2) { return; }   // native submit
+    e.preventDefault();
+
+    var items = list.querySelectorAll('.sitesearch__item');
+    if (picked && cursor > -1 && items[cursor]) {
+      follow(items[cursor].getAttribute('href'));
+      return;
+    }
+
+    if (q.length < 2) { input.focus(); render(null, q); return; }
+
+    if (q === shownQ && !pending) {
+      if (items.length) { follow(items[0].getAttribute('href')); }
+      return;
+    }
+
+    wantGo = q;
+    run(q);
+  });
+
+  /* Enter pressed while an IME (Japanese, Chinese, etc.) is still
+     composing only confirms the word; it must not submit. */
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.isComposing) { e.preventDefault(); }
   });
 })();
+
+/* The old "dest-focus" block that used to live here is gone. It
+   scrolled to the MAP on arrival, which pulled the page away from the
+   photo card. Arriving at #dest-<slug> is now handled at the foot of
+   destinations.php (window.destShowCard). */

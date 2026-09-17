@@ -1,0 +1,704 @@
+/* ===================================================================
+   assets/css/ai-itineraries.css
+
+   The AI-built itineraries panel on plan-trip.php.
+
+   BUILT FOR A DARK PAGE. The first version used black borders and
+   fills, which were invisible against plan-trip's dark board — the
+   rails, the fee panels and the dividers were all there and none of
+   them could be seen. Everything here is semi-transparent WHITE, so
+   it sits on the page's own background rather than fighting it.
+
+   The shape is a TIMELINE: one rail down each day, a dot per stop,
+   the time in the margin. A trip is a sequence, and a rail shows that
+   at a glance without a word of explanation.
+   =================================================================== */
+
+.ai-itins{ margin-bottom:1.25rem; }
+
+.ai-list{ list-style:none; margin:0; padding:0; max-width:52rem; margin-inline:auto; }
+.ai-item{ border-top:1px solid rgba(255,255,255,.08); }
+.ai-item:first-child{ border-top:0; }
+
+/* --- the row you click --- */
+.ai-item summary{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:.4rem .7rem;
+  padding:.9rem .4rem;
+  cursor:pointer;
+  list-style:none;
+  border-radius:8px;
+  transition:background .15s ease;
+}
+
+.ai-item summary:hover{ background:rgba(255,255,255,.04); }
+.ai-item summary::-webkit-details-marker{ display:none; }
+
+.ai-item summary::before{
+  content:'';
+  flex:0 0 auto;
+  width:0; height:0;
+  border-left:5px solid currentColor;
+  border-top:4px solid transparent;
+  border-bottom:4px solid transparent;
+  opacity:.45;
+  transition:transform .18s ease;
+}
+
+.ai-item details[open] summary::before{ transform:rotate(90deg); }
+
+.ai-name{ font-weight:650; font-size:1rem; }
+.ai-meta{ font-size:.8rem; opacity:.5; }
+
+.ai-tags{ display:flex; flex-wrap:wrap; gap:.3rem; }
+
+.ai-tags em{
+  font-style:normal;
+  font-size:.68rem;
+  font-weight:600;
+  padding:.14rem .5rem;
+  border-radius:999px;
+  background:rgba(255,110,0,.16);
+  color:#ff8f3d;
+}
+
+/* CENTRED. The timeline was pinned to the left of a container much
+   wider than it needs, leaving the content hard against one edge with
+   a field of empty dark to its right. Capping the column and centring
+   it puts the trip in the middle of the card, where the eye starts. */
+.ai-days{
+  padding:.4rem 0 1.1rem;
+  max-width:52rem;
+  margin:0 auto;
+}
+
+/* --- a day --- */
+.ai-day{ margin-bottom:1.1rem; }
+.ai-day-h{ display:flex; align-items:baseline; gap:.6rem; margin:0 0 .5rem; }
+
+.ai-day-n{
+  font-size:.74rem;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.09em;
+  color:#ff8f3d;
+}
+
+.ai-day-count{ font-size:.74rem; opacity:.4; }
+
+/* --- the rail ---
+   Drawn on the <ol>, with each stop putting a dot on it: one border
+   and one pseudo-element, so it stretches to whatever height the day
+   turns out to be. */
+.ai-stops{
+  list-style:none;
+  margin:0;
+  padding:0 0 0 .3rem;
+  border-left:2px solid rgba(255,255,255,.1);
+}
+
+.ai-stop-row{
+  position:relative;
+  display:flex;
+  align-items:flex-start;
+  gap:.75rem;
+  padding:0 0 .7rem 1.05rem;
+}
+
+/* The dot sits level with the first line of the card, not the top of
+   the row box, or it floats above the text it marks. */
+.ai-stop-row::before{
+  content:'';
+  position:absolute;
+  left:-.42rem; top:1.05rem;
+  width:9px; height:9px;
+  border-radius:50%;
+  background:#14171a;
+  border:2px solid #ff6e00;
+  z-index:1;
+}
+
+/* Fixed width and tabular figures, so the times make a column the eye
+   can run down instead of stepping in and out with each row. */
+/* The time as a chip rather than loose text: it is a label on the
+   card beside it, and at .55 opacity in the margin it read as an
+   afterthought. */
+.ai-time{
+  flex:0 0 auto;
+  margin-top:.72rem;
+  padding:.18rem .5rem;
+  border-radius:6px;
+  background:rgba(255,110,0,.13);
+  color:#ff8f3d;
+  font-size:.74rem;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:.01em;
+}
+
+.ai-stop{ display:flex; flex-direction:column; gap:.2rem; min-width:0; flex:1; }
+.ai-stop-top{ display:flex; flex-wrap:wrap; align-items:baseline; gap:.45rem; }
+.ai-stop-top b{ font-size:.94rem; }
+
+.ai-town{
+  font-size:.7rem;
+  padding:.08rem .45rem;
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  opacity:.7;
+}
+
+.ai-note{ font-size:.85rem; opacity:.7; line-height:1.5; max-width:64ch; }
+
+/* --- a stop ---
+
+   Each stop is a CARD rather than loose text. On a wide screen the old
+   version left names, notes and prices floating in a large dark space
+   with nothing holding them together, and it read as unfinished. A
+   panel gives each stop an edge, and the eye can see where one ends
+   and the next begins without counting blank lines. */
+.ai-stop{
+  flex:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:.3rem;
+  padding:.75rem .9rem .8rem;
+  background:rgba(255,255,255,.035);
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:11px;
+}
+
+.ai-stop-top{ display:flex; flex-wrap:wrap; align-items:baseline; gap:.5rem; }
+.ai-stop-top b{ font-size:.95rem; letter-spacing:-.005em; }
+
+.ai-town{
+  font-size:.68rem;
+  padding:.1rem .45rem;
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  opacity:.7;
+}
+
+.ai-note{ font-size:.84rem; opacity:.68; line-height:1.5; max-width:58ch; }
+
+/* A small label above each block inside a stop card. Two sections now
+   share that card — how to get there and what it costs — and without
+   headings they run together into one grey list. */
+.ai-sec{
+  display:block;
+  margin:.55rem 0 .1rem;
+  font-size:.63rem;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.09em;
+  opacity:.35;
+}
+
+/* --- getting there ---
+
+   Grouped by origin, one line per leg. The journey is a sequence, so
+   it is an <ol> with its own numbers rather than bullets: leg 2 only
+   makes sense after leg 1. */
+.ai-route{ border-top:1px solid rgba(255,255,255,.07); padding-top:.1rem; }
+
+.ai-route-from{ margin:.15rem 0 .35rem; }
+
+.ai-route-o{
+  display:block;
+  font-size:.74rem;
+  font-weight:650;
+  opacity:.75;
+  margin-bottom:.1rem;
+}
+
+.ai-route ol{
+  list-style:none;
+  margin:0;
+  padding:0;
+  counter-reset:leg;
+}
+
+.ai-route li{
+  position:relative;
+  padding:.14rem 0 .14rem 1.35rem;
+  font-size:.79rem;
+  opacity:.85;
+  line-height:1.5;
+  counter-increment:leg;
+}
+
+.ai-route li::before{
+  content:counter(leg);
+  position:absolute;
+  left:0; top:.24rem;
+  width:1rem; height:1rem;
+  border-radius:50%;
+  background:rgba(255,255,255,.09);
+  font-size:.6rem;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  opacity:.8;
+}
+
+/* The caveat on a leg — weather, last trip, where to catch it. Quiet,
+   but present: it is often the part that matters. */
+.ai-route li em{
+  display:block;
+  font-style:normal;
+  font-size:.71rem;
+  opacity:.45;
+  line-height:1.45;
+}
+
+/* --- fees ---
+
+   Two columns, not three, and no header. The unit moved under its own
+   label, where it belongs: it qualifies the cost, not the number. That
+   left one thing on each side — what you pay for, and how much — which
+   needs no column titles repeated above every stop on the page. */
+.ai-fees{
+  list-style:none;
+  margin:.1rem 0 0;
+  padding:0;
+  display:grid;
+  gap:0;
+}
+
+.ai-fees li{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:1.2rem;
+  padding:.42rem 0;
+  border-bottom:1px solid rgba(255,255,255,.045);
+}
+
+.ai-fees li:last-child{ border-bottom:0; }
+
+.ai-fee-l{
+  display:flex;
+  flex-direction:column;
+  gap:.05rem;
+  font-size:.82rem;
+  min-width:0;
+}
+
+/* The unit, small and quiet under its label. */
+.ai-fee-l em{
+  font-style:normal;
+  font-size:.68rem;
+  opacity:.4;
+}
+
+.ai-fee-a{
+  font-size:.85rem;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+
+/* Zero is not a price, it is the absence of one — so it is set as a
+   word, in a different colour, rather than as a number the reader has
+   to interpret. */
+.ai-fee-a.is-free{
+  font-size:.72rem;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:#4ea86b;
+}
+
+/* Costs with no rate yet: one line at the foot instead of a row each
+   saying nothing. Still shown, because an unpriced charge is still a
+   charge worth expecting. */
+.ai-fee-x{
+  margin:.45rem 0 0;
+  font-size:.72rem;
+  font-style:italic;
+  opacity:.38;
+  line-height:1.5;
+}
+
+/* --- budget --- */
+.ai-budget{
+  margin:.5rem auto 0;
+  max-width:52rem;
+  padding:.9rem 1rem;
+  border-radius:10px;
+  background:linear-gradient(180deg, rgba(255,110,0,.1), rgba(255,110,0,.04));
+  border:1px solid rgba(255,110,0,.22);
+}
+
+.ai-budget-h{
+  font-size:.72rem;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.09em;
+  color:#ff8f3d;
+  margin-bottom:.5rem;
+}
+
+.ai-budget-rows{ display:grid; gap:.3rem; }
+
+.ai-budget-rows > div{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  gap:1rem;
+  font-size:.85rem;
+  padding-bottom:.3rem;
+  border-bottom:1px dashed rgba(255,255,255,.1);
+}
+
+.ai-budget-rows > div:last-child{ border-bottom:0; }
+.ai-budget-rows b{ font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+.ai-budget-note{
+  margin:.6rem 0 0;
+  font-size:.74rem;
+  line-height:1.6;
+  opacity:.55;
+  max-width:62ch;
+}
+
+.ai-budget-none{ margin:0; font-size:.82rem; opacity:.55; }
+
+.ai-actions{ padding-top:.9rem; max-width:52rem; margin-inline:auto; }
+
+.ai-empty{ padding:.4rem .4rem 1rem; }
+.ai-empty p{ margin:0 0 .35rem; }
+.ai-empty-how{ font-size:.88rem; opacity:.65; max-width:52ch; }
+.ai-none{ font-size:.86rem; opacity:.55; }
+
+/* ===================================================================
+   CONFIRM DIALOG
+
+   Replaces confirm(), which blocks the page, cannot be styled, and
+   announces itself as "localhost says" — which on a live site reads
+   like a fault rather than a question.
+   =================================================================== */
+
+.ai-confirm{
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:14px;
+  padding:0;
+  background:#14171a;
+  color:#fff;
+  max-width:26rem;
+  box-shadow:0 30px 70px -25px rgba(0,0,0,.85);
+}
+
+/* The browser draws this; without it the page behind stays fully
+   legible and the dialog looks like it is floating for no reason. */
+.ai-confirm::backdrop{
+  background:rgba(8,10,12,.6);
+  backdrop-filter:blur(3px);
+}
+
+.ai-confirm form{ padding:1.3rem 1.4rem 1.1rem; }
+
+.ai-confirm h3{
+  margin:0 0 .4rem;
+  font-size:1.05rem;
+  font-weight:650;
+}
+
+.ai-confirm p{ margin:0 0 .3rem; font-size:.88rem; }
+
+/* The trip's own name, so there is no doubt which one is going. */
+#aiConfirmName{ font-weight:650; color:#ff8f3d; }
+
+.ai-confirm-note{ font-size:.8rem !important; opacity:.6; line-height:1.55; }
+
+.ai-confirm-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:.5rem;
+  margin-top:1.1rem;
+}
+
+.ai-btn{
+  padding:.5rem .95rem;
+  border-radius:8px;
+  font-family:inherit;
+  font-size:.85rem;
+  font-weight:600;
+  cursor:pointer;
+  border:1px solid transparent;
+}
+
+/* Keep-it is the safe choice, so it is the plain one. The destructive
+   button is the one that has to be aimed at. */
+.ai-btn--ghost{
+  background:rgba(255,255,255,.07);
+  border-color:rgba(255,255,255,.16);
+  color:#fff;
+}
+
+.ai-btn--ghost:hover{ background:rgba(255,255,255,.13); }
+
+.ai-btn--danger{ background:#c0392b; color:#fff; }
+.ai-btn--danger:hover{ background:#d84632; }
+.ai-btn:focus-visible{ outline:2px solid #ff6e00; outline-offset:2px; }
+
+/* ===================================================================
+   TOAST — replaces alert() for the outcome
+   =================================================================== */
+
+.ai-toast{
+  position:fixed;
+  left:50%;
+  bottom:1.5rem;
+  transform:translateX(-50%);
+  z-index:9999;
+  padding:.7rem 1.1rem;
+  border-radius:10px;
+  background:#14171a;
+  color:#fff;
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 18px 40px -16px rgba(0,0,0,.8);
+  font-size:.86rem;
+  animation:aiToastIn .25s ease both;
+}
+
+.ai-toast.is-bad{ border-color:rgba(192,57,43,.6); }
+
+@keyframes aiToastIn{
+  from{ opacity:0; transform:translateX(-50%) translateY(8px); }
+  to  { opacity:1; transform:translateX(-50%) translateY(0); }
+}
+
+@media (max-width:640px){
+  .ai-time{ font-size:.7rem; margin-top:.68rem; padding:.15rem .4rem; }
+  .ai-stop-row{ padding-left:.9rem; gap:.5rem; }
+  .ai-stop{ padding:.65rem .7rem .7rem; }
+
+  /* Label and amount stack rather than squeezing into two columns
+     across a phone-width card. */
+  .ai-fees li{ flex-direction:column; align-items:flex-start; gap:.1rem; }
+  .ai-fee-a{ font-size:.8rem; }
+
+  .ai-budget-rows > div{ flex-direction:column; gap:.05rem; }
+  .ai-toast{ left:.75rem; right:.75rem; transform:none; }
+  @keyframes aiToastIn{ from{opacity:0} to{opacity:1} }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .ai-toast{ animation:none; }
+  .ai-item summary, .ai-item summary::before{ transition:none; }
+}
+
+/* Which made this plan. Bud's and hand-built ones share the list, and
+   the distinction is worth a glance: one was suggested, the other
+   chosen. Bud's carries the accent; yours is neutral, because most of
+   them will be yours and a list of orange badges is no distinction at
+   all. */
+.ai-src{
+  font-size:.62rem;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.07em;
+  padding:.14rem .45rem;
+  border-radius:5px;
+  white-space:nowrap;
+}
+
+.ai-src--bud{
+  background:rgba(255,110,0,.16);
+  color:#ff8f3d;
+}
+
+.ai-src--you{
+  background:rgba(255,255,255,.08);
+  opacity:.6;
+}
+
+/* The two actions at the foot of an open plan. They share the dialog's
+   button styles, so there is one button vocabulary in this panel
+   rather than two. */
+.ai-actions{
+  display:flex;
+  gap:.5rem;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+.ai-actions .ai-btn{ text-decoration:none; display:inline-block; }
+
+@media (max-width:640px){
+  /* Full width and stacked, so neither is a small target beside a
+     destructive one. */
+  .ai-actions{ flex-direction:column; align-items:stretch; }
+  .ai-actions .ai-btn{ text-align:center; }
+}
+/* ===================================================================
+   COLLAPSIBLE DAYS  (added with assets/js/ai-day-collapse.js)
+
+   Each day header becomes a bar you can fold. Folded, the bar still
+   carries the day's time span and its first stops, so a four-day plan
+   reads as four lines — enough to find the day you want before
+   opening it.
+
+   A <button>, not a nested <details>: `.ai-item summary` above styles
+   every summary inside a plan, and would put a second triangle and
+   the row padding on each day.
+   =================================================================== */
+
+.ai-days-tools{
+  display:flex;
+  justify-content:flex-end;
+  margin:0 0 .45rem;
+}
+
+.ai-days-all{
+  border:0;
+  background:none;
+  padding:.3rem .2rem;
+  font:inherit;
+  font-size:.78rem;
+  font-weight:600;
+  color:#ff8f3d;
+  cursor:pointer;
+  border-bottom:1px solid transparent;
+}
+
+.ai-days-all:hover{ border-bottom-color:currentColor; }
+.ai-days-all:focus-visible{ outline:2px solid #ff6e00; outline-offset:2px; border-radius:4px; }
+
+/* The header was a baseline flex row with a bottom margin; the button
+   now carries the layout, so the wrapper just gets out of the way. */
+.ai-day[data-collapsible]{ margin-bottom:.5rem; }
+.ai-day[data-collapsible] > .ai-day-h{ display:block; margin:0; }
+
+.ai-day-toggle{
+  display:flex;
+  align-items:center;
+  gap:.65rem;
+  width:100%;
+  padding:.7rem .85rem;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:11px;
+  background:rgba(255,255,255,.03);
+  color:inherit;
+  font:inherit;
+  text-align:left;
+  cursor:pointer;
+  transition:background .15s ease, border-color .15s ease;
+}
+
+.ai-day-toggle:hover{ background:rgba(255,255,255,.055); border-color:rgba(255,255,255,.13); }
+.ai-day-toggle:focus-visible{ outline:2px solid #ff6e00; outline-offset:2px; }
+
+/* Open, the bar gives way to its stops: the orange edge says which
+   day you are reading while the cards below scroll past. */
+.ai-day.is-open > .ai-day-h .ai-day-toggle{
+  background:rgba(255,110,0,.07);
+  border-color:rgba(255,110,0,.28);
+}
+
+.ai-day-chev{
+  flex:0 0 auto;
+  display:grid;
+  place-items:center;
+  width:1.5rem;
+  height:1.5rem;
+  border-radius:50%;
+  background:rgba(255,255,255,.07);
+  color:rgba(255,255,255,.75);
+  transition:transform .2s ease, background .15s ease, color .15s ease;
+}
+
+.ai-day.is-open .ai-day-chev{
+  transform:rotate(90deg);
+  background:#ff6e00;
+  color:#14171a;
+}
+
+.ai-day-toggle .ai-day-n{ flex:0 0 auto; }
+.ai-day-toggle .ai-day-count{ flex:0 0 auto; font-weight:500; }
+
+/* What a folded day still shows. Hidden once open — the stops say it
+   better, and repeating them in the bar is noise. */
+.ai-day-peek{
+  flex:1;
+  min-width:0;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:.6rem;
+}
+
+.ai-day.is-open .ai-day-peek{ visibility:hidden; }
+
+.ai-day-span{
+  flex:0 0 auto;
+  font-size:.74rem;
+  font-weight:600;
+  font-variant-numeric:tabular-nums;
+  opacity:.55;
+}
+
+.ai-day-names{
+  min-width:0;
+  font-weight:500;
+  font-size:.82rem;
+  opacity:.75;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  order:-1;          /* names first, the time span flush right */
+  margin-right:auto;
+  padding-left:.35rem;
+}
+
+/* The fold. Animating grid rows from 0fr to 1fr moves to the real
+   height of the day, whatever it turns out to be, with no measuring. */
+.ai-day-body{
+  display:grid;
+  grid-template-rows:0fr;
+  transition:grid-template-rows .26s cubic-bezier(.32,.72,0,1);
+}
+
+.ai-day.is-open > .ai-day-body{ grid-template-rows:1fr; }
+
+/* The negative margin gives the rail's dots room: they sit just left
+   of the <ol>, and overflow:hidden would otherwise shave them. */
+.ai-day-inner{
+  min-height:0;
+  overflow:hidden;
+  margin-left:-.6rem;
+  padding-left:.6rem;
+}
+
+.ai-day-inner > .ai-stops{
+  margin:.8rem 0 .6rem .6rem;
+  opacity:0;
+  transition:opacity .2s ease;
+}
+
+.ai-day.is-open .ai-day-inner > .ai-stops{ opacity:1; transition-delay:.06s; }
+
+@media (max-width:640px){
+  .ai-day-toggle{ padding:.65rem .7rem; gap:.5rem; }
+  .ai-day-names{ display:none; }
+  .ai-day-inner > .ai-stops{ margin-left:.3rem; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .ai-day-body,
+  .ai-day-chev,
+  .ai-day-inner > .ai-stops{ transition:none; }
+}
+
+@media print{
+  .ai-days-tools, .ai-day-chev, .ai-day-peek{ display:none; }
+  .ai-day-body{ grid-template-rows:1fr; }
+  .ai-day-inner{ overflow:visible; }
+  .ai-day-inner > .ai-stops{ opacity:1; }
+  .ai-day-toggle{ border:0; background:none; padding:0; }
+}

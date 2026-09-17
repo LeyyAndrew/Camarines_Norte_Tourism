@@ -50,7 +50,7 @@ define('SEARCH_LOGIN_URL', 'auth/login.php');
    page of results asking them to choose again is a step they did not
    need. Anything less than an exact name still lists. Set false to
    always show the results page. */
-define('SEARCH_JUMP_ON_EXACT', true);
+define('SEARCH_JUMP_ON_EXACT', false);  /* off: the results page always lists, never redirects */
 
 /* At file scope, guarded the same way header.php guards its own call.
    A session cannot start once output has begun, so starting it lazily

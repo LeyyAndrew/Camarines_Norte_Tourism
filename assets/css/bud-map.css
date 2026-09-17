@@ -1,0 +1,799 @@
+/* ====================================================================
+   BUD.AI — MAP VIEW
+   assets/bud-map.css
+
+   Loads AFTER bud.css and only adds to it. Every rule here is either
+   scoped to .bud.is-wide — the two-pane state, which does not exist
+   without bud-map.js — or to a class bud.css has never heard of.
+
+   That is the whole safety story: with bud-map.css and bud-map.js
+   removed, .bud.is-wide is never set, none of these selectors match,
+   and the widget is the 380px chat panel it was before.
+
+   THE PANEL IS A DIALOGUE, NOT A DRAWER, once it is wide. It leaves
+   the corner, takes the middle of the screen and dims the page behind
+   it. A map you are reading a route off cannot be 380px wide, and a
+   half-covered page behind it is a distraction rather than context.
+   ==================================================================== */
+
+.bud{
+  --bud-ink:      #0a0c10;   /* the deepest surface: map, backdrop      */
+  --bud-surface:  #101317;   /* the panel itself                        */
+  --bud-raised:   #171b21;   /* things sitting on the panel: bar, chips */
+  --bud-line:     rgba(255,255,255,.09);
+  --bud-line-lit: rgba(255,255,255,.18);
+  --bud-text:     #e9ebee;
+  --bud-dim:      rgba(255,255,255,.55);
+  --bud-accent:   var(--orange, #FF6E00);
+}
+
+/* ====================================================================
+   1. THE WIDE PANEL
+   ==================================================================== */
+
+/* The drag handler writes an inline transform on .bud so the launcher
+   can be parked anywhere. That offset has to stop applying while the
+   panel is a centred dialogue, and an inline style is the one thing a
+   class cannot outrank without this. */
+.bud.is-wide{ transform:none !important; }
+
+/* The launcher steps aside. Its job is to open the panel and to be a
+   close button while the panel is a corner drawer; a centred dialogue
+   has its own close button in the header, and a second one floating
+   over the map is just something else to hit by mistake. */
+.bud.is-wide.is-open .bud__launcher{
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:opacity .2s ease, visibility .2s;
+}
+
+/* Dimmer. On .bud rather than a new element, so it cannot end up
+   orphaned in the DOM if the script is removed. */
+.bud.is-wide.is-open::before{
+  content:'';
+  position:fixed; inset:0;
+  background:rgba(4,6,9,.62);
+  backdrop-filter:blur(3px);
+  -webkit-backdrop-filter:blur(3px);
+  z-index:-1;
+  animation:budFade .3s ease both;
+}
+
+@keyframes budFade{ from{ opacity:0 } to{ opacity:1 } }
+
+.bud.is-wide .bud__panel{
+  position:fixed;
+  /* Centred, and capped so it does not stretch to a 34-inch monitor.
+     max() keeps the side margin at 3vw until the cap starts biting. */
+  inset:4vh max(3vw, calc((100vw - 1360px) / 2));
+  width:auto; height:auto;
+  border-radius:20px;
+  background:var(--bud-surface);
+  border-color:var(--bud-line-lit);
+  box-shadow:0 40px 120px -30px rgba(0,0,0,.9);
+  transform-origin:center;
+}
+
+.bud.is-wide .bud__panel[hidden]{ display:none; }
+
+/* ---- header ---- */
+
+.bud.is-wide .bud__head{
+  padding:.8rem 1rem .8rem 1.1rem;
+  background:transparent;
+  gap:.7rem;
+}
+
+.bud.is-wide .bud__head-avatar{ width:32px; height:32px; }
+.bud.is-wide .bud__head-name{ font-size:.92rem; }
+.bud.is-wide .bud__head-role{ font-size:.7rem; }
+
+/* Expand / collapse. Sits next to the close button and is the only new
+   control in the header at desktop width. */
+.bud__wide-btn{
+  margin-left:auto;
+  width:32px; height:32px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  border:1px solid var(--bud-line-lit);
+  border-radius:999px;
+  background:transparent; color:#fff; cursor:pointer;
+  transition:background .2s ease, border-color .2s ease;
+}
+
+.bud__wide-btn:hover{ background:rgba(255,255,255,.09); }
+.bud__wide-btn:focus-visible{ outline:2px solid var(--bud-accent); outline-offset:2px; }
+.bud__wide-btn svg{ width:14px; height:14px; }
+.bud__wide-btn[aria-pressed="true"]{
+  border-color:var(--bud-accent);
+  color:var(--bud-accent);
+}
+
+/* The close button no longer needs to push itself right — the expand
+   button took that job. */
+.bud__wide-btn ~ .bud__close{ margin-left:0; }
+
+/* ====================================================================
+   2. THE SPLIT
+
+   .bud__split is a plain wrapper in compact mode: one column, map
+   hidden, and the panel behaves exactly as it always did.
+   ==================================================================== */
+
+.bud__split{
+  flex:1; min-height:0;
+  display:flex;
+  overflow:hidden;
+}
+
+.bud__chat{
+  flex:1; min-width:0; min-height:0;
+  display:flex; flex-direction:column;
+}
+
+.budmap{ display:none; }
+
+@media (min-width:901px){
+  .bud.is-wide .bud__chat{
+    flex:0 0 46%;
+    border-right:1px solid var(--bud-line);
+  }
+
+  .bud.is-wide .budmap{
+    display:flex; flex-direction:column;
+    flex:1; min-width:0;
+    position:relative;
+    background:var(--bud-ink);
+  }
+
+  /* The segmented Chat / Map switch is only for screens that cannot
+     show both panes at once. */
+  .bud.is-wide .bud__seg{ display:none; }
+}
+
+/* ====================================================================
+   3. THE CONVERSATION, WIDE
+
+   At 380px a chat is two columns of bubbles, because bubbles are what
+   make a narrow column readable. At 620px it is a document: the reply
+   is the widest thing on screen, so it drops the bubble, keeps a
+   comfortable measure, and identifies its speaker with a small mark in
+   the margin instead of a coloured background.
+   ==================================================================== */
+
+@media (min-width:901px){
+  .bud.is-wide .bud__log{
+    padding:1.4rem 1.6rem 1.8rem;
+    gap:1.5rem;
+  }
+
+  .bud.is-wide .bud__msg{
+    /* The padding holds the avatar in the margin, so it has to be
+       inside the 100% that .bud__msg--wide sets. Stated here rather
+       than assumed from a global reset — this file has to be able to
+       land in a project that does not have one. */
+    box-sizing:border-box;
+    max-width:none;
+    width:100%;
+    align-self:stretch;
+    position:relative;
+    padding:0 0 0 2.6rem;
+    border-radius:0;
+    background:transparent;
+    font-size:.93rem;
+    line-height:1.72;
+  }
+
+  .bud.is-wide .bud__msg--bot{ color:var(--bud-text); }
+
+  .bud.is-wide .bud__msg--user{
+    color:#fff;
+    font-size:1.02rem;
+    line-height:1.5;
+    padding-bottom:.9rem;
+    border-bottom:1px solid var(--bud-line);
+  }
+
+  /* The mark in the margin. A ring with a spark for Bud, a plain ring
+     with an initial for the visitor — enough to tell two voices apart
+     without a label on every line. */
+  .bud.is-wide .bud__msg::before{
+    content:'';
+    position:absolute; left:0; top:.15rem;
+    width:26px; height:26px;
+    border-radius:999px;
+    background-repeat:no-repeat;
+    background-position:center;
+    background-size:14px 14px;
+  }
+
+  .bud.is-wide .bud__msg--bot::before{
+    background-color:var(--bud-accent);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fff'%3E%3Cpath d='M12 2.6l1.9 5.3 5.5 2-5.5 2-1.9 5.3-1.9-5.3-5.5-2 5.5-2z'/%3E%3C/svg%3E");
+  }
+
+  .bud.is-wide .bud__msg--user::before{
+    background-color:rgba(255,255,255,.1);
+    border:1px solid var(--bud-line-lit);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='1.9' stroke-linecap='round'%3E%3Ccircle cx='12' cy='8.5' r='3.4'/%3E%3Cpath d='M5.5 20a6.5 6.5 0 0 1 13 0'/%3E%3C/svg%3E");
+  }
+
+  .bud.is-wide .bud__msg p + p{ margin-top:.7rem; }
+
+  /* Section headings in a reply get room to breathe once there is room
+     to give them. */
+  .bud.is-wide .bud__h{
+    font-size:.8rem;
+    letter-spacing:.01em;
+    margin-top:1.1rem;
+  }
+
+  .bud.is-wide .bud__compose{
+    padding:1rem 1.6rem 1.2rem;
+    background:transparent;
+  }
+
+  .bud.is-wide .bud__input{
+    padding:.9rem 1.1rem;
+    font-size:.9rem;
+    background:var(--bud-raised);
+    border-color:var(--bud-line-lit);
+  }
+
+  .bud.is-wide .bud__send{ width:42px; height:42px; }
+}
+
+/* ====================================================================
+   4. PLACE NAMES IN A REPLY
+
+   Every one of the 24 that Bud names becomes a control that moves the
+   map to it. It is set as running text with a glyph, not as a button,
+   because it is a word in a sentence first and a control second.
+   ==================================================================== */
+
+.bud__ref{
+  display:inline;
+  padding:0;
+  border:0;
+  background:none;
+  font:inherit;
+  color:#fff;
+  font-weight:600;
+  cursor:pointer;
+  border-bottom:1px solid rgba(255,110,0,.45);
+  transition:border-color .18s ease, color .18s ease;
+}
+
+.bud__ref svg{
+  width:.92em; height:.92em;
+  margin-right:.22em;
+  vertical-align:-.1em;
+  color:var(--bud-accent);
+}
+
+.bud__ref:hover{ color:var(--bud-accent); border-bottom-color:var(--bud-accent); }
+.bud__ref:focus-visible{
+  outline:2px solid var(--bud-accent);
+  outline-offset:2px;
+  border-radius:3px;
+}
+
+/* ====================================================================
+   5. PHOTO CARDS
+
+   bud.css already draws these. This adds the two controls in the top
+   corner and, at width, lets a card be a picture rather than a
+   thumbnail.
+   ==================================================================== */
+
+.bud__place{ position:relative; }
+
+.bud__place-tools{
+  position:absolute; top:.5rem; right:.5rem;
+  display:flex; gap:.35rem;
+  opacity:0;
+  transform:translateY(-3px);
+  transition:opacity .2s ease, transform .2s ease;
+}
+
+/* Always visible on touch, where there is no hover to reveal them. */
+.bud__place:hover .bud__place-tools,
+.bud__place:focus-within .bud__place-tools,
+.bud__place-save.is-on{ opacity:1; transform:none; }
+
+@media (hover:none){
+  .bud__place-tools{ opacity:1; transform:none; }
+}
+
+.bud__place-save,
+.bud__place-locate{
+  width:30px; height:30px;
+  display:flex; align-items:center; justify-content:center;
+  border:0; border-radius:999px;
+  background:rgba(10,12,16,.72);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  color:#fff; cursor:pointer;
+  transition:background .18s ease, transform .18s ease, color .18s ease;
+}
+
+.bud__place-save svg,
+.bud__place-locate svg{ width:15px; height:15px; }
+
+.bud__place-save:hover,
+.bud__place-locate:hover{ background:rgba(10,12,16,.92); transform:scale(1.08); }
+
+.bud__place-save:focus-visible,
+.bud__place-locate:focus-visible{ outline:2px solid #fff; outline-offset:2px; }
+
+/* Saved reads as filled, not as a different colour of outline — the
+   one place in the widget where a control changes state on its own. */
+.bud__place-save.is-on{
+  color:var(--bud-accent);
+  opacity:1;
+}
+.bud__place-save.is-on svg{ fill:currentColor; }
+
+@media (min-width:901px){
+  .bud.is-wide .bud__places{ gap:.7rem; margin-top:.9rem; }
+  .bud.is-wide .bud__place{ flex:1 1 0; min-width:0; }
+  .bud.is-wide .bud__place-img{ height:140px; }
+}
+
+/* ====================================================================
+   6. THE MAP PANE
+   ==================================================================== */
+
+.budmap__bar{
+  position:absolute; top:0; left:0; right:0;
+  z-index:600;                       /* over the tiles, under a popup */
+  display:flex; align-items:center; gap:.5rem;
+  padding:.85rem .9rem;
+  background:linear-gradient(to bottom, rgba(10,12,16,.9), rgba(10,12,16,0));
+  pointer-events:none;               /* the gradient must not eat drags */
+}
+
+.budmap__chips{
+  display:flex; gap:.35rem;
+  overflow-x:auto;
+  scrollbar-width:none;
+  pointer-events:auto;
+}
+.budmap__chips::-webkit-scrollbar{ display:none; }
+
+.budmap__chip{
+  flex-shrink:0;
+  padding:.42rem .75rem;
+  border:1px solid var(--bud-line-lit);
+  border-radius:999px;
+  background:rgba(16,19,23,.82);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  color:var(--bud-dim);
+  font-family:inherit; font-size:.76rem; font-weight:500;
+  white-space:nowrap; cursor:pointer;
+  transition:color .18s ease, border-color .18s ease, background .18s ease;
+}
+
+.budmap__chip:hover{ color:#fff; border-color:rgba(255,255,255,.3); }
+.budmap__chip:focus-visible{ outline:2px solid var(--bud-accent); outline-offset:2px; }
+
+.budmap__chip.is-on{
+  color:#fff;
+  background:rgba(255,110,0,.16);
+  border-color:var(--bud-accent);
+}
+
+.budmap__saved{
+  margin-left:auto;
+  flex-shrink:0;
+  display:flex; align-items:center; gap:.3rem;
+  padding:.42rem .7rem;
+  border:1px solid var(--bud-line-lit);
+  border-radius:999px;
+  background:rgba(16,19,23,.82);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  color:#fff;
+  font-family:inherit; font-size:.76rem; font-weight:500;
+  cursor:pointer; pointer-events:auto;
+  transition:border-color .18s ease, background .18s ease;
+}
+
+.budmap__saved svg{ width:13px; height:13px; color:var(--bud-accent); }
+.budmap__saved.is-on{ border-color:var(--bud-accent); background:rgba(255,110,0,.16); }
+.budmap__saved.is-on svg{ fill:currentColor; }
+.budmap__saved:focus-visible{ outline:2px solid var(--bud-accent); outline-offset:2px; }
+.budmap__saved[hidden]{ display:none; }
+
+.budmap__canvas{
+  flex:1; min-height:0;
+  background:var(--bud-ink);
+}
+
+/* Before Leaflet arrives, and if it never does. Both states say what
+   is happening in the same place, so neither is a blank rectangle. */
+.budmap__canvas.is-loading::after{
+  content:'Loading the map\2026';
+  display:flex; align-items:center; justify-content:center;
+  height:100%;
+  color:var(--bud-dim); font-size:.82rem;
+}
+
+.budmap__canvas.is-failed{
+  display:flex; align-items:center; justify-content:center;
+  padding:2rem;
+}
+
+.budmap__fail{
+  max-width:30ch;
+  text-align:center;
+  color:var(--bud-dim);
+  font-size:.82rem; line-height:1.65;
+}
+
+.budmap__retry{
+  margin:.9rem 0 .8rem;
+  padding:.55rem 1.1rem;
+  border:1px solid var(--bud-line-lit);
+  border-radius:999px;
+  background:var(--bud-raised);
+  color:#fff;
+  font-family:inherit; font-size:.78rem; font-weight:600;
+  cursor:pointer;
+  transition:border-color .18s ease, background .18s ease;
+}
+
+.budmap__retry:hover{ border-color:var(--bud-accent); background:rgba(255,110,0,.14); }
+.budmap__retry:focus-visible{ outline:2px solid var(--bud-accent); outline-offset:2px; }
+
+/* The way out of the problem for good, kept quieter than the button
+   that might fix it right now. */
+.budmap__fail-hint{
+  font-size:.74rem;
+  color:rgba(255,255,255,.38);
+}
+
+/* ====================================================================
+   7. LEAFLET SKIN
+
+   Leaflet ships a light theme built for a white page. Everything below
+   is the part that would otherwise sit as a white box on a dark map.
+   ==================================================================== */
+
+/* OpenStreetMap's tiles are drawn for a white page. Inverting the hue
+   wheel by half a turn after inverting the lightness gives back roughly
+   the original colours — green stays green, water stays blue — on a
+   dark ground. Saturation and contrast come down because a straight
+   inversion is louder than anything else in the panel.
+
+   On the tile pane only. Leaflet keeps markers, popups and controls in
+   sibling panes, so none of them are touched by this. */
+.bud .budmap--invert .leaflet-tile-pane{
+  filter:invert(1) hue-rotate(180deg) brightness(.94) contrast(.86) saturate(.62);
+}
+
+.bud .leaflet-container{
+  background:var(--bud-ink);
+  font-family:inherit;
+  outline:none;
+}
+
+.bud .leaflet-control-attribution{
+  background:rgba(10,12,16,.72);
+  color:rgba(255,255,255,.45);
+  font-size:10px;
+  padding:2px 6px;
+  border-radius:4px 0 0 0;
+}
+.bud .leaflet-control-attribution a{ color:rgba(255,255,255,.7); }
+
+.bud .leaflet-control-zoom a{
+  background:rgba(16,19,23,.88);
+  color:#fff;
+  border:1px solid var(--bud-line-lit);
+  border-radius:8px;
+  width:32px; height:32px; line-height:30px;
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+}
+.bud .leaflet-control-zoom a:hover{ background:rgba(30,35,42,.95); color:#fff; }
+.bud .leaflet-control-zoom{ border:0; box-shadow:none; }
+.bud .leaflet-control-zoom a:first-child{ margin-bottom:5px; }
+
+/* ---- pins ----
+
+   A dot for each of the 24, and the name only on the ones being talked
+   about or pointed at. Twenty-four labels at province zoom is not a map,
+   it is a paragraph — the label is the reward for asking about a place,
+   which is also what the chat is for. */
+
+.bud .budpin{
+  width:0 !important; height:0 !important;
+  background:none; border:0;
+}
+
+.budpin__in{
+  position:absolute; left:0; top:0;
+  transform:translate(-14px,-14px);
+  display:flex; align-items:center; gap:.4rem;
+  padding:3px;
+  border-radius:999px;
+  background:rgba(10,12,16,.55);
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+  transition:transform .22s cubic-bezier(.16,.84,.44,1), background .22s ease;
+}
+
+.budpin__dot{
+  width:28px; height:28px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:999px;
+  background:#1b2027;
+  border:1.5px solid rgba(255,255,255,.28);
+  color:#fff;
+  box-shadow:0 3px 10px rgba(0,0,0,.5);
+  transition:background .2s ease, border-color .2s ease, color .2s ease;
+}
+
+.budpin__dot svg{ width:14px; height:14px; }
+
+.budpin__label{
+  max-width:0;
+  overflow:hidden;
+  white-space:nowrap;
+  font-size:.74rem; font-weight:600; letter-spacing:.005em;
+  color:#fff;
+  opacity:0;
+  transition:max-width .28s cubic-bezier(.16,.84,.44,1), opacity .2s ease, padding .28s ease;
+}
+
+.bud .budpin:hover .budpin__label,
+.bud .budpin:focus .budpin__label,
+.bud .budpin.is-live .budpin__label{
+  max-width:190px;
+  opacity:1;
+  padding-right:.55rem;
+}
+
+.bud .budpin:hover .budpin__in{ transform:translate(-14px,-16px); }
+
+/* The ones the current reply is about. */
+.bud .budpin.is-live{ z-index:900 !important; }
+
+.bud .budpin.is-live .budpin__in{
+  background:rgba(255,110,0,.92);
+  transform:translate(-14px,-16px);
+}
+
+.bud .budpin.is-live .budpin__dot{
+  background:#fff;
+  border-color:#fff;
+  color:var(--bud-accent);
+}
+
+.bud .budpin.is-hidden{ display:none; }
+
+.bud .budpin:focus-visible{ outline:none; }
+.bud .budpin:focus-visible .budpin__dot{
+  outline:2px solid #fff;
+  outline-offset:2px;
+}
+
+/* ---- popup ---- */
+
+.bud .budpop .leaflet-popup-content-wrapper{
+  background:var(--bud-raised);
+  color:var(--bud-text);
+  border:1px solid var(--bud-line-lit);
+  border-radius:14px;
+  box-shadow:0 20px 50px -18px rgba(0,0,0,.9);
+  padding:0; overflow:hidden;
+}
+
+.bud .budpop .leaflet-popup-content{ margin:0; width:220px !important; }
+.bud .budpop .leaflet-popup-tip{ background:var(--bud-raised); }
+.bud .budpop .leaflet-popup-close-button{
+  color:rgba(255,255,255,.6);
+  width:26px; height:26px; padding:5px 0 0 0;
+  font-size:18px;
+}
+.bud .budpop .leaflet-popup-close-button:hover{ color:#fff; background:none; }
+
+.budcard__img{
+  display:block;
+  width:100%; height:110px;
+  object-fit:cover;
+  background:linear-gradient(135deg,#232a33,#141922);
+}
+
+.budcard__body{ padding:.65rem .75rem .75rem; display:flex; flex-direction:column; gap:.15rem; }
+
+.budcard__name{
+  font-family:var(--font-display, inherit);
+  font-size:.88rem; font-weight:600; color:#fff; line-height:1.3;
+}
+
+.budcard__town{ font-size:.72rem; color:var(--bud-dim); }
+
+.budcard__ask{
+  margin-top:.5rem;
+  padding:.5rem .7rem;
+  border:0; border-radius:999px;
+  background:var(--bud-accent);
+  color:#fff;
+  font-family:inherit; font-size:.75rem; font-weight:600;
+  cursor:pointer;
+  transition:filter .18s ease;
+}
+.budcard__ask:hover{ filter:brightness(1.1); }
+.budcard__ask:focus-visible{ outline:2px solid #fff; outline-offset:2px; }
+
+/* ====================================================================
+   8. NARROW SCREENS
+
+   Under 900px there is no room for two panes side by side, so they
+   become two views of one panel and the header carries the switch. The
+   map keeps full height rather than being squeezed into a strip: a map
+   worth opening is a map worth looking at.
+   ==================================================================== */
+
+.bud__seg{
+  display:flex;
+  margin-left:auto;
+  padding:2px;
+  border:1px solid var(--bud-line-lit);
+  border-radius:999px;
+  background:rgba(255,255,255,.04);
+}
+
+.bud__seg-btn{
+  padding:.32rem .7rem;
+  border:0; border-radius:999px;
+  background:transparent;
+  color:var(--bud-dim);
+  font-family:inherit; font-size:.74rem; font-weight:600;
+  cursor:pointer;
+  transition:background .18s ease, color .18s ease;
+}
+
+.bud__seg-btn.is-on{ background:rgba(255,255,255,.12); color:#fff; }
+.bud__seg-btn:focus-visible{ outline:2px solid var(--bud-accent); outline-offset:1px; }
+
+/* Hidden until there is a map to switch to. */
+.bud:not(.is-wide) .bud__seg{ display:none; }
+.bud:not(.is-wide) .bud__wide-btn{ margin-left:auto; }
+
+@media (max-width:900px){
+  .bud.is-wide .bud__panel{
+    inset:.6rem .6rem 1rem;
+    border-radius:16px;
+  }
+
+  .bud.is-wide .bud__split{ position:relative; }
+
+  .bud.is-wide .budmap{
+    display:flex; flex-direction:column;
+    position:absolute; inset:0;
+    background:var(--bud-ink);
+    opacity:0; visibility:hidden;
+    transition:opacity .25s ease, visibility .25s;
+  }
+
+  .bud.is-wide.show-map .budmap{ opacity:1; visibility:visible; }
+  .bud.is-wide.show-map .bud__chat{ visibility:hidden; }
+
+  /* The greeting and the launcher badge have no business on top of a
+     full-screen map. */
+  .bud.is-wide.is-open .bud__greet{ display:none !important; }
+}
+
+/* On the smallest screens the header runs out of room before the
+   controls do. The role line is the first thing that can go: the name
+   and the avatar already say who this is. */
+@media (max-width:420px){
+  .bud.is-wide .bud__head-role{ display:none; }
+  .bud.is-wide .bud__head-avatar{ width:30px; height:30px; }
+  .bud__seg-btn{ padding:.3rem .55rem; font-size:.7rem; }
+}
+
+/* ====================================================================
+   9. REDUCED MOTION
+
+   The flyTo is handled in the script; these are the CSS-side moves.
+   ==================================================================== */
+
+@media (prefers-reduced-motion:reduce){
+  .bud.is-wide.is-open::before{ animation:none; }
+  .budpin__in,
+  .budpin__label,
+  .bud__place-tools,
+  .bud__place-save,
+  .bud__place-locate,
+  .budmap__chip,
+  .bud__wide-btn,
+  .bud__seg-btn{ transition:none; }
+
+  .bud .budpin:hover .budpin__in,
+  .bud .budpin.is-live .budpin__in{ transform:translate(-14px,-14px); }
+}
+/* ====================================================================
+   PHONES — THE MAP SITS UNDER THE CHAT
+
+   Above this width nothing changes: Chat | Map still switches panes,
+   and the expand button still opens the side-by-side view.
+
+   Below it there is no switching. The panel splits into two rows —
+   conversation on top, map beneath — and both are on screen at once.
+   A 390px panel is too narrow to show them side by side and too small
+   to make somebody choose a tab to see where a place is.
+
+   The proportions: the map takes 40%, floored at 170px. Much less and
+   it is a decorative strip rather than something you can read a
+   coastline from; much more and the chat holds two messages.
+   ==================================================================== */
+@media (max-width:600px){
+
+  /* Column, not row. position:static undoes the overlay the 900px
+     block sets up for the Chat/Map switch — there is no overlay here,
+     the two panes are siblings in a stack. */
+  .bud .bud__split,
+  .bud.is-wide .bud__split{
+    flex-direction:column;
+    position:static;
+  }
+
+  .bud .bud__chat,
+  .bud.is-wide .bud__chat,
+  .bud.is-wide.show-map .bud__chat{
+    flex:1 1 auto;
+    min-height:0;
+    /* The switch hides one pane by visibility. Both are wanted here,
+       and this has to outrank .bud.is-wide.show-map .bud__chat. */
+    visibility:visible;
+  }
+
+  .bud .budmap,
+  .bud.is-wide .budmap,
+  .bud.is-wide.show-map .budmap{
+    display:flex;
+    flex-direction:column;
+
+    /* RELATIVE, not static. .budmap__bar is absolute at top:0 and
+       needs this element to be its containing block — with static it
+       escaped to the panel and the filter chips landed on top of the
+       Bud.Ai header. In flow like static, but still a positioning
+       context. */
+    position:relative;
+    inset:auto;
+    opacity:1;
+    visibility:visible;
+
+    flex:0 0 40%;
+    min-height:170px;
+    border-top:1px solid var(--bud-line);
+    background:var(--bud-ink);
+  }
+
+  /* Nothing left to switch between. */
+  .bud__seg{ display:none !important; }
+
+  /* The canvas has to fill its row rather than a fixed height, or the
+     map ends up shorter than the pane holding it and Leaflet measures
+     against the gap. */
+  .budmap .budmap__canvas{
+    flex:1;
+    min-height:0;
+  }
+}
+
+/* Landscape on a phone: the panel is short, and a map taking 40% of
+   360px leaves the conversation unusable. It becomes a strip instead —
+   still enough to see which coast a place is on. */
+@media (max-width:900px) and (max-height:480px){
+  .bud .budmap,
+  .bud.is-wide .budmap{
+    flex:0 0 34%;
+    min-height:120px;
+  }
+}

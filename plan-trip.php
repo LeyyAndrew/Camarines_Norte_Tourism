@@ -175,6 +175,22 @@ $ptSignedIn = isset($_SESSION['user_id']);
 
   <div class="pt-wrap pt-board">
 
+    <!-- ---------- AI-BUILT ITINERARIES ----------
+         The plans Bud has made for this visitor, above the builder
+         because someone arriving from Bud's "Open Plan your trip"
+         button is here to see one, not to start another.
+
+         Server-rendered inside includes/ai-itineraries.php. It reads
+         its own rows rather than calling save-itinerary.php, so the
+         panel is complete on first paint and does not depend on
+         plan-trip.js having loaded. -->
+    <?php
+    $ptAiPanel = pt_find('ai-itineraries.php');
+    if ($ptAiPanel !== null) {
+        require $ptAiPanel;
+    }
+    ?>
+
     <!-- ---------- TRIP DETAILS ---------- -->
     <section class="pt-card">
       <div class="pt-card-h">
@@ -325,6 +341,11 @@ $ptSignedIn = isset($_SESSION['user_id']);
    searching happen without a round trip. HEX_TAG matters: a place
    name containing </script> would otherwise close this block early. */
 ?>
+<!-- The header derives assets/css/plan-trip.css from this page's own
+     name, so a second sheet has to be asked for by hand. Printed here
+     rather than in the header: no other page needs it. -->
+<link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('assets/css/ai-itineraries.css')) ?>">
+
 <script>
 window.PT_DATA = {
   destinations: <?= json_encode($destinations, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>,
@@ -335,6 +356,9 @@ window.PT_DATA = {
 };
 </script>
 <script src="<?= htmlspecialchars(assetUrl('assets/js/plan-trip.js')) ?>" defer></script>
+<!-- Folds each day of a saved plan. Separate from plan-trip.js because
+     the panel it works on is server-rendered and does not need the builder. -->
+<script src="<?= htmlspecialchars(assetUrl('assets/js/ai-day-collapse.js')) ?>" defer></script>
 
 <?php
 /* A missing footer is survivable — everything above it has already

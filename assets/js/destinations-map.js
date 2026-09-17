@@ -82,137 +82,191 @@
 
   function buildSheet() {
     sheet = document.createElement('div');
-    sheet.className = 'dest-sheet';
-    sheet.id = 'destSheet';
+    sheet.className = 'dest-modal';
+    sheet.id = 'destModal';
     sheet.hidden = true;
     sheet.innerHTML =
-      '<div class="dest-sheet__scrim" data-sheet-close></div>' +
-      '<div class="dest-sheet__panel" role="dialog" aria-modal="true"' +
-      '     aria-labelledby="destSheetName" tabindex="-1">' +
-      '  <button type="button" class="dest-sheet__x" data-sheet-close aria-label="Close">' +
+      '<div class="dest-modal__scrim" data-sheet-close></div>' +
+      '<div class="dest-modal__panel" role="dialog" aria-modal="true"' +
+      '     aria-labelledby="destModalName" tabindex="-1">' +
+      '  <button type="button" class="dest-modal__x" data-sheet-close aria-label="Close">' +
       '    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
       '      <line x1="6" y1="6" x2="18" y2="18"></line>' +
       '      <line x1="18" y1="6" x2="6" y2="18"></line>' +
       '    </svg>' +
       '  </button>' +
-      '  <div class="dest-sheet__scroll"></div>' +
+      '  <div class="dest-modal__scroll"></div>' +
       '</div>';
     document.body.appendChild(sheet);
-    panel = sheet.querySelector('.dest-sheet__panel');
+    panel = sheet.querySelector('.dest-modal__panel');
 
     sheet.addEventListener('click', function (e) {
       if (e.target.closest('[data-sheet-close]')) closeSheet();
     });
   }
 
-  /* one section of the sheet: an orange-ruled label and a list.
-     Returns '' when there is nothing to show, so a destination with
-     no food notes simply has no food heading rather than an empty
-     one — an empty heading reads as a page that failed to load. */
-  function section(label, items, cls) {
-    if (!items || !items.length) return '';
-    return '<section class="dest-sheet__block' + (cls ? ' ' + cls : '') + '">' +
-           '<h3 class="dest-sheet__label">' + esc(label) + '</h3>' +
-           '<ul class="dest-sheet__list">' +
-           items.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') +
-           '</ul></section>';
+  /* =================================================================
+     THE POPUP'S CONTENT
+
+     Laid out like a destination page on a tourism board site:
+
+       HERO     the photograph, full width, with the category, the
+                town, the name and the pull quote set over it
+       MAIN     the description, then Getting there as a numbered
+                route, then What to eat
+       SIDE     "Plan your visit": the highlights and the two actions,
+                then booking and contact. Sticky on a wide screen so
+                Directions is never more than a glance away.
+
+     On a phone the side column drops under the main one, and the two
+     actions move to a bar pinned at the bottom of the popup instead.
+     ================================================================= */
+
+  /* Small line icons, drawn inline so there is nothing to load. All
+     24x24, stroke only, coloured by currentColor. */
+  var ICON = {
+    pin:   '<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+    route: '<circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/>',
+    food:  '<path d="M4 3v7a3 3 0 0 0 3 3v8M7 3v6M10 3v7a3 3 0 0 1-3 3"/><path d="M17 21V3c-2.2 1.2-3.5 3.8-3.5 7v3H17"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    phone: '<path d="M5 4h3.5l1.8 4.5-2.3 1.4a11 11 0 0 0 6.1 6.1l1.4-2.3L20 15.5V19a1.5 1.5 0 0 1-1.6 1.5A16.5 16.5 0 0 1 3.5 5.6 1.5 1.5 0 0 1 5 4z"/>',
+    mail:  '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/>',
+    link:  '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>',
+    org:   '<path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6M3 21h18"/>',
+    nav:   '<path d="M3 11l18-8-8 18-2-8-8-2z"/>',
+    map:   '<path d="M9 4L3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4z"/><path d="M9 4v13.5M15 6.5V20"/>',
+    info:  '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.8v.2"/>'
+  };
+  function icon(name) {
+    return '<svg class="dest-modal__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+           ICON[name] + '</svg>';
   }
 
-  /* The booking block. Falls back to the provincial contact set in
+  function heading(label, ico) {
+    return '<h3 class="dest-modal__label">' +
+           (ico ? '<span class="dest-modal__labelicon">' + icon(ico) + '</span>' : '') +
+           esc(label) + '</h3>';
+  }
+
+  /* One section of the main column. Returns '' when there is nothing
+     to show. ordered: "Getting there" is a sequence of steps, so it is
+     drawn as a numbered route; "What to eat" is not. */
+  function section(label, items, ico, ordered) {
+    if (!items || !items.length) return '';
+    var list = ordered ? 'ol' : 'ul';
+    return '<section class="dest-modal__block">' +
+           heading(label, ico) +
+           '<' + list + ' class="' + (ordered ? 'dest-modal__route' : 'dest-modal__eats') + '">' +
+           items.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') +
+           '</' + list + '></section>';
+  }
+
+  /* Shown in place of a section that has no data yet. Says what is
+     missing and where to ask, rather than "coming soon". */
+  function pending(label, ico) {
+    return '<section class="dest-modal__block">' +
+           heading(label, ico) +
+           '<p class="dest-modal__pending">' + icon('info') +
+           '<span>Details are being confirmed with the municipal tourism office. ' +
+           'Contact the provincial tourism office before you travel.</span></p>' +
+           '</section>';
+  }
+
+  /* The booking card. Falls back to the provincial contact set in
      includes/destination-details.php whenever a destination has no
-     operator of its own, which is most of them today. */
+     operator of its own. */
   function bookingBlock(p) {
     var b = p.book || {};
     var rows = [];
 
-    if (b.org)   rows.push('<li class="dest-sheet__who">' + esc(b.org) + '</li>');
-    if (b.phone) rows.push('<li><a href="tel:' + esc(b.phone.replace(/[^\d+]/g, '')) + '">' + esc(b.phone) + '</a></li>');
-    if (b.email) rows.push('<li><a href="mailto:' + esc(b.email) + '">' + esc(b.email) + '</a></li>');
-    if (b.fb)    rows.push('<li><a href="' + esc(b.fb) + '" target="_blank" rel="noopener">Facebook page</a></li>');
+    if (b.phone) rows.push('<li>' + icon('phone') + '<a href="tel:' + esc(b.phone.replace(/[^\d+]/g, '')) + '">' + esc(b.phone) + '</a></li>');
+    if (b.email) rows.push('<li>' + icon('mail') + '<a href="mailto:' + esc(b.email) + '">' + esc(b.email) + '</a></li>');
+    if (b.fb)    rows.push('<li>' + icon('link') + '<a href="' + esc(b.fb) + '" target="_blank" rel="noopener">Facebook page</a></li>');
 
     var packs = '';
     if (b.packages && b.packages.length) {
-      packs = '<ul class="dest-sheet__packs">' + b.packages.map(function (k) {
+      packs = '<ul class="dest-modal__packs">' + b.packages.map(function (k) {
         return '<li>' +
-               '<span class="dest-sheet__pack-name">' + esc(k.name || '') + '</span>' +
-               (k.detail ? '<span class="dest-sheet__pack-detail">' + esc(k.detail) + '</span>' : '') +
-               (k.price  ? '<span class="dest-sheet__pack-price">' + esc(k.price)  + '</span>' : '') +
+               '<span class="dest-modal__pack-name">' + esc(k.name || '') + '</span>' +
+               (k.price  ? '<span class="dest-modal__pack-price">' + esc(k.price)  + '</span>' : '') +
+               (k.detail ? '<span class="dest-modal__pack-detail">' + esc(k.detail) + '</span>' : '') +
                '</li>';
       }).join('') + '</ul>';
     }
 
-    if (!rows.length && !packs && !b.note) return '';
+    if (!b.org && !rows.length && !packs && !b.note) return '';
 
-    return '<section class="dest-sheet__block dest-sheet__block--book">' +
-           '<h3 class="dest-sheet__label">Booking and contact</h3>' +
-           (rows.length ? '<ul class="dest-sheet__contact">' + rows.join('') + '</ul>' : '') +
+    return '<section class="dest-modal__card">' +
+           heading('Booking and contact') +
+           (b.org ? '<p class="dest-modal__org">' + icon('org') + '<span>' + esc(b.org) + '</span></p>' : '') +
+           (rows.length ? '<ul class="dest-modal__contact">' + rows.join('') + '</ul>' : '') +
            packs +
-           (b.note ? '<p class="dest-sheet__note">' + esc(b.note) + '</p>' : '') +
+           (b.note ? '<p class="dest-modal__note">' + esc(b.note) + '</p>' : '') +
            '</section>';
   }
 
-  /* Shown in place of a section that has no data yet. Says which
-     section is missing and who is expected to supply it, because
-     "coming soon" tells a visitor nothing and tells the tourism
-     office nothing either. */
-  function pending(what) {
-    return '<section class="dest-sheet__block dest-sheet__block--pending">' +
-           '<h3 class="dest-sheet__label">' + esc(what) + '</h3>' +
-           '<p class="dest-sheet__pendtext">Being confirmed with the municipal tourism office. ' +
-           'Ask the provincial office below before you travel.</p>' +
-           '</section>';
+  /* the two actions, printed twice: once in the side card for wide
+     screens, once in the pinned bar for phones. CSS shows one. */
+  function actions(p, dirs, where) {
+    return '<div class="dest-modal__cta dest-modal__cta--' + where + '">' +
+      (dirs ? '<a class="dest-modal__btn dest-modal__btn--primary" href="' + esc(dirs) + '" target="_blank" rel="noopener">' +
+              icon('nav') + '<span>Get directions</span></a>' : '') +
+      (dirs ? '<button type="button" class="dest-modal__btn dest-modal__btn--ghost" data-focus="' + esc(p.slug) + '">' +
+              icon('map') + '<span>Show on map</span></button>' : '') +
+      '</div>';
   }
 
   function fillSheet(p) {
-    var scroll = sheet.querySelector('.dest-sheet__scroll');
+    var scroll = sheet.querySelector('.dest-modal__scroll');
     var dirs   = (p.lat && p.lng)
       ? 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng
       : '';
 
+    var highlights = (p.chips && p.chips.length)
+      ? '<ul class="dest-modal__highlights">' +
+        p.chips.map(function (c) {
+          return '<li><span class="dest-modal__tick">' + icon('check') + '</span>' + esc(c) + '</li>';
+        }).join('') + '</ul>'
+      : '';
+
     scroll.innerHTML =
 
-      /* --- the photograph, full width of the panel --- */
-      '<figure class="dest-sheet__shot">' +
-      (p.image ? '<img class="dest-sheet__img" data-guard="dest-sheet__shot" src="' + esc(p.image) + '" alt="">' : '') +
-      '  <figcaption class="dest-sheet__caption">' +
-      '    <span class="dest-sheet__tag">' + esc(p.tag || '') + '</span>' +
-      '    <span class="dest-sheet__town">' + esc(p.town || '') + ', Camarines Norte</span>' +
-      '  </figcaption>' +
-      '</figure>' +
+      /* --- hero --- */
+      '<header class="dest-modal__hero' + (p.image ? '' : ' is-noimg') + '">' +
+      (p.image ? '<img class="dest-modal__img" data-guard="dest-modal__hero" src="' + esc(p.image) + '" alt="">' : '') +
+      '  <div class="dest-modal__herotext">' +
+      '    <div class="dest-modal__kicker">' +
+      (p.tag ? '<span class="dest-modal__tag">' + esc(p.tag) + '</span>' : '') +
+      '      <span class="dest-modal__town">' + icon('pin') + esc(p.town || '') + ', Camarines Norte</span>' +
+      '    </div>' +
+      '    <h2 class="font-display dest-modal__name" id="destModalName">' + esc(p.name) + '</h2>' +
+      (p.quote ? '<p class="dest-modal__quote">' + esc(p.quote) + '</p>' : '') +
+      '  </div>' +
+      '</header>' +
 
-      '<div class="dest-sheet__text">' +
+      '<div class="dest-modal__layout">' +
 
-      '  <h2 class="font-display dest-sheet__name" id="destSheetName">' + esc(p.name) + '</h2>' +
-      (p.quote ? '<p class="dest-sheet__quote">' + esc(p.quote) + '</p>' : '') +
-      (p.desc  ? '<p class="dest-sheet__desc">'  + esc(p.desc)  + '</p>' : '') +
-
-      (p.chips && p.chips.length
-        ? '<ul class="dest-sheet__facts">' +
-          p.chips.map(function (c) { return '<li>' + esc(c) + '</li>'; }).join('') +
-          '</ul>'
-        : '') +
-
-      (p.how && p.how.length ? section('Getting there', p.how) : pending('Getting there')) +
-      (p.eat && p.eat.length ? section('What to eat',   p.eat) : pending('What to eat')) +
-      bookingBlock(p) +
-
-      /* --- the two ways out of the sheet ---
-         "Read the full card" is the old pin behaviour, kept: it closes
-         the sheet and scrolls the matching card into view. */
-      '  <div class="dest-sheet__actions">' +
-      '    <button type="button" class="dest-sheet__go" data-sheet-card="' + esc(p.slug) + '">' +
-      '      Read the full card' +
-      '    </button>' +
-      (dirs ? '<a class="dest-sheet__dirs" href="' + esc(dirs) + '" target="_blank" rel="noopener">Directions</a>' : '') +
+      /* --- main column --- */
+      '  <div class="dest-modal__main">' +
+      (p.desc ? '<p class="dest-modal__lead">' + esc(p.desc) + '</p>' : '') +
+      (p.how && p.how.length ? section('Getting there', p.how, 'route', true) : pending('Getting there', 'route')) +
+      (p.eat && p.eat.length ? section('What to eat',   p.eat, 'food')        : pending('What to eat', 'food')) +
       '  </div>' +
 
-      /* The coordinates are exact now — see the $coords block in
-         destinations.php. What is still worth saying, right where
-         somebody is about to press Directions, is that a correct pin
-         and a drivable road are two different promises. */
-      (dirs ? '<p class="dest-sheet__fineprint">This pin is the destination itself. The last stretch to some falls and islands is unpaved or by boat &mdash; ask locally about conditions before you set out.</p>' : '') +
+      /* --- side column --- */
+      '  <aside class="dest-modal__side">' +
+      '    <section class="dest-modal__card dest-modal__card--plan">' +
+      heading('Plan your visit') +
+      highlights +
+      actions(p, dirs, 'side') +
+      '    </section>' +
+      bookingBlock(p) +
+      '  </aside>' +
 
-      '</div>';
+      '</div>' +
+
+      /* --- phone action bar, pinned by CSS --- */
+      (dirs ? actions(p, dirs, 'bar') : '');
 
     guardImages(scroll);
   }
@@ -275,8 +329,8 @@
     /* a frame's gap so the opening transition has a state to move from */
     requestAnimationFrame(function () { sheet.classList.add('is-open'); });
 
-    document.body.classList.add('dest-sheet-open');
-    panel.scrollTop = 0;
+    document.body.classList.add('dest-modal-open');
+    sheet.querySelector('.dest-modal__scroll').scrollTop = 0;
     panel.focus();
   }
 
@@ -293,17 +347,17 @@
     var wasOpen = openSlug;
 
     sheet.classList.remove('is-open');
-    document.body.classList.remove('dest-sheet-open');
+    document.body.classList.remove('dest-modal-open');
     openSlug = null;
 
     /* hide only once the fade has finished, or the panel disappears
        instantly and the transition never plays */
     setTimeout(function () {
       sheet.hidden = true;
-      sheet.querySelector('.dest-sheet__scroll').innerHTML = '';
+      sheet.querySelector('.dest-modal__scroll').innerHTML = '';
     }, 220);
 
-    if (lastFocus && lastFocus.focus) lastFocus.focus();
+    if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
 
     /* CLOSING THE PANEL CLEARS THE PIN.
 
@@ -912,6 +966,10 @@
     if (!btn) return;
     var m = markers[btn.getAttribute('data-focus')];
     if (!m) return;
+
+    /* "Show on map" inside the popup: close it first, so the map is
+       what you are left looking at. */
+    if (btn.closest('.dest-modal')) closeSheet();
     /* 15, not 12. At 12 a pin is a dot on a province and the accuracy
        gained by moving these coordinates off the town centres is
        invisible; at 15 you can see which side of the river it is on. */
@@ -940,14 +998,58 @@
     setTimeout(function () { if (openTip === m) placeTip(m); }, 900);
   });
 
-  var reset = document.getElementById('mapReset');
-  if (reset) reset.addEventListener('click', function () {
+  /* =================================================================
+     RESET MAP
+
+     Reset now means "start over", not just "zoom back out": it also
+     clears the category filter so all destinations are pinned again.
+
+     The filter chips belong to destinations.php, not this file, so
+     rather than duplicate that fetch-and-swap logic here, reset asks
+     that page to swap to the unfiltered view. The page's own code
+     then swaps the results and fires destinations:swapped, and the
+     listener below rebuilds the pins and fits the view to all of them.
+
+     It calls window.destGo, set up in destinations.php next to the
+     swap it uses. Without it (old browser, script missing) it falls
+     back to an ordinary page load of the unfiltered page.
+     ================================================================= */
+  function resetMap() {
+    /* clear anything open on the map first */
+    closeSheet();
     map.closePopup();
-    Object.keys(markers).forEach(function (k) { markers[k].closeTooltip(); });
+    if (openTip) { openTip.closeTooltip(); openTip = null; }
+    closeOtherTips(null);
     setActivePin(null);
-    /* null after a filter that matched nothing mappable — there is no
-       home to go back to, and fitBounds(null) throws. */
+
+    /* clear the filter. Any of these in the URL, or text still in the
+       search box, means fewer than all 24 are showing. The swap then
+       rebuilds the pins and fitBounds runs inside buildMarkers. */
+    var params   = new URLSearchParams(location.search);
+    var field    = document.getElementById('destSearch');
+    var filtered = ['type', 'cat', 'town', 'q'].some(function (k) {
+      return (params.get(k) || '').trim() !== '';
+    }) || (field && field.value.trim() !== '');
+
+    if (filtered) {
+      var url = 'destinations.php#destFilters';
+      if (typeof window.destGo === 'function') window.destGo(url);
+      else window.location.href = url;   /* no swap support: plain reload */
+      return;
+    }
+
+    /* already showing everything: just go home. home is null after a
+       filter that matched nothing mappable, and fitBounds(null) throws. */
     if (home) map.fitBounds(home);
+  }
+
+  /* exposed so other scripts (or the console) can call it */
+  window.destMapReset = resetMap;
+
+  var reset = document.getElementById('mapReset');
+  if (reset) reset.addEventListener('click', function (e) {
+    e.preventDefault();
+    resetMap();
   });
 
   /* A pin sitting comfortably mid-panel can be hard against an edge
