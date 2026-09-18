@@ -758,9 +758,23 @@
              worth reading and it is about to be removed. */
           if (node.querySelector && node.querySelector('.bud__typing')) return;
 
-          if (node.classList.contains('bud__msg') &&
-              node.classList.contains('bud__msg--bot')) {
-            handleReply(node);
+          /* bud.js does not append a bot bubble to the log directly:
+             mountBot() wraps it in a .bud__row (avatar + bubble) and
+             appends the ROW. So the added node is usually the row, and
+             the message is inside it. Check the node itself and its
+             descendants, or replies are never seen. */
+          var msgs = [];
+          if (node.matches('.bud__msg--bot')) msgs.push(node);
+          else if (node.querySelectorAll) {
+            msgs = Array.prototype.slice.call(
+              node.querySelectorAll('.bud__msg--bot'));
+          }
+          msgs = msgs.filter(function (m) {
+            return !m.classList.contains('bud__msg--typing');
+          });
+
+          if (msgs.length) {
+            msgs.forEach(handleReply);
             return;
           }
 

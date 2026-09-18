@@ -49,7 +49,10 @@ require __DIR__ . '/includes/header.php';
          preload="none"
          disablepictureinpicture
          disableremoteplayback>
-        <source src="<?= htmlspecialchars(assetUrl('uploads/bg.mp4')) ?>"
+    <!-- Laptops get Bg.mp4; phones fall through to bg-mobile.mp4. -->
+    <source src="<?= htmlspecialchars(assetUrl('uploads/Bg.mp4')) ?>"
+            type="video/mp4" media="(min-width: 768px)">
+    <source src="<?= htmlspecialchars(assetUrl('uploads/bg-mobile.mp4')) ?>"
             type="video/mp4">
   </video>
 
@@ -394,7 +397,7 @@ require __DIR__ . '/includes/header.php';
         <!-- [ ABOUT 7 ] the banner clip, reused. Swap the src for a
              different one if you want; keep it muted and looping. -->
         <!-- [ ABOUT 7 ] portrait, roughly 3:4 — this slot is tall -->
-        <img class="photo-layer" src="uploads/About-Section-Photo/Opener-Pic2.jpg" alt="Camarines Norte coastline">
+        <img loading="lazy" decoding="async" class="photo-layer" src="uploads/About-Section-Photo/Opener-Pic2.jpg" alt="Camarines Norte coastline">
       </div>
     </div>
 
@@ -402,7 +405,7 @@ require __DIR__ . '/includes/header.php';
       <div class="intro-media intro-media--wide">
         <div class="gradient-fill"></div>
         <!-- [ ABOUT 8 ] landscape, roughly 4:3 -->
-        <img class="photo-layer" src="uploads/About-Section-Photo/Opener-Pic1.jpg" alt="Coastline in Camarines Norte">
+        <img loading="lazy" decoding="async" class="photo-layer" src="uploads/About-Section-Photo/Opener-Pic1.jpg" alt="Coastline in Camarines Norte">
       </div>
       <h3 class="font-display intro__subtitle">Your visit starts<br>in <strong>Daet</strong></h3>
       <p class="intro__body">The capital is where the buses arrive and where most trips begin, and it is close enough to the rest of the province that you can base yourself there for the whole visit if you want to. Bagasbas, its surf beach, is a few minutes out of town.</p>
@@ -619,18 +622,18 @@ require __DIR__ . '/includes/header.php';
       <p class="town-index__lead">Every one of these has at least two places worth stopping for. Select a town to find it on the map and watch it.</p>
 
       <ul class="town-index__list">
-        <li><button type="button" class="town-index__item" data-town="Basud" data-video="uploads/towns/Basud.mp4" data-poster="uploads/towns/basud.jpg"><span class="town-index__name">Basud</span><span class="town-index__note">Coast and mangrove</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="Capalonga" data-video="uploads/towns/Capalonga.mp4" data-poster="uploads/towns/capalonga.jpg"><span class="town-index__name">Capalonga</span><span class="town-index__note">Pilgrimage town</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="Daet" data-video="uploads/towns/daet.mp4" data-poster="uploads/towns/daet.jpg"><span class="town-index__name">Daet</span><span class="town-index__note">Capital, surf, Rizal monument</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="Jose Panganiban" data-video="uploads/towns/JPANG.mp4" data-poster="uploads/towns/jose-panganiban.jpg"><span class="town-index__name">Jose Panganiban</span><span class="town-index__note">Bay, islands, mining history</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="Labo" data-video="uploads/towns/labo.mp4" data-poster="uploads/towns/labo.jpg"><span class="town-index__name">Labo</span><span class="town-index__note">Falls and high ground</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="Mercedes" data-video="uploads/towns/MERCEDES.mp4" data-poster="uploads/towns/mercedes.jpg"><span class="town-index__name">Mercedes</span><span class="town-index__note">Fishing port and islets</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="Paracale" data-video="uploads/towns/PARACALE.mp4" data-poster="uploads/towns/paracale.jpg"><span class="town-index__name">Paracale</span><span class="town-index__note">Gold country</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="San Lorenzo Ruiz" data-video="uploads/towns/SAN_LORENZO_RUIZ.mp4" data-poster="uploads/towns/san-lorenzo-ruiz.jpg"><span class="town-index__name">San Lorenzo Ruiz</span><span class="town-index__note">Uplands and rivers</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="San Vicente" data-video="uploads/towns/SAN_VICENTE.mp4" data-poster="uploads/towns/san-vicente.jpg"><span class="town-index__name">San Vicente</span><span class="town-index__note">Waterfalls</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="Santa Elena" data-video="uploads/towns/SANTA_ELENA.mp4" data-poster="uploads/towns/santa-elena.jpg"><span class="town-index__name">Santa Elena</span><span class="town-index__note">Northern boundary</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="Talisay" data-video="uploads/towns/TALISAY.mp4" data-poster="uploads/towns/talisay.jpg"><span class="town-index__name">Talisay</span><span class="town-index__note">Mangrove park and church</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="Vinzons" data-video="uploads/towns/VINZONS.mp4" data-poster="uploads/towns/vinzons.jpg"><span class="town-index__name">Vinzons</span><span class="town-index__note">Calaguas jump-off</span></button></li>
+        <li><button type="button" class="town-index__item" data-town="Basud" data-video="uploads/towns/Basud.mp4"><span class="town-index__name">Basud</span><span class="town-index__note">Coast and mangrove</span></button></li>
+        <li><button type="button" class="town-index__item" data-town="Capalonga" data-video="uploads/towns/Capalonga.mp4"><span class="town-index__name">Capalonga</span><span class="town-index__note">Pilgrimage town</span></button></li>
+        <li><button type="button" class="town-index__item" data-town="Daet" data-video="uploads/towns/Daet.mp4"><span class="town-index__name">Daet</span><span class="town-index__note">Capital, surf, Rizal monument</span></button></li>
+        <li><button type="button" class="town-index__item" data-town="Jose Panganiban" data-video="uploads/towns/JPANG.mp4"><span class="town-index__name">Jose Panganiban</span><span class="town-index__note">Bay, islands, mining history</span></button></li>
+        <li><button type="button" class="town-index__item" data-town="Labo" data-video="uploads/towns/Labo.mp4"><span class="town-index__name">Labo</span><span class="town-index__note">Falls and high ground</span></button></li>
+        <li><button type="button" class="town-index__item" data-town="Mercedes" data-video="uploads/towns/MERCEDES.mp4"><span class="town-index__name">Mercedes</span><span class="town-index__note">Fishing port and islets</span></button></li>
+        <li><button type="button" class="town-index__item" data-town="Paracale" data-video="uploads/towns/PARACALE.mp4"><span class="town-index__name">Paracale</span><span class="town-index__note">Gold country</span></button></li>
+        <li><button type="button" class="town-index__item" data-town="San Lorenzo Ruiz" data-video="uploads/towns/SAN_LORENZO_RUIZ.mp4"><span class="town-index__name">San Lorenzo Ruiz</span><span class="town-index__note">Uplands and rivers</span></button></li>
+        <li><button type="button" class="town-index__item" data-town="San Vicente" data-video="uploads/towns/SAN_VICENTE.mp4"><span class="town-index__name">San Vicente</span><span class="town-index__note">Waterfalls</span></button></li>
+        <li><button type="button" class="town-index__item" data-town="Santa Elena" data-video="uploads/towns/SANTA_ELENA.mp4"><span class="town-index__name">Santa Elena</span><span class="town-index__note">Northern boundary</span></button></li>
+        <li><button type="button" class="town-index__item" data-town="Talisay" data-video="uploads/towns/TALISAY.mp4"><span class="town-index__name">Talisay</span><span class="town-index__note">Mangrove park and church</span></button></li>
+        <li><button type="button" class="town-index__item" data-town="Vinzons" data-video="uploads/towns/VINZONS.mp4"><span class="town-index__name">Vinzons</span><span class="town-index__note">Calaguas jump-off</span></button></li>
       </ul>
 
       <a href="destinations.php" class="town-index__link">See what is in each town</a>

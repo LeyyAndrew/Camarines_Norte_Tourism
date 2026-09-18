@@ -64,12 +64,15 @@ $counts = gallery_counts($sets);
        <img> line below it.
        ================================================================ -->
   <video class="photo-layer"
-         src="uploads/bg.mp4"
          poster="uploads/gallery-banner.jpg"
          autoplay muted loop playsinline
          preload="metadata"
          disablepictureinpicture
-         disableremoteplayback></video>
+         disableremoteplayback>
+    <!-- Laptops get Bg.mp4; phones fall through to bg-mobile.mp4. -->
+    <source src="uploads/Bg.mp4" type="video/mp4" media="(min-width: 768px)">
+    <source src="uploads/bg-mobile.mp4" type="video/mp4">
+  </video>
 
   <!-- <img class="photo-layer" src="uploads/gallery-banner.jpg" alt=""> -->
   <div class="page-hero__scrim"></div>

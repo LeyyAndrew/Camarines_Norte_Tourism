@@ -41,9 +41,12 @@
             navigator.webkitConnection;
     if (!c) return false;
     if (c.saveData) return true;
+    /* '3g' used to be on this list. Chrome reports 3g for plenty of
+       ordinary mobile data connections, so it was freezing the hero on
+       phones that could play the small bg-mobile.mp4 fine. Only 2G and
+       Data Saver count as poor now. */
     return c.effectiveType === 'slow-2g' ||
-           c.effectiveType === '2g' ||
-           c.effectiveType === '3g';
+           c.effectiveType === '2g';
   }
 
   var reduceMotion = window.matchMedia &&

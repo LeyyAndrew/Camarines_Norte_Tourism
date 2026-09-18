@@ -199,8 +199,12 @@ $itephoto  = function (string $f) use ($uploadPath) { return $uploadPath('ITE-SE
            preload="none"
            disablepictureinpicture
            disableremoteplayback>
-            <source src="<?= htmlspecialchars(assetUrl('uploads/bg.mp4')) ?>"
-  type="video/mp4" media="(min-width: 768px)">
+    <!-- Laptops get Bg.mp4; phones skip it and fall through to bg-mobile.mp4.
+         Capital B matters: Koyeb runs Linux, where bg.mp4 and Bg.mp4 differ. -->
+    <source src="<?= htmlspecialchars(assetUrl('uploads/bg2.mp4')) ?>"
+            type="video/mp4" media="(min-width: 768px)">
+    <source src="<?= htmlspecialchars(assetUrl('uploads/bg2.mp4')) ?>"
+            type="video/mp4">
     </video>
 
   </div>

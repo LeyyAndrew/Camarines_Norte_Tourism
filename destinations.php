@@ -496,8 +496,11 @@ $showIntro = true;
          preload="none"
          disablepictureinpicture
          disableremoteplayback>
-    <source src="<?= htmlspecialchars(assetUrl('uploads/bg.mp4')) ?>"
-            type="video/mp4" media="(min-width: 1024px)">
+    <!-- Laptops get Bg.mp4; phones and tablets fall through to bg-mobile.mp4. -->
+    <source src="<?= htmlspecialchars(assetUrl('uploads/Bg.mp4')) ?>"
+            type="video/mp4" media="(min-width: 768px)">
+    <source src="<?= htmlspecialchars(assetUrl('uploads/bg-mobile.mp4')) ?>"
+            type="video/mp4">
   </video>
 
   <div class="page-hero__scrim"></div>
