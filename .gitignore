@@ -4,9 +4,6 @@
 .env
 
 
-# Large media
-*.mp4
-
 
 
 # User uploads (keep the folder, skip contents)
@@ -23,5 +20,5 @@ Thumbs.db
 *.log
 error_log
 
-echo "uploads-original/" >> .gitignore
+
 uploads-original/
