@@ -439,6 +439,143 @@ require __DIR__ . '/_header.php';
 .adm-file__now{ font-size:.78rem; line-height:1.4; }
 .adm-order{ display:flex; gap:.25rem; }
 .adm-order .adm-btn{ min-width:2rem; text-align:center; }
+
+/* ===================================================================
+   SUMMARY STRIP AND CHAPTER CARDS
+   Same system as the destinations page (.dx there, .gx here). The
+   chapter card leads with an editorial mosaic of its photographs:
+   one large, three supporting, so it reads like a spread in a
+   magazine rather than a row of stamps.
+   =================================================================== */
+.gx {
+  --gx-ink: #14231d; --gx-mute: #5b6b64; --gx-line: #e2e8e4; --gx-card: #fff;
+  --gx-green: #1f7a55; --gx-green-soft: #e8f3ed;
+  --gx-gold: #94640f; --gx-gold-soft: #fbf0d9;
+}
+
+/* ---------- summary ---------- */
+.gx-summary {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 16px 32px; margin: 0 0 36px; padding: 20px 24px;
+  background: var(--gx-card); border: 1px solid var(--gx-line); border-radius: 14px;
+}
+.gx-summary__lead { display: flex; align-items: center; gap: 14px; margin: 0; }
+.gx-summary__num {
+  font-size: 46px; font-weight: 700; line-height: 1; letter-spacing: -.02em;
+  color: var(--gx-ink); font-variant-numeric: tabular-nums;
+}
+.gx-summary__txt { font-size: 15px; font-weight: 600; line-height: 1.35; color: var(--gx-ink); }
+.gx-summary__txt span { font-weight: 400; color: var(--gx-mute); }
+.gx-summary__checks { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.gx-check {
+  display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px 7px 10px;
+  border-radius: 999px; background: var(--gx-green-soft); color: var(--gx-green);
+  font-size: 13.5px; font-weight: 500;
+}
+.gx-check svg { width: 16px; height: 16px; flex: none; }
+.gx-check--flag { background: var(--gx-gold-soft); color: var(--gx-gold); font-weight: 600; }
+.gx-check--plain { background: #eef1ef; color: var(--gx-mute); }
+
+/* ---------- section heading ---------- */
+.gx-toolbar { margin: 0 0 16px; }
+.gx-toolbar__title { margin: 0; font-size: 19px; font-weight: 700; color: var(--gx-ink); }
+.gx-toolbar__hint { margin: 3px 0 0; font-size: 14px; color: var(--gx-mute); }
+
+/* ---------- chapter cards ---------- */
+.gx-sets {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 18px; margin: 0 0 40px;
+}
+.gx-set {
+  display: flex; flex-direction: column; align-items: stretch;
+  margin: 0; padding: 0; overflow: hidden; text-align: left; cursor: pointer;
+  font: inherit; color: var(--gx-ink);
+  background: var(--gx-card); border: 1px solid var(--gx-line); border-radius: 14px;
+  transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+.gx-set:hover {
+  border-color: #c3d2ca; transform: translateY(-2px);
+  box-shadow: 0 10px 24px -12px rgba(12, 40, 28, .35);
+}
+.gx-set:focus-visible { outline: 3px solid var(--gx-green); outline-offset: 2px; }
+
+/* The mosaic: one large tile on the left, two on the right, one wide
+   along the bottom right. Gaps are white hairlines, like a print layout. */
+.gx-mosaic {
+  display: grid; height: 200px; gap: 3px; background: #fff;
+  grid-template-columns: 1.6fr 1fr 1fr; grid-template-rows: 1fr 1fr;
+}
+.gx-mosaic__cell {
+  position: relative; display: block; overflow: hidden; background: #e3e9e5;
+}
+.gx-mosaic__cell:nth-child(1) { grid-row: 1 / 3; }
+.gx-mosaic__cell:nth-child(4) { grid-column: 2 / 4; }
+.gx-mosaic__cell img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  transition: transform .4s ease;
+}
+.gx-set:hover .gx-mosaic__cell img { transform: scale(1.04); }
+.gx-mosaic__cell.is-off img { opacity: .35; filter: grayscale(1); }
+.gx-mosaic__cell--empty {
+  background: repeating-linear-gradient(45deg, #e6ebe8 0 6px, #f3f6f4 6px 12px);
+}
+.gx-mosaic__tag {
+  position: absolute; left: 6px; bottom: 6px; padding: 2px 7px; border-radius: 6px;
+  background: rgba(20, 35, 29, .8); color: #fff; font-size: 11px; font-weight: 600;
+}
+
+.gx-set__main { display: flex; flex: 1; flex-direction: column; gap: 6px; padding: 16px 20px 0; }
+.gx-set__eyebrow {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 600; color: var(--gx-green);
+}
+.gx-set__eyebrow svg {
+  width: 16px; height: 16px; fill: none; stroke: currentColor;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.gx-set__num {
+  display: inline-grid; place-items: center; min-width: 26px; height: 22px; padding: 0 6px;
+  border-radius: 6px; background: var(--gx-green-soft);
+  font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.gx-set__title { margin-top: 2px; font-size: 18px; font-weight: 700; line-height: 1.3; }
+.gx-set__desc {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  font-size: 14px; line-height: 1.55; color: var(--gx-mute);
+}
+
+.gx-set__foot {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-top: 16px; padding: 12px 16px 12px 20px; border-top: 1px solid var(--gx-line);
+}
+.gx-set__count { margin-right: 4px; font-size: 13.5px; font-weight: 600; color: var(--gx-green); }
+.gx-pill {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px;
+  border-radius: 999px; font-size: 12px; font-weight: 600;
+  background: #eef1ef; color: var(--gx-mute);
+}
+.gx-pill svg { width: 13px; height: 13px; }
+.gx-pill--flag { background: #f4cb6c; color: #3b2904; }
+.gx-set__go {
+  display: grid; place-items: center; flex: none; width: 30px; height: 30px; margin-left: auto;
+  border-radius: 50%; background: var(--gx-green-soft); color: var(--gx-green);
+  transition: background .15s, color .15s;
+}
+.gx-set__go svg {
+  width: 16px; height: 16px; fill: none; stroke: currentColor;
+  stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+}
+.gx-set:hover .gx-set__go { background: var(--gx-green); color: #fff; }
+
+@media (max-width: 560px) {
+  .gx-summary { padding: 18px; }
+  .gx-summary__num { font-size: 38px; }
+  .gx-mosaic { height: 170px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gx-set, .gx-set__go, .gx-mosaic__cell img { transition: none; }
+  .gx-set:hover, .gx-set:hover .gx-mosaic__cell img { transform: none; }
+}
 </style>
 
 <header class="adm-head">
@@ -463,27 +600,31 @@ require __DIR__ . '/_header.php';
   </p>
 <?php endif; ?>
 
-<div class="adm-stats">
-  <div class="adm-stat">
-    <span class="adm-stat__num"><?= $live ?></span>
-    <span class="adm-stat__label">On the page</span>
-  </div>
+<div class="gx">
 
-  <div class="adm-stat<?= $hidden ? ' adm-stat--flag' : '' ?>">
-    <span class="adm-stat__num"><?= $hidden ?></span>
-    <span class="adm-stat__label">Hidden</span>
-  </div>
+<!-- ============ SUMMARY ============
+     One strip. The headline number is what visitors see; the pills say
+     "all clear" in green and only turn gold when something is hidden. -->
+<section class="gx-summary" aria-label="Summary">
+  <p class="gx-summary__lead">
+    <span class="gx-summary__num"><?= $live ?></span>
+    <span class="gx-summary__txt">
+      photograph<?= $live === 1 ? '' : 's' ?> on the page<br>
+      <span>in <?= count($sets) ?> chapter<?= count($sets) === 1 ? '' : 's' ?></span>
+    </span>
+  </p>
 
-  <div class="adm-stat">
-    <span class="adm-stat__num"><?= count($sets) ?></span>
-    <span class="adm-stat__label">Chapters</span>
-  </div>
-
-  <div class="adm-stat">
-    <span class="adm-stat__num"><?= count($towns) ?></span>
-    <span class="adm-stat__label">Towns shown</span>
-  </div>
-</div>
+  <ul class="gx-summary__checks">
+    <li class="gx-check<?= $hidden ? ' gx-check--flag' : '' ?>">
+      <?= $hidden ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5h.01"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.8L16.5 9.5"/></svg>' ?>
+      <?= $hidden ? $hidden . ' hidden from the page' : 'Every photograph is visible' ?>
+    </li>
+    <li class="gx-check gx-check--plain">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+      <?= count($towns) ?> town<?= count($towns) === 1 ? '' : 's' ?> featured
+    </li>
+  </ul>
+</section>
 
 <!-- ============ THE ADD / EDIT DRAWER ============
 
@@ -606,21 +747,20 @@ require __DIR__ . '/_header.php';
 </div>
 
 <!-- ============ LEVEL ONE: THE CHAPTERS ============
+     One card per chapter. Click one and its photographs open in a
+     panel over the middle of the screen.
 
-     Three cards. Click one and its photographs open in a panel over
-     the middle of the screen.
-
-     The same shape as the municipalities on the destinations page,
-     and for the same reason: the chapter is how the work is
-     organised. You open this panel because the coast section needs a
-     new picture, not because the gallery in general does.
-
-     NO COVER IMAGE ON THE CARD. The chapter already has a heading and
-     a standfirst written for it — real words that say what the set
-     is. A photograph borrowed from inside it would say "this chapter
-     is that picture", which is exactly what a chapter is not.
+     The card leads with a mosaic of up to four of the chapter's own
+     photographs, so you can see what is in it and spot a hidden or
+     missing one before opening it. A gold pill appears only when
+     something needs attention.
      ================================================================ -->
-<div class="adm-towns" id="galSets">
+<div class="gx-toolbar">
+  <h2 class="gx-toolbar__title">Chapters</h2>
+  <p class="gx-toolbar__hint">Open a chapter to reword it or manage its photographs.</p>
+</div>
+
+<div class="gx-sets" id="galSets">
   <?php foreach ($sets as $set):
       $list  = $bySet[$set['id']] ?? [];
       $needs = 0;
@@ -628,63 +768,75 @@ require __DIR__ . '/_header.php';
       foreach ($list as $ph) {
           if (!$ph['is_visible'] || $ph['filename'] === '') { $needs++; }
       }
+
+      /* "01 — The coast" -> number "01" and label "The coast", so the
+         number can sit in its own badge. No leading number, no badge. */
+      $eyeNum  = '';
+      $eyeText = $set['eyebrow'];
+      if (preg_match('/^\s*(\d+)\s*[-\x{2013}\x{2014}.:]?\s*(.*)$/u', $set['eyebrow'], $m)) {
+          $eyeNum  = $m[1];
+          $eyeText = $m[2];
+      }
+
+      $shown = array_slice($list, 0, 4);
   ?>
-  <button type="button" class="adm-town adm-town--chapter" data-set="<?= (int) $set['id'] ?>">
+  <button type="button" class="gx-set" data-set="<?= (int) $set['id'] ?>">
 
-    <!-- ---------- the strip ----------
-         A chapter of a photo gallery is its photographs, so the card
-         shows them. An icon told you the coast chapter was about the
-         coast, which the heading underneath already said; four
-         thumbnails tell you what is actually in it and whether
-         anything is missing.
-
-         Four at most. Beyond that they get too small to read and the
-         count underneath does the job better. -->
-    <span class="adm-chapstrip">
-      <?php
-        $shown = array_slice($list, 0, 4);
-        foreach ($shown as $ph):
-      ?>
-        <span class="adm-chapstrip__cell<?= $ph['is_visible'] ? '' : ' is-off' ?>">
+    <span class="gx-mosaic" aria-hidden="true">
+      <?php foreach ($shown as $ph): ?>
+        <span class="gx-mosaic__cell<?= $ph['is_visible'] ? '' : ' is-off' ?><?= $ph['filename'] === '' ? ' gx-mosaic__cell--empty' : '' ?>">
           <?php if ($ph['filename'] !== ''): ?>
             <img src="<?= gallery_url($ph['filename'], '../') ?>" alt="" loading="lazy"
-                 onerror="this.remove()">
+                 onerror="this.parentNode.classList.add('gx-mosaic__cell--empty');this.remove()">
+          <?php endif; ?>
+          <?php if (!$ph['is_visible']): ?>
+            <span class="gx-mosaic__tag">Hidden</span>
           <?php endif; ?>
         </span>
       <?php endforeach; ?>
 
-      <?php /* Keeps the strip a straight edge when a chapter is short. */ ?>
+      <?php /* Keeps the mosaic whole when a chapter is short. */ ?>
       <?php for ($i = count($shown); $i < 4; $i++): ?>
-        <span class="adm-chapstrip__cell adm-chapstrip__cell--empty"></span>
+        <span class="gx-mosaic__cell gx-mosaic__cell--empty"></span>
       <?php endfor; ?>
     </span>
 
-    <span class="adm-town__body">
-      <span class="adm-chap__eyebrow">
+    <span class="gx-set__main">
+      <span class="gx-set__eyebrow">
+        <?php if ($eyeNum !== ''): ?>
+          <span class="gx-set__num"><?= e($eyeNum) ?></span>
+        <?php endif; ?>
         <?= chapter_icon($set['slug']) ?>
-        <?= e($set['eyebrow']) ?>
+        <?= e($eyeText) ?>
       </span>
 
-      <span class="adm-town__name"><?= e($set['title']) ?></span>
-      <span class="adm-town__desc"><?= e($set['note']) ?></span>
+      <span class="gx-set__title"><?= e($set['title']) ?></span>
+      <span class="gx-set__desc"><?= e($set['note']) ?></span>
+    </span>
 
-      <span class="adm-town__foot">
-        <?= count($list) ?> photograph<?= count($list) === 1 ? '' : 's' ?>
-        <?php if ($set['is_mist']): ?>
-          <span class="adm-badge">Grey band</span>
-        <?php endif; ?>
-        <?php if ($needs): ?>
-          <span class="adm-town__flag" title="<?= $needs ?> need attention"><?= $needs ?></span>
-        <?php endif; ?>
+    <span class="gx-set__foot">
+      <span class="gx-set__count"><?= count($list) ?> photograph<?= count($list) === 1 ? '' : 's' ?></span>
 
-        <span class="adm-town__go" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+      <?php if ($set['is_mist']): ?>
+        <span class="gx-pill" title="This chapter sits on the grey band of the page">Grey band</span>
+      <?php endif; ?>
+
+      <?php if ($needs): ?>
+        <span class="gx-pill gx-pill--flag" title="<?= $needs ?> hidden or missing a file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5h.01"/></svg>
+          <?= $needs ?> to fix
         </span>
+      <?php endif; ?>
+
+      <span class="gx-set__go" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
       </span>
     </span>
   </button>
   <?php endforeach; ?>
 </div>
+
+</div><!-- /.gx -->
 
 
 <!-- ============ LEVEL TWO: THE PHOTOGRAPHS ============
@@ -911,7 +1063,7 @@ require __DIR__ . '/_header.php';
   var glass = document.getElementById('galGlass');
   if (!grid || !glass) return;
 
-  var cards  = Array.prototype.slice.call(grid.querySelectorAll('.adm-town'));
+  var cards  = Array.prototype.slice.call(grid.querySelectorAll('.gx-set'));
   var shots  = Array.prototype.slice.call(glass.querySelectorAll('.adm-place'));
   var forms  = Array.prototype.slice.call(glass.querySelectorAll('.adm-chapform'));
   var title  = document.getElementById('galGlassTitle');
@@ -935,7 +1087,7 @@ require __DIR__ . '/_header.php';
       f.hidden = f.getAttribute('data-set') !== id;
     });
 
-    title.textContent = card.querySelector('.adm-town__name').textContent;
+    title.textContent = card.querySelector('.gx-set__title').textContent;
     sub.textContent   = n === 1 ? '1 photograph' : n + ' photographs';
     if (empty) empty.hidden = n > 0;
 
@@ -972,7 +1124,7 @@ require __DIR__ . '/_header.php';
   }
 
   grid.addEventListener('click', function (e) {
-    var card = e.target.closest('.adm-town');
+    var card = e.target.closest('.gx-set');
     if (card) open(card);
   });
 
@@ -999,7 +1151,7 @@ require __DIR__ . '/_header.php';
   var wanted = params.get('set');
 
   if (wanted && !params.get('edit')) {
-    var card = grid.querySelector('.adm-town[data-set="' + wanted.replace(/"/g, '\\"') + '"]');
+    var card = grid.querySelector('.gx-set[data-set="' + wanted.replace(/"/g, '\\"') + '"]');
     if (card) open(card);
   }
 })();

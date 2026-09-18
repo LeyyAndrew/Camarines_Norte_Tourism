@@ -276,5 +276,26 @@ function pendingComments(PDO $pdo): int
     return $count;
 }
 
+/* ---------- the unread feedback count ----------
+   Same idea as pendingComments(): shown as a badge on the Feedback
+   link in the sidebar and on the overview. A missing feedback table
+   just means no badge. */
+function newFeedback(PDO $pdo): int
+{
+    static $count = null;
+
+    if ($count !== null) { return $count; }
+
+    try {
+        $count = (int) $pdo->query(
+            "SELECT COUNT(*) FROM feedback WHERE status = 'new'"
+        )->fetchColumn();
+    } catch (PDOException $e) {
+        $count = 0;
+    }
+
+    return $count;
+}
+
 /* current file name, for marking the active sidebar link */
 $adminHere = basename($_SERVER['PHP_SELF']);

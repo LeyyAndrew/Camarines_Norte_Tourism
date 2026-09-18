@@ -131,8 +131,6 @@ require __DIR__ . '/includes/header.php';
 
         <!-- ↓↓↓ THE CLIP. Change this src. ↓↓↓ -->
         <video class="photo-layer hero-film__video" id="heroFilmVideo"
-               data-hero-video
-               poster="uploads/about-banner.jpg"
                muted loop playsinline
                preload="none"
                disablepictureinpicture
@@ -146,20 +144,69 @@ require __DIR__ . '/includes/header.php';
 
         <div class="hero-film__scrim" aria-hidden="true"></div>
 
-        <!-- Starts muted because that is the only way a browser will
-             autoplay anything. aria-pressed is the state; the CSS swaps
-             the icon off it, and the label inside is for screen readers
-             only, which is why it is clipped rather than hidden — a
-             display:none label is not announced. -->
-        <button type="button" class="hero-film__sound" id="heroFilmSound" aria-pressed="false">
-          <span class="hero-film__sound-label" id="heroFilmSoundLabel">Turn sound on</span>
-          <svg class="hero-film__icon hero-film__icon--off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M11 5 6 9H3v6h3l5 4z"/><path d="m17 9 4 6"/><path d="m21 9-4 6"/>
+        <!-- ---------- CONTROLS ----------
+             Pause/play in the corner. The clip is always muted. The pause
+             button's label and icon follow the video's real state (see
+             the script below), so they are never out of step. -->
+        <div class="hero-film__controls">
+        <button type="button" class="hero-film__ctrl hero-film__play" id="heroFilmPlay"
+                aria-label="Pause video" title="Pause">
+          <svg class="hero-film__ctrl-icon hero-film__ctrl-icon--pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <rect x="6.5" y="5" width="3.6" height="14" rx="1"/><rect x="13.9" y="5" width="3.6" height="14" rx="1"/>
           </svg>
-          <svg class="hero-film__icon hero-film__icon--on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>
+          <svg class="hero-film__ctrl-icon hero-film__ctrl-icon--play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M8 5.6v12.8a1 1 0 0 0 1.5.86l10.2-6.4a1 1 0 0 0 0-1.72L9.5 4.74A1 1 0 0 0 8 5.6z"/>
           </svg>
         </button>
+
+        </div>
+
+        <style>
+          /* The corner pause/play button. Kept here, beside the markup,
+             so the control is self-contained. */
+          /* Black until the visitor presses play. preload="none" means
+             nothing is downloaded before that either. */
+          #heroFilm .hero-film__frame,
+          #heroFilm .hero-film__video{ background:#000; }
+          #heroFilm:not(.is-started) .hero-film__video,
+          #heroFilm:not(.is-started) .gradient-fill,
+          #heroFilm:not(.is-started) .hero-film__scrim{ visibility:hidden; }
+
+          .hero-film__controls{
+            position:absolute; right:1rem; bottom:1rem; z-index:3;
+            display:flex; gap:.6rem;
+          }
+          .hero-film__controls .hero-film__ctrl{
+            position:static; inset:auto; margin:0;
+            display:grid; place-items:center;
+            width:46px; height:46px; padding:0;
+            border:0; border-radius:50%;
+            background:rgba(16,20,24,.72);
+            -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+            color:#fff;
+            cursor:pointer;
+            box-shadow:inset 0 0 0 1px rgba(255,255,255,.28), 0 4px 14px -6px rgba(0,0,0,.5);
+            transition:background .2s ease, transform .2s ease;
+          }
+          .hero-film__controls .hero-film__ctrl:hover{ background:rgba(16,20,24,.9); transform:scale(1.05); }
+          .hero-film__controls .hero-film__ctrl:focus-visible{ outline:2px solid #fff; outline-offset:3px; }
+          .hero-film__controls .hero-film__ctrl svg{ width:20px; height:20px; }
+
+          /* pause shows while playing, play shows while paused */
+          .hero-film__ctrl-icon--play{ display:none; }
+          .hero-film__play.is-paused .hero-film__ctrl-icon--pause{ display:none; }
+          .hero-film__play.is-paused .hero-film__ctrl-icon--play{ display:block; margin-left:2px; }
+
+          @media (max-width:640px){
+            .hero-film__controls{ right:.7rem; bottom:.7rem; gap:.45rem; }
+            .hero-film__controls .hero-film__ctrl{ width:40px; height:40px; }
+            .hero-film__controls .hero-film__ctrl svg{ width:18px; height:18px; }
+          }
+          @media (prefers-reduced-motion:reduce){
+            .hero-film__controls .hero-film__ctrl{ transition:none; }
+            .hero-film__controls .hero-film__ctrl:hover{ transform:none; }
+          }
+        </style>
       </div>
     </figure>
 
@@ -172,35 +219,87 @@ require __DIR__ . '/includes/header.php';
 /* --------------------------------------------------------------------
    THE OPENING FILM
 
-   Two jobs: the sound button, and stopping the clip when nobody is
-   looking at it.
+   Two jobs: the pause/play button, and stopping the clip when nobody
+   is looking at it.
 
    The second one matters more than it sounds. This clip autoplays, so
-   without this it keeps running — and keeps talking, if the sound was
-   turned on — for the whole time the reader is somewhere further down
+   without this it keeps running for the whole time the reader is somewhere further down
    the page. Pausing, not clearing: the position is kept, so scrolling
    back does not restart it from the top.
 
-   Under prefers-reduced-motion the clip never starts at all and the
-   poster stands in for it, which is why the sound button hides itself
-   in that case too — there would be nothing for it to unmute.
+   The clip does not autoplay. The frame is black until the visitor
+   presses play, and nothing is downloaded before then.
    -------------------------------------------------------------------- */
 (function () {
   var film  = document.getElementById('heroFilm');
   var video = document.getElementById('heroFilmVideo');
-  var sound = document.getElementById('heroFilmSound');
-  var label = document.getElementById('heroFilmSoundLabel');
+  var play  = document.getElementById('heroFilmPlay');
   if (!film || !video) return;
 
-  var still = window.matchMedia('(prefers-reduced-motion: reduce)');
+  /* ---------- PAUSE / PLAY ----------
+     userPaused remembers that the visitor chose to stop the clip, so
+     scrolling away and back (or switching tabs) does not start it again
+     behind their back. The button's icon and label follow the video's
+     real state through the play/pause events. */
+  /* Nothing plays until the button is pressed. userStarted also
+     guards against any other script on the site autoplaying the clip:
+     a play that did not come from the button is stopped at once. */
+  var userPaused = true;
+  var userStarted = false;
+  video.removeAttribute('autoplay');
+  video.muted = true;        /* no sound control on this clip, so never unmuted */
   var pausedOffscreen = false;
 
-  if (still.matches) {
-    video.removeAttribute('autoplay');
-    video.pause();
-    if (sound) sound.hidden = true;
-    return;
+  function syncPlay() {
+    if (!play) return;
+    var paused = video.paused;
+    play.classList.toggle('is-paused', paused);
+    play.setAttribute('aria-label', paused ? 'Play video' : 'Pause video');
+    play.title = paused ? 'Play' : 'Pause';
   }
+
+  if (play) {
+    play.addEventListener('click', function () {
+      if (video.paused) {
+        userStarted = true;
+        film.classList.add('is-started');
+        userPaused = false;
+        pausedOffscreen = false;
+        var p = video.play();
+        if (p && p.catch) p.catch(function () {});
+      } else {
+        userPaused = true;
+        video.pause();
+      }
+    });
+    video.addEventListener('play', function () {
+      if (!userStarted) { video.pause(); return; }
+      syncPlay();
+    });
+    video.addEventListener('pause', syncPlay);
+    video.pause();
+    syncPlay();
+  }
+
+  /* ---------- PLAYBACK SPEED ----------
+     0727.mp4 is edited fast (60 s at 24 fps). 1 = normal speed,
+     0.5 = half. Below about 0.6 a 24 fps clip starts to look choppy;
+     for slower than that, export a slowed file with ffmpeg instead and
+     set this back to 1.
+
+     Re-applied on every play and on loadedmetadata, because some
+     browsers reset playbackRate to 1 when a new source loads. */
+  var FILM_SPEED = 0.65;
+
+  function applySpeed() {
+    video.defaultPlaybackRate = FILM_SPEED;
+    video.playbackRate = FILM_SPEED;
+  }
+  applySpeed();
+  video.addEventListener('loadedmetadata', applySpeed);
+  video.addEventListener('play', applySpeed);
+
+
 
   function filmVisible() {
     var box = film.getBoundingClientRect();
@@ -216,7 +315,7 @@ require __DIR__ . '/includes/header.php';
   }
 
   function resumeFilm() {
-    if (!pausedOffscreen) return;
+    if (!pausedOffscreen || userPaused) return;
     pausedOffscreen = false;
     var playing = video.play();
     if (playing && playing.catch) playing.catch(function () {});
@@ -244,28 +343,7 @@ require __DIR__ . '/includes/header.php';
     else if (filmVisible()) resumeFilm();
   });
 
-  /* Autoplay can still be refused — a metered connection, a data-saver,
-     a browser that has decided it does not like this page. The poster
-     stays up in that case, so there is nothing to say about it, but the
-     sound button should not offer to unmute a clip that never ran. */
-  var opening = video.play();
-  if (opening && opening.catch) {
-    opening.catch(function () { if (sound) sound.hidden = true; });
-  }
 
-  if (sound) {
-    sound.addEventListener('click', function () {
-      video.muted = !video.muted;
-      sound.setAttribute('aria-pressed', String(!video.muted));
-      if (label) label.textContent = video.muted ? 'Turn sound on' : 'Turn sound off';
-      /* Unmuting counts as the gesture browsers wanted, so a clip that
-         was refused a moment ago will usually start here. */
-      if (video.paused && !pausedOffscreen) {
-        var playing = video.play();
-        if (playing && playing.catch) playing.catch(function () {});
-      }
-    });
-  }
 })();
 </script>
 

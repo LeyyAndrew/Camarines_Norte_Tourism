@@ -2778,3 +2778,77 @@ summary:focus-visible{
   .adm-town--chapter:hover .adm-chapstrip__cell img{ transform:none; }
   .adm-town--chapter:hover .adm-town__go{ transform:none; }
 }
+
+/* ===================================================================
+   APP SHELL: FIXED SIDEBAR, SCROLLING CONTENT  (desktop only)
+
+   The shell fills exactly one screen. The sidebar never moves, so the
+   nav, Collapse and Sign out are always in reach; only the content
+   area (.adm-main) scrolls.
+
+   Below 901px none of this applies: the sidebar is a strip across the
+   top there, and the whole page scrolls normally, which is what
+   phones expect.
+
+   Overlays (drawers, the glass panel, toasts, the confirm dialog) are
+   position:fixed, so they still cover the full screen.
+   =================================================================== */
+@media (min-width:901px){
+  html, body{ height:100%; }
+  body{ overflow:hidden; }
+
+  .adm{
+    height:100vh;
+    height:100dvh;           /* ignores mobile browser toolbars where supported */
+    min-height:0;
+    overflow:hidden;
+  }
+
+  /* The sidebar is exactly one screen tall. The nav takes the spare
+     height and scrolls on its own on very short windows, so it can
+     never push the account block and Sign out off the bottom. */
+  .adm-side{
+    height:100%;
+    min-height:0;
+  }
+  .adm-nav{
+    flex:0 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(255,255,255,.18) transparent;
+    /* room for the focus ring, which overflow would otherwise clip */
+    margin:0 -4px; padding:2px 4px;
+  }
+  .adm-nav::-webkit-scrollbar{ width:6px; }
+  .adm-nav::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.18); border-radius:3px; }
+  .adm-side__foot{ flex:none; }
+
+  /* The content area is the scroller. scrollbar-gutter keeps the
+     layout from shifting sideways when a page is short enough not to
+     need a scrollbar, or when a drawer locks scrolling. */
+  .adm-main{
+    height:100%;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    scrollbar-gutter:stable;
+    scroll-behavior:smooth;
+    scroll-padding-top:1.5rem;   /* anchors and scrollIntoView land with breathing room */
+  }
+  .adm-main:focus{ outline:none; }   /* focused only so the keyboard can scroll it */
+
+  /* Opening a drawer or panel used to lock <body>. The body no longer
+     scrolls, so lock the content area instead. */
+  body.adm-locked .adm-main{ overflow:hidden; }
+}
+
+@media (min-width:901px) and (prefers-reduced-motion:reduce){
+  .adm-main{ scroll-behavior:auto; }
+}
+
+/* Printing a page should print all of it, not one screen. */
+@media print{
+  html, body, .adm, .adm-main{ height:auto !important; overflow:visible !important; }
+  .adm-side{ display:none; }
+}

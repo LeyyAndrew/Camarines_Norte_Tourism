@@ -149,6 +149,11 @@ $navSignedIn = isset($_SESSION['user_id']);
    all. */
 $isAdmin = $navSignedIn && (($_SESSION['role'] ?? '') === 'admin');
 
+/* FEEDBACK is for visitors, not admins — admins read it in
+   admin/feedback.php. Used by the nav icon, the drawer row, and
+   includes/feedback-widget.php. */
+$navFeedback = $navSignedIn && !$isAdmin;
+
 /* ---------- THE CATEGORY ICON ----------
    Prints an uploaded image if $d['iconImg'] points at a real file,
    otherwise falls back to the inline SVG from $navIcons — the same
@@ -157,8 +162,14 @@ $isAdmin = $navSignedIn && (($_SESSION['role'] ?? '') === 'admin');
    pass 24 for the mega-menu, 20 for the phone drawer, so the file
    only ever needs to be uploaded once at a decent resolution and is
    scaled down for the smaller spot. */
+/* The uploaded picture icons are full-colour and clash with each other
+   in the menu. Line icons read as one set. Set this to true to go back
+   to the uploaded images. */
+$navUseIconImages = false;
+
 function navIconMarkup($d, $navIcons, $size = 24) {
-    $imgPath = $d['iconImg'] ?? '';
+    global $navUseIconImages;
+    $imgPath = $navUseIconImages ? ($d['iconImg'] ?? '') : '';
     if ($imgPath !== '' && is_file(__DIR__ . '/../' . $imgPath)) {
         return '<img src="' . htmlspecialchars(assetUrl($imgPath)) . '" alt="" width="' . (int)$size . '" height="' . (int)$size . '">';
     }
@@ -219,6 +230,18 @@ $navFeatureImgPath = 'uploads/nav-icons/Calaguas-Nav.jpg';
 $navFeatureImg = is_file(__DIR__ . '/../' . $navFeatureImgPath)
     ? siteUrl(assetUrl($navFeatureImgPath))
     : '';
+
+/* Signed out, a menu card is a button wired to the site's sign-in
+   prompt (data-auth-gate); signed in, a plain link. One helper so the
+   two versions of each card cannot drift apart. */
+function navCardOpen($class, $href, $signedIn, $extra = '') {
+    return $signedIn
+        ? '<a class="' . $class . '" href="' . htmlspecialchars($href) . '"' . $extra . '>'
+        : '<button type="button" class="' . $class . '" data-auth-gate' . $extra . '>';
+}
+function navCardClose($signedIn) {
+    return $signedIn ? '</a>' : '</button>';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -289,6 +312,10 @@ if ($pageCss !== 'assets/css/search.css' && is_file(__DIR__ . '/../' . $pageCss)
      lives in files with "saved-places" in the name. -->
 <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('assets/css/saved-places.css')) ?>">
 
+<!-- FEEDBACK. The dialog is opened from the nav, so its styles are on
+     every page. Everything for the feature has "feedback" in its name. -->
+<link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('assets/css/feedback.css')) ?>">
+
 <!-- LAST, on purpose. responsive.css corrects things the files above
      have already declared, so it has to be able to win against all of
      them. It is the only stylesheet that loads after the page file.
@@ -315,6 +342,10 @@ if ($pageCss !== 'assets/css/search.css' && is_file(__DIR__ . '/../' . $pageCss)
      arrives, the icon still opens nothing but Enter in the field still
      works and the results page still answers. -->
 <script src="<?= htmlspecialchars(assetUrl('assets/js/search.js')) ?>" defer></script>
+
+<!-- Opens and sends the feedback dialog (includes/feedback-widget.php).
+     Exits quietly when signed out, because the dialog is not rendered. -->
+<script src="<?= htmlspecialchars(assetUrl('assets/js/feedback.js')) ?>" defer></script>
 </head>
 <body>
 
@@ -329,6 +360,10 @@ if ($pageCss !== 'assets/css/search.css' && is_file(__DIR__ . '/../' . $pageCss)
 <a class="skip-link" href="#main">Skip to content</a>
 
 <nav class="nav" id="mainNav">
+
+  <!-- Dims the page under the open Destinations menu, so the panel
+       reads as a layer above the page. Purely visual. -->
+  <div class="nav__backdrop" aria-hidden="true"></div>
 
   <!-- ---------- MAIN BAR ---------- -->
   <div class="wrap nav__inner">
@@ -365,74 +400,71 @@ if ($pageCss !== 'assets/css/search.css' && is_file(__DIR__ . '/../' . $pageCss)
         </a>
 
         <div class="mega">
-          <div class="wrap mega__inner">
+          <div class="wrap">
+            <div class="mega__inner">
 
-            <div class="mega__cols">
-              <p class="mega__eyebrow">Browse by what you came for</p>
+              <div class="mega__main">
+                <div class="mega__head">
+                  <p class="mega__title">Explore by interest</p>
+                  <p class="mega__sub">Twelve towns, from island beaches to gold-country heritage.</p>
+                </div>
 
-              <div class="mega__grid">
-                <?php foreach ($navDestinations as $d): ?>
-                  <?php /* Signed in: a normal link, same as always. Signed
-                           out: a button wired to the site's existing
-                           auth-gate hook — the same one the search icon
-                           and the sign-in button already use — so there is
-                           one sign-in prompt on this site, not a second
-                           one invented for this menu. */ ?>
-                  <?php if ($navSignedIn): ?>
-                    <a class="mega__card" href="<?= htmlspecialchars($d['href']) ?>">
+                <div class="mega__grid">
+                  <?php foreach ($navDestinations as $d): ?>
+                    <?= navCardOpen('mega__card', $d['href'], $navSignedIn) ?>
                       <span class="mega__icon" aria-hidden="true"><?= navIconMarkup($d, $navIcons, 24) ?></span>
                       <span class="mega__text">
                         <strong><?= htmlspecialchars($d['label']) ?></strong>
                         <span><?= htmlspecialchars($d['desc']) ?></span>
                       </span>
-                    </a>
-                  <?php else: ?>
-                    <button type="button" class="mega__card" data-auth-gate>
-                      <span class="mega__icon" aria-hidden="true"><?= navIconMarkup($d, $navIcons, 24) ?></span>
-                      <span class="mega__text">
-                        <strong><?= htmlspecialchars($d['label']) ?></strong>
-                        <span><?= htmlspecialchars($d['desc']) ?></span>
-                      </span>
-                    </button>
-                  <?php endif; ?>
-                <?php endforeach; ?>
+                    <?= navCardClose($navSignedIn) ?>
+                  <?php endforeach; ?>
+
+                  <!-- The sixth cell: fills the grid evenly and gives the
+                       panel an obvious "see everything" exit. Not gated,
+                       because the Destinations link itself is not. -->
+                  <a class="mega__card mega__card--all" href="destinations.php">
+                    <span class="mega__icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14"/><path d="M15 6v14"/></svg>
+                    </span>
+                    <span class="mega__text">
+                      <strong>All destinations</strong>
+                      <span>Every place, on one map</span>
+                    </span>
+                    <span class="mega__go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
+                  </a>
+                </div>
               </div>
+
+              <!-- The featured card. --img is set here; the gradient under
+                   it in nav.css shows if the photo is missing. -->
+              <?= navCardOpen('mega__feature', 'destinations.php?cat=Beaches+%26+Islands#destFilters', $navSignedIn,
+                    $navFeatureImg !== '' ? ' style="--img:url(\'' . htmlspecialchars($navFeatureImg, ENT_QUOTES) . '\')"' : '') ?>
+                <span class="mega__feature-tag">Most visited</span>
+                <span class="mega__feature-body">
+                  <span class="mega__feature-title">The Calaguas Islands</span>
+                  <span class="mega__feature-sub">Four hours from Manila, then a boat. Worth every minute.</span>
+                  <span class="mega__feature-go">See the islands <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
+                </span>
+              <?= navCardClose($navSignedIn) ?>
+
             </div>
-
-            <!-- The featured slot. --img is a CSS custom property, and
-                 the gradient underneath it in nav.css shows through if
-                 the file is missing — so a wrong path degrades to a
-                 coloured card instead of a broken-image icon. Swap the
-                 filename for whichever photo you want to push. -->
-            <?php if ($navSignedIn): ?>
-              <a class="mega__feature" href="destinations.php?cat=Beaches+%26+Islands#destFilters"
-                 <?= $navFeatureImg !== '' ? 'style="--img:url(\'' . htmlspecialchars($navFeatureImg, ENT_QUOTES) . '\')"' : '' ?>>
-                <span class="mega__feature-tag">Most asked about</span>
-                <span class="mega__feature-title">The Calaguas Islands</span>
-                <span class="mega__feature-sub">Four hours from Manila, then a boat. Worth every minute.</span>
-                <span class="mega__feature-go">
-                  See the islands
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
-                </span>
-              </a>
-            <?php else: ?>
-              <button type="button" class="mega__feature" data-auth-gate
-                      <?= $navFeatureImg !== '' ? 'style="--img:url(\'' . htmlspecialchars($navFeatureImg, ENT_QUOTES) . '\')"' : '' ?>>
-                <span class="mega__feature-tag">Most asked about</span>
-                <span class="mega__feature-title">The Calaguas Islands</span>
-                <span class="mega__feature-sub">Four hours from Manila, then a boat. Worth every minute.</span>
-                <span class="mega__feature-go">
-                  See the islands
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
-                </span>
-              </button>
-            <?php endif; ?>
-
           </div>
         </div>
       </li>
 
       <li class="nav__item"><a href="gallery.php"<?= navOn('gallery.php') ?>>Gallery</a></li>
+
+      <?php if ($navFeedback): ?>
+        <!-- FEEDBACK, beside Gallery. Visitors only — see $navFeedback.
+             Opens the dialog in includes/feedback-widget.php. -->
+        <li class="nav__item">
+          <button type="button" class="nav__link nav__feedback" data-feedback-open
+                  aria-controls="feedbackModal" aria-label="Send feedback" title="Send feedback">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/><path d="M8.5 10.5h7"/><path d="M8.5 13.8h4.5"/></svg>
+          </button>
+        </li>
+      <?php endif; ?>
     </ul>
 
     <div class="nav__icons">
@@ -862,6 +894,15 @@ if ($pageCss !== 'assets/css/search.css' && is_file(__DIR__ . '/../' . $pageCss)
         <button type="button" class="nav-drawer__link" data-auth-gate>
           Sign in to search
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.3" y1="15.3" x2="20.5" y2="20.5"/></svg>
+        </button>
+      <?php endif; ?>
+
+      <?php if ($navFeedback): ?>
+        <!-- Same data-feedback-open hook as the nav icon. feedback.js
+             closes the drawer before opening the dialog. -->
+        <button type="button" class="nav-drawer__link" data-feedback-open aria-controls="feedbackModal">
+          Send feedback
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/></svg>
         </button>
       <?php endif; ?>
     </nav>

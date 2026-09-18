@@ -695,6 +695,173 @@ require __DIR__ . '/_header.php';
 
 
 
+<style>
+/* ===================================================================
+   DESTINATIONS — SUMMARY STRIP AND MUNICIPALITY CARDS
+
+   Scoped to .dx so nothing here leaks into the shared admin sheet.
+   The one bold thing is each town's colour band (TOWN_TINTS), drawn
+   with faint contour rings like a map. Everything around it is quiet.
+   =================================================================== */
+.dx {
+  --dx-ink: #14231d;
+  --dx-mute: #5b6b64;
+  --dx-line: #e2e8e4;
+  --dx-card: #fff;
+  --dx-green: #1f7a55;
+  --dx-green-soft: #e8f3ed;
+  --dx-gold: #94640f;
+  --dx-gold-soft: #fbf0d9;
+}
+
+/* ---------- summary: one strip instead of five equal boxes ---------- */
+.dx-summary {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 16px 32px; margin: 0 0 36px; padding: 20px 24px;
+  background: var(--dx-card); border: 1px solid var(--dx-line); border-radius: 14px;
+}
+.dx-summary__lead { display: flex; align-items: center; gap: 14px; margin: 0; }
+.dx-summary__num {
+  font-size: 46px; font-weight: 700; line-height: 1; letter-spacing: -.02em;
+  color: var(--dx-ink); font-variant-numeric: tabular-nums;
+}
+.dx-summary__txt { font-size: 15px; font-weight: 600; line-height: 1.35; color: var(--dx-ink); }
+.dx-summary__txt span { font-weight: 400; color: var(--dx-mute); }
+.dx-summary__checks { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.dx-check {
+  display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px 7px 10px;
+  border-radius: 999px; background: var(--dx-green-soft); color: var(--dx-green);
+  font-size: 13.5px; font-weight: 500;
+}
+.dx-check svg { width: 16px; height: 16px; flex: none; }
+.dx-check--flag { background: var(--dx-gold-soft); color: var(--dx-gold); font-weight: 600; }
+
+/* ---------- toolbar ---------- */
+.dx-toolbar {
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+  gap: 12px 24px; margin: 0 0 16px;
+}
+.dx-toolbar__title { margin: 0; font-size: 19px; font-weight: 700; color: var(--dx-ink); }
+.dx-toolbar__hint { margin: 3px 0 0; font-size: 14px; color: var(--dx-mute); }
+.dx-search { position: relative; flex: 0 1 300px; }
+.dx-search svg {
+  position: absolute; left: 12px; top: 50%; width: 16px; height: 16px;
+  transform: translateY(-50%); color: var(--dx-mute); pointer-events: none;
+}
+.dx .dx-search input {
+  box-sizing: border-box; width: 100%; height: 40px; margin: 0; padding: 0 12px 0 36px;
+  border: 1px solid var(--dx-line); border-radius: 10px; background: #fff;
+  font: inherit; font-size: 14px; color: var(--dx-ink);
+}
+.dx .dx-search input:focus {
+  outline: none; border-color: var(--dx-green); box-shadow: 0 0 0 3px rgba(31, 122, 85, .18);
+}
+
+/* ---------- the municipality cards ---------- */
+.dx-towns {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 18px; margin: 0 0 40px;
+}
+.dx-town {
+  position: relative; display: flex; flex-direction: column; align-items: stretch;
+  margin: 0; padding: 0; overflow: hidden; text-align: left; cursor: pointer;
+  font: inherit; color: var(--dx-ink);
+  background: var(--dx-card); border: 1px solid var(--dx-line); border-radius: 14px;
+  transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+.dx-town[hidden] { display: none; }
+.dx-town:hover {
+  border-color: #c3d2ca; transform: translateY(-2px);
+  box-shadow: 0 10px 24px -12px rgba(12, 40, 28, .35);
+}
+.dx-town:focus-visible { outline: 3px solid var(--dx-green); outline-offset: 2px; }
+
+.dx-town__band {
+  display: block; height: 128px;
+  background:
+    repeating-radial-gradient(circle at 88% 135%, transparent 0 10px, rgba(255,255,255,.08) 10px 11px),
+    radial-gradient(120% 150% at 0% 0%, var(--town-1) 0%, transparent 62%),
+    radial-gradient(110% 140% at 100% 100%, var(--town-2) 0%, transparent 66%),
+    var(--town-3);
+}
+/* A real photograph in the band. The town's colours stay underneath
+   as the fallback and wash over the bottom of the photo, so the seal
+   and the gold badge always sit on something readable. */
+.dx-town__band { position: relative; overflow: hidden; }
+.dx-town__photo {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; transition: transform .4s ease;
+}
+.dx-town__band--photo::after {
+  content: ""; position: absolute; inset: 0;
+  background:
+    linear-gradient(to top, var(--town-3) 0%, transparent 55%),
+    linear-gradient(to bottom, rgba(0,0,0,.28) 0%, transparent 35%);
+  opacity: .85;
+}
+.dx-town:hover .dx-town__photo { transform: scale(1.05); }
+
+.dx-town__crest {
+  position: relative; display: grid; place-items: center;
+  width: 70px; height: 70px; margin: -40px 0 0 18px; border-radius: 50%; overflow: hidden;
+  background: #fff; box-shadow: 0 0 0 4px #fff, 0 6px 14px -6px rgba(0, 0, 0, .45);
+}
+.dx-town__seal { display: block; width: 100%; height: 100%; object-fit: contain; }
+.dx-town__initial { font-size: 21px; font-weight: 700; letter-spacing: .02em; color: var(--town-3); }
+
+.dx-town__flag {
+  z-index: 2; position: absolute; top: 12px; right: 12px;
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px 4px 7px;
+  border-radius: 999px; background: #f4cb6c; color: #3b2904;
+  font-size: 12px; font-weight: 700;
+}
+.dx-town__flag svg { width: 13px; height: 13px; }
+
+.dx-town__main { display: flex; flex: 1; flex-direction: column; gap: 6px; padding: 12px 18px 0; }
+.dx-town__name { font-size: 17px; font-weight: 700; line-height: 1.25; }
+.dx-town__desc { font-size: 14px; line-height: 1.5; color: var(--dx-mute); }
+
+.dx-town__foot {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 16px; padding: 12px 16px 12px 18px; border-top: 1px solid var(--dx-line);
+}
+.dx-town__thumbs { display: flex; }
+.dx-town__thumb {
+  display: block; flex: none; width: 30px; height: 30px; margin-left: -8px;
+  border: 2px solid #fff; border-radius: 8px; object-fit: cover; background: #dde5e0;
+}
+.dx-town__thumb:first-child { margin-left: 0; }
+.dx-town__thumb--none { background: repeating-linear-gradient(45deg, #e3e9e5 0 4px, #f3f6f4 4px 8px); }
+.dx-town__thumb--off { opacity: .4; }
+.dx-town__count { font-size: 13.5px; font-weight: 600; color: var(--dx-green); }
+.dx-town__go {
+  display: grid; place-items: center; width: 30px; height: 30px; margin-left: auto;
+  border-radius: 50%; background: var(--dx-green-soft); color: var(--dx-green);
+  transition: background .15s, color .15s;
+}
+.dx-town__go svg {
+  width: 16px; height: 16px; fill: none; stroke: currentColor;
+  stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+}
+.dx-town:hover .dx-town__go { background: var(--dx-green); color: #fff; }
+
+.dx-nomatch {
+  margin: 0 0 40px; padding: 28px; text-align: center; color: var(--dx-mute);
+  border: 1px dashed var(--dx-line); border-radius: 14px;
+}
+
+@media (max-width: 560px) {
+  .dx-summary { padding: 18px; }
+  .dx-summary__num { font-size: 38px; }
+  .dx-search { flex-basis: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dx-town, .dx-town__go, .dx-town__photo { transition: none; }
+  .dx-town:hover .dx-town__photo { transform: none; }
+  .dx-town:hover { transform: none; }
+}
+</style>
+
 <header class="adm-head">
   <div>
     <span class="adm-eyebrow">Site content</span>
@@ -722,32 +889,39 @@ require __DIR__ . '/_header.php';
   </p>
 <?php endif; ?>
 
-<div class="adm-stats">
-  <div class="adm-stat">
-    <span class="adm-stat__num"><?= $live ?></span>
-    <span class="adm-stat__label">On the site</span>
-  </div>
+<div class="dx">
 
-  <div class="adm-stat<?= count($rows) - $live ? ' adm-stat--flag' : '' ?>">
-    <span class="adm-stat__num"><?= count($rows) - $live ?></span>
-    <span class="adm-stat__label">Hidden</span>
-  </div>
+<!-- ============ SUMMARY ============
+     One strip, not five equal boxes. The headline number is what is on
+     the site; the three checks say "all clear" in green, and only turn
+     gold — with a count — when something needs fixing. Five big zeros
+     used to carry as much weight as the 24. -->
+<?php
+  $hidden = count($rows) - $live;
+  $checks = [
+      [!$hidden,  'Every place is visible',    $hidden  . ' hidden from the site'],
+      [!$noPin,   'Every place is on the map', $noPin   . ' without a map pin'],
+      [!$noPhoto, 'Every place has a photo',   $noPhoto . ' without a photo'],
+  ];
+?>
+<section class="dx-summary" aria-label="Summary">
+  <p class="dx-summary__lead">
+    <span class="dx-summary__num"><?= $live ?></span>
+    <span class="dx-summary__txt">
+      place<?= $live === 1 ? '' : 's' ?> on the site<br>
+      <span>across <?= count($byTown) ?> municipalit<?= count($byTown) === 1 ? 'y' : 'ies' ?></span>
+    </span>
+  </p>
 
-  <div class="adm-stat">
-    <span class="adm-stat__num"><?= count($byTown) ?></span>
-    <span class="adm-stat__label">Municipalities</span>
-  </div>
-
-  <div class="adm-stat<?= $noPin ? ' adm-stat--flag' : '' ?>">
-    <span class="adm-stat__num"><?= $noPin ?></span>
-    <span class="adm-stat__label">No map pin</span>
-  </div>
-
-  <div class="adm-stat<?= $noPhoto ? ' adm-stat--flag' : '' ?>">
-    <span class="adm-stat__num"><?= $noPhoto ?></span>
-    <span class="adm-stat__label">No photo</span>
-  </div>
-</div>
+  <ul class="dx-summary__checks">
+    <?php foreach ($checks as [$ok, $good, $bad]): ?>
+      <li class="dx-check<?= $ok ? '' : ' dx-check--flag' ?>">
+        <?= $ok ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.8L16.5 9.5"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5h.01"/></svg>' ?>
+        <?= e($ok ? $good : $bad) ?>
+      </li>
+    <?php endforeach; ?>
+  </ul>
+</section>
 
 <!-- ============ THE ADD / EDIT DRAWER ============
 
@@ -958,37 +1132,26 @@ require __DIR__ . '/_header.php';
   </div>
 </div>
 
-<!-- ============ ONE PANEL PER MUNICIPALITY ============ -->
-<!-- ============ THE GRID ============
-
-     Twelve collapsible tables became one grid of photographs.
-
-     WHY. A destination is a place with a picture, and the table led
-     with a 104px thumbnail on a page that is fundamentally about
-     pictures. It also carried six columns — half of them one word
-     each — and repeated its header row twelve times, once per
-     municipality.
-
-     ONLY WHAT IS WRONG IS MARKED. The table put a green "Live" badge
-     on all twenty-four rows, and twenty-four green badges say
-     nothing. Here a tile with no mark is in order; a mark means it
-     wants you. Three states are worth interrupting for: hidden, no
-     photograph, no map pin.
-
-     THE MUNICIPALITY BECAME A FILTER, not twelve panels. Twelve
-     headings for twenty-four places was a heading for every two.
+<!-- ============ THE MUNICIPALITIES ============
+     Twelve cards. Each leads with the town's own colours as a band
+     (TOWN_TINTS), the seal sitting on its edge, and ends with small
+     thumbnails of the places inside — so a card shows what you will
+     find before you open it. A gold pill appears only when a place in
+     that town is hidden, unpinned or missing a photo.
      ================================================================ -->
-<!-- ============ LEVEL ONE: THE MUNICIPALITIES ============
-     Twelve cards, two places each. Click one and its places open in
-     a panel over the middle of the screen, with the grid still
-     visible and blurred behind it — so it is obvious you have stepped
-     into one town rather than gone somewhere new.
+<div class="dx-toolbar">
+  <div>
+    <h2 class="dx-toolbar__title">Municipalities</h2>
+    <p class="dx-toolbar__hint">Open a town to edit its places or its seal.</p>
+  </div>
 
-     THE GOLD PILL counts what needs attention in that town: hidden,
-     no map pin, or no photograph. A town with nothing to fix carries
-     no mark, so a marked card is worth crossing the room for.
-     ================================================================ -->
-<div class="adm-towns" id="destTowns">
+  <label class="dx-search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input type="search" id="destFind" placeholder="Find a town or place" aria-label="Find a municipality or place" autocomplete="off">
+  </label>
+</div>
+
+<div class="dx-towns" id="destTowns">
   <?php foreach ($byTown as $town => $list):
       $seal  = town_seal($town, '../');
       $needs = 0;
@@ -999,64 +1162,89 @@ require __DIR__ . '/_header.php';
           }
       }
 
-      /* "Jose Panganiban" -> JP, "Labo" -> LA. Two letters either
-         way, so every fallback card carries the same weight. */
+      /* "Jose Panganiban" -> JP, "Labo" -> LA. */
       $words   = preg_split('/\s+/', trim($town));
       $initial = count($words) > 1
           ? strtoupper(substr($words[0], 0, 1) . substr($words[1], 0, 1))
           : strtoupper(substr($town, 0, 2));
 
-      /* The town's three colours, handed to the CSS as custom
-         properties. Inline because they belong to this town and to
-         nothing else on the page — putting twelve one-off palettes in
-         the stylesheet means a thirteenth municipality cannot be
-         added without editing CSS. */
       $tint  = TOWN_TINTS[$town] ?? TOWN_TINT_FALLBACK;
       $field = sprintf('--town-1:%s;--town-2:%s;--town-3:%s', $tint[0], $tint[1], $tint[2]);
+
+      /* The band photo: the first place in this town that has one,
+         preferring places that are on the site. No photo at all and
+         the band falls back to the town's colours. */
+      $cover = '';
+      foreach ([true, false] as $wantVisible) {
+          foreach ($list as $pl) {
+              if ($pl['filename'] !== '' && (bool) $pl['is_visible'] === $wantVisible) {
+                  $cover = $pl['filename'];
+                  break 2;
+              }
+          }
+      }
+
+      /* What the search box matches against: the town and every place in it. */
+      $find = strtolower($town . ' ' . implode(' ', array_column($list, 'name')));
   ?>
-  <button type="button" class="adm-town adm-town--crest" data-town="<?= e($town) ?>"
-          style="<?= e($field) ?>">
+  <button type="button" class="dx-town" data-town="<?= e($town) ?>"
+          data-find="<?= e($find) ?>" style="<?= e($field) ?>">
 
-    <!-- The seal on a disc washed with the town's own colour at a
-         tenth of its old strength. Enough that Paracale reads gold
-         and Vinzons turquoise; not enough to compete with the crest
-         sitting on top of it. -->
-    <span class="adm-town__field">
+    <span class="dx-town__band<?= $cover !== '' ? ' dx-town__band--photo' : '' ?>" aria-hidden="true">
+      <?php if ($cover !== ''): ?>
+        <img class="dx-town__photo" src="<?= dest_url($cover, '../') ?>" alt="" loading="lazy"
+             onerror="this.parentNode.classList.remove('dx-town__band--photo');this.remove()">
+      <?php endif; ?>
+    </span>
+
+    <span class="dx-town__crest">
       <?php if ($seal): ?>
-        <img class="adm-town__seal" src="<?= $seal ?>" alt="" onerror="this.remove()">
+        <img class="dx-town__seal" src="<?= $seal ?>" alt="" onerror="this.remove()">
       <?php else: ?>
-        <span class="adm-town__initial"><?= e($initial) ?></span>
+        <span class="dx-town__initial"><?= e($initial) ?></span>
       <?php endif; ?>
     </span>
 
-    <span class="adm-town__body">
-      <span class="adm-town__name"><?= e($town) ?></span>
-
-      <?php if (isset(TOWN_LINES[$town])): ?>
-        <span class="adm-town__desc"><?= e(TOWN_LINES[$town]) ?></span>
-      <?php endif; ?>
-
-      <!-- The count and the attention flag on one line. The flag used
-           to sit over the artwork; there is no artwork now, and it
-           belongs beside the number it qualifies anyway. -->
-      <span class="adm-town__foot">
-        <?= count($list) ?> place<?= count($list) === 1 ? '' : 's' ?>
-        <?php if ($needs): ?>
-          <span class="adm-town__flag" title="<?= $needs ?> need attention"><?= $needs ?></span>
-        <?php endif; ?>
+    <?php if ($needs): ?>
+      <span class="dx-town__flag" title="<?= $needs ?> place<?= $needs === 1 ? '' : 's' ?> hidden, unpinned or without a photo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5h.01"/></svg>
+        <?= $needs ?> to fix
       </span>
+    <?php endif; ?>
+
+    <span class="dx-town__main">
+      <span class="dx-town__name"><?= e($town) ?></span>
+      <?php if (isset(TOWN_LINES[$town])): ?>
+        <span class="dx-town__desc"><?= e(TOWN_LINES[$town]) ?></span>
+      <?php endif; ?>
     </span>
 
-    <!-- The chevron. Visible at rest, not only on hover — the card has
-         to announce that it opens something before the pointer gets
-         there. aria-hidden because the button already has an
-         accessible name from the town it contains. -->
-    <span class="adm-town__go" aria-hidden="true">
-      <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+    <span class="dx-town__foot">
+      <span class="dx-town__thumbs" aria-hidden="true">
+        <?php foreach (array_slice($list, 0, 4) as $pl):
+            $off = $pl['is_visible'] ? '' : ' dx-town__thumb--off'; ?>
+          <?php if ($pl['filename'] !== ''): ?>
+            <img class="dx-town__thumb<?= $off ?>" src="<?= dest_url($pl['filename'], '../') ?>" alt=""
+                 loading="lazy" onerror="this.removeAttribute('src');this.classList.add('dx-town__thumb--none')">
+          <?php else: ?>
+            <span class="dx-town__thumb dx-town__thumb--none<?= $off ?>"></span>
+          <?php endif; ?>
+        <?php endforeach; ?>
+      </span>
+
+      <span class="dx-town__count"><?= count($list) ?> place<?= count($list) === 1 ? '' : 's' ?></span>
+
+      <span class="dx-town__go" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+      </span>
     </span>
   </button>
   <?php endforeach; ?>
 </div>
+
+<p class="dx-nomatch" id="destNoMatch" hidden>No municipality or place matches that search.</p>
+
+</div><!-- /.dx -->
 
 
 <!-- ============ LEVEL TWO: THE PLACES ============
@@ -1284,7 +1472,7 @@ require __DIR__ . '/_header.php';
 
     /* Carry the town's own seal into the panel header, so the panel
        is visibly about the card you clicked. */
-    var img = card.querySelector('.adm-town__seal');
+    var img = card.querySelector('.dx-town__seal');
     var has = !!img;
 
     if (has) { seal.src = img.getAttribute('src'); seal.hidden = false; }
@@ -1357,7 +1545,7 @@ require __DIR__ . '/_header.php';
   }
 
   towns.addEventListener('click', function (e) {
-    var card = e.target.closest('.adm-town');
+    var card = e.target.closest('.dx-town');
     if (card) open(card);
   });
 
@@ -1393,7 +1581,7 @@ require __DIR__ . '/_header.php';
   var wanted = params.get('town');
 
   if (wanted && !params.get('edit')) {
-    var card = towns.querySelector('.adm-town[data-town="' + wanted.replace(/"/g, '\\"') + '"]');
+    var card = towns.querySelector('.dx-town[data-town="' + wanted.replace(/"/g, '\\"') + '"]');
     if (card) open(card);
   }
 })();
@@ -1480,6 +1668,32 @@ require __DIR__ . '/_header.php';
          than silently doing nothing — the picker still works. */
       if (window.admToast) admToast('Dragging is not supported here. Click to choose a file instead.', 'bad');
     }
+  });
+})();
+/* ===================================================================
+   FIND A TOWN OR PLACE
+   Filters the twelve cards by town name or any place inside it, so
+   "Calaguas" finds Vinzons. Purely visual; without it all twelve show.
+   =================================================================== */
+(function () {
+  var input = document.getElementById('destFind');
+  var grid  = document.getElementById('destTowns');
+  var none  = document.getElementById('destNoMatch');
+  if (!input || !grid) return;
+
+  var cards = grid.querySelectorAll('.dx-town');
+
+  input.addEventListener('input', function () {
+    var q = input.value.trim().toLowerCase();
+    var shown = 0;
+
+    cards.forEach(function (c) {
+      var match = !q || (c.getAttribute('data-find') || '').indexOf(q) !== -1;
+      c.hidden = !match;
+      if (match) shown++;
+    });
+
+    if (none) none.hidden = shown !== 0;
   });
 })();
 </script>

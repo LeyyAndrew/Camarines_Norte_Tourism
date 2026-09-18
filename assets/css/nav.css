@@ -289,203 +289,253 @@
 /* ===================================================================
    THE MEGA-MENU
 
-   Opens on hover and on keyboard focus. visibility (not display) is
-   what animates, because display cannot be transitioned and a panel
-   that snaps into place feels like a bug rather than a menu.
+   A floating white card under the bar. Rules are prefixed with
+   #mainNav so the older .mega rules in base.css / responsive.css /
+   mobile.css cannot override them. The background is solid on
+   purpose: the page must never show through the panel.
 
-   THE PADDING-TOP ON .mega IS LOAD-BEARING. The panel starts flush
-   against the bottom of the nav, so there is no dead gap between the
-   link and the panel for the pointer to cross. Without it the menu
-   closes the moment you move down toward the thing you were aiming
-   for, which is the single most common way a hover menu is broken.
+   The transparent padding-top on .mega is the hover bridge: the
+   pointer crosses it on the way down without the menu closing.
    =================================================================== */
-.mega{
+#mainNav .mega{
   position:absolute; top:100%; left:0; right:0;
+  padding-top:.6rem;
+  background:none;
   opacity:0; visibility:hidden;
-  transform:translateY(-8px);
-  transition:opacity .22s ease, transform .28s cubic-bezier(.16,.84,.44,1), visibility 0s linear .22s;
+  transform:translateY(-6px);
+  transition:opacity .16s ease, transform .22s cubic-bezier(.16,.84,.44,1), visibility 0s linear .16s;
 }
 
-.nav__item--mega:hover .mega,
-.nav__item--mega:focus-within .mega{
+#mainNav .nav__item--mega:hover .mega,
+#mainNav .nav__item--mega:focus-within .mega{
   opacity:1; visibility:visible;
   transform:translateY(0);
   transition-delay:0s;
 }
 
-.mega__inner{
-  display:grid;
-  grid-template-columns:minmax(0,1fr) 300px;
-  gap:2rem;
-  margin-top:0;
-  padding-top:1.6rem; padding-bottom:1.6rem;
-  background:var(--mega-bg);
-  border-radius:0 0 1.25rem 1.25rem;
-  box-shadow:0 30px 60px -28px rgba(22,25,28,.55);
+/* Dims the page while the panel is open. */
+.nav__backdrop{
+  position:absolute; top:100%; left:0; right:0; height:100vh;
+  background:rgba(8,12,16,.45);
+  opacity:0; visibility:hidden; pointer-events:none;
+  transition:opacity .2s ease, visibility 0s linear .2s;
+}
+.nav:has(.nav__item--mega:hover) .nav__backdrop,
+.nav:has(.nav__item--mega:focus-within) .nav__backdrop{
+  opacity:1; visibility:visible; transition-delay:0s;
 }
 
-/* .nav__links sets a light colour and uppercase for the bar; neither
-   belongs inside the panel. Reset both at the top so every rule below
-   starts from normal text. */
-.mega, .mega *{ text-transform:none; letter-spacing:normal; }
+#mainNav .mega__inner{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 290px;
+  gap:1.5rem;
+  margin:0;
+  padding:1.5rem;
+  background:#fff;
+  opacity:1;
+  backdrop-filter:none;
+  border:1px solid rgba(22,25,28,.06);
+  border-radius:1rem;
+  box-shadow:0 1px 2px rgba(16,26,43,.06), 0 28px 60px -24px rgba(16,26,43,.5);
+}
 
-.mega{ color:var(--navy); font-weight:400; }
+/* The bar's colour, case and tracking stop at the panel edge. */
+#mainNav .mega, #mainNav .mega *{ text-transform:none; letter-spacing:normal; }
+#mainNav .mega{ color:var(--navy); font-weight:400; }
 
-/* base.css puts a growing amber underline on every `a` inside
-   .nav__links. In the bar that is the point; in here it would draw a
-   line under all six cards at once. content:none removes the
-   pseudo-element outright rather than just hiding it. */
-.nav__links .mega a::after{ content:none; }
+/* base.css underlines and pads every `a` in .nav__links; not here. */
+#mainNav .mega a::after{ content:none; }
+#mainNav .mega a{ padding-bottom:0; }
 
-/* Same rule also sets padding-bottom:.3rem on every `a` in the bar.
-   `.nav__links a` (0,2,0) outranks `.mega__card` (0,1,0), so without
-   this line base.css quietly wins the bottom edge of all six cards and
-   they sit lopsided — more space above the icon than below it. */
-.nav__links .mega a{ padding-bottom:0; }
+#mainNav .mega__main{ display:flex; flex-direction:column; min-width:0; }
 
-.nav__links .mega .mega__card{ padding:.6rem .8rem; }
+#mainNav .mega__head{
+  display:flex; align-items:baseline; justify-content:space-between; gap:.4rem 1rem; flex-wrap:wrap;
+  padding:0 .8rem .9rem;
+  margin:0 0 .6rem;
+  border-bottom:1px solid var(--mega-line);
+}
 
-.nav__links .mega .mega__feature{ padding:1.25rem; }
+#mainNav .mega__title{
+  margin:0;
+  font-family:var(--font-display);
+  font-size:1rem; font-weight:700;
+  letter-spacing:-.01em;
+  color:var(--navy);
+}
 
-.mega__eyebrow{
-  margin:0 0 1rem;
+#mainNav .mega__sub{
+  margin:0;
   font-family:var(--font-body);
-  font-size:.68rem; font-weight:600;
-  letter-spacing:.14em; text-transform:uppercase;
+  font-size:.82rem;
   color:var(--mega-mute);
 }
 
-.mega__grid{
+#mainNav .mega__grid{
   display:grid;
-  grid-template-columns:repeat(2, minmax(0,1fr));
-  gap:.35rem 1.5rem;
+  grid-template-columns:repeat(3, minmax(0,1fr));
+  gap:.25rem;
 }
 
-/* ---------- a category row ----------
-   Icon, label, one line of what is down there. The line is the point:
-   "Food & Delicacies" tells a traveller the category exists, "Bicol
-   Express, laing, pili, pineapple" tells them whether to click. */
-.mega__card{
-  display:flex; align-items:flex-start; gap:.85rem;
-  padding:.6rem .8rem;
-  border-radius:.75rem;
-  border:1px solid transparent;
-  transition:background .2s ease, border-color .2s ease, transform .2s cubic-bezier(.16,.84,.44,1);
+/* ---------- a category ---------- */
+#mainNav .mega__card{
+  position:relative;
+  display:flex; align-items:flex-start; gap:.8rem;
+  width:100%;
+  margin:0;
+  padding:.8rem;
+  border:0;
+  border-radius:.7rem;
+  background:transparent;
+  font:inherit; color:inherit; text-align:left;
+  cursor:pointer;
+  transform:none;
+  transition:background .16s ease;
 }
 
-.mega__card:hover{
-  background:var(--mist);
-  border-color:var(--mega-line);
-  transform:translateX(3px);
+#mainNav .mega__card:hover{ background:#f3f5f6; transform:none; }
+
+#mainNav .mega__card:focus-visible{
+  outline:2px solid var(--orange); outline-offset:-2px;
+  background:#f3f5f6;
 }
 
-.mega__card:focus-visible{
-  outline:2px solid var(--orange); outline-offset:2px;
-  background:var(--mist);
-}
-
-.mega__icon{
+#mainNav .mega__icon{
   flex-shrink:0;
-  display:flex; align-items:center; justify-content:center;
-  width:2.15rem; height:2.15rem;
-  border-radius:.62rem;
-  background:rgba(240,163,44,.14);
-  color:#B47512;              /* amber darkened to pass contrast on white */
-  transition:background .2s ease, color .2s ease;
-}
-
-.mega__icon svg{ width:17px; height:17px; }
-
-.mega__card:hover .mega__icon{ background:var(--orange); color:#fff; }
-
-.mega__text{ display:flex; flex-direction:column; gap:.15rem; min-width:0; }
-
-.mega__text strong{
-  font-family:var(--font-display);
-  font-size:.94rem; font-weight:600;
-  letter-spacing:-.01em;
+  display:grid; place-items:center;
+  width:2.25rem; height:2.25rem;
+  border-radius:.6rem;
+  background:#f1f3f4;
+  border:1px solid rgba(22,25,28,.06);
   color:var(--navy);
-  line-height:1.3;
+  transition:background .16s ease, color .16s ease, border-color .16s ease;
 }
 
-.mega__text span{
-  font-size:.78rem;
+#mainNav .mega__icon svg{ width:18px; height:18px; }
+#mainNav .mega__icon img{ width:20px; height:20px; object-fit:contain; }
+
+#mainNav .mega__card:hover .mega__icon{ background:var(--navy); border-color:var(--navy); color:#fff; }
+
+#mainNav .mega__text{ display:flex; flex-direction:column; gap:.18rem; min-width:0; padding-top:.05rem; }
+
+#mainNav .mega__text strong{
+  font-family:var(--font-display);
+  font-size:.92rem; font-weight:600;
+  letter-spacing:-.005em;
+  line-height:1.3;
+  color:var(--navy);
+}
+
+#mainNav .mega__text span{
+  font-family:var(--font-body);
+  font-size:.79rem;
   line-height:1.45;
   color:var(--mega-mute);
 }
 
-/* ---------- the featured card ----------
-   var(--img) is set inline in header.php. The gradient is listed
-   SECOND in background-image, which means it paints underneath — so if
-   the photo path is wrong you get a deep teal card with readable text
-   on it, not a broken-image icon in the middle of your nav. */
-.mega__feature{
+/* the "All destinations" cell */
+#mainNav .mega__card--all .mega__icon{ background:rgba(240,163,44,.14); border-color:transparent; color:#9a5f08; }
+#mainNav .mega__card--all:hover .mega__icon{ background:var(--orange); color:var(--navy); }
+#mainNav .mega__go{
+  margin-left:auto; align-self:center; display:grid; color:var(--mega-mute);
+  transition:transform .2s cubic-bezier(.16,.84,.44,1), color .2s ease;
+}
+#mainNav .mega__go svg{ width:16px; height:16px; }
+#mainNav .mega__card--all:hover .mega__go{ transform:translateX(3px); color:var(--navy); }
+
+/* ---------- the featured card ---------- */
+#mainNav .mega__feature{
   position:relative;
-  display:flex; flex-direction:column; justify-content:flex-end;
-  min-height:222px;
-  padding:1.25rem;
-  border-radius:1rem;
+  display:flex; flex-direction:column; justify-content:space-between;
+  min-height:200px;
+  margin:0;
+  padding:0;
+  border:0;
+  border-radius:.8rem;
   overflow:hidden;
-  background-image:var(--img), linear-gradient(150deg,#1C4A52,#0F272C);
+  background-image:var(--img, none), linear-gradient(150deg,#1C4A52,#0F272C);
   background-size:cover;
   background-position:center;
   color:#fff;
+  font:inherit; text-align:left;
+  cursor:pointer;
   isolation:isolate;
 }
 
-/* the scrim, so the title holds up over any photo you drop in */
-.mega__feature::before{
+#mainNav .mega__feature::before{
   content:'';
   position:absolute; inset:0; z-index:-1;
-  background:linear-gradient(to top, rgba(10,20,24,.92) 12%, rgba(10,20,24,.35) 62%, rgba(10,20,24,.1) 100%);
-  transition:opacity .3s ease;
+  background:linear-gradient(to top, rgba(8,16,22,.9) 8%, rgba(8,16,22,.35) 55%, rgba(8,16,22,.05) 100%);
+  opacity:1;
 }
 
-.mega__feature:hover::before{ opacity:.82; }
+/* the photo eases in a touch on hover, on its own layer */
+#mainNav .mega__feature::after{
+  content:'';
+  position:absolute; inset:0; z-index:-2;
+  background:inherit;
+  transition:transform .5s cubic-bezier(.16,.84,.44,1);
+}
+#mainNav .mega__feature:hover::after{ transform:scale(1.04); }
 
-.mega__feature-tag{
+#mainNav .mega__feature-tag{
   align-self:flex-start;
-  margin-bottom:auto;
-  padding:.3rem .65rem;
+  margin:.9rem 0 0 .9rem;
+  padding:.28rem .6rem;
   border-radius:999px;
-  background:rgba(255,255,255,.16);
-  backdrop-filter:blur(6px);
-  font-size:.64rem; font-weight:600;
-  letter-spacing:.12em; text-transform:uppercase;
+  background:rgba(255,255,255,.92);
+  backdrop-filter:none;
+  color:var(--navy);
+  font-family:var(--font-body);
+  font-size:.7rem; font-weight:600;
 }
 
-.mega__feature-title{
+#mainNav .mega__feature-body{ display:flex; flex-direction:column; padding:1.1rem; }
+
+#mainNav .mega__feature-title{
+  margin:0;
   font-family:var(--font-display);
-  font-size:1.2rem; font-weight:700;
-  letter-spacing:-.02em; line-height:1.15;
-  margin-top:.9rem;
+  font-size:1.15rem; font-weight:700;
+  letter-spacing:-.015em; line-height:1.2;
+  color:#fff;
 }
 
-.mega__feature-sub{
-  margin-top:.4rem;
-  font-size:.78rem; line-height:1.5;
-  color:rgba(255,255,255,.76);
+#mainNav .mega__feature-sub{
+  margin-top:.35rem;
+  font-family:var(--font-body);
+  font-size:.8rem; line-height:1.5;
+  color:rgba(255,255,255,.78);
 }
 
-.mega__feature-go{
-  display:inline-flex; align-items:center; gap:.4rem;
-  margin-top:.9rem;
-  font-size:.78rem; font-weight:600;
-  color:var(--orange);
+#mainNav .mega__feature-go{
+  display:inline-flex; align-items:center; gap:.35rem;
+  margin-top:.8rem;
+  font-family:var(--font-body);
+  font-size:.8rem; font-weight:600;
+  color:#fff;
 }
 
-.mega__feature-go svg{ width:15px; height:15px; transition:transform .25s cubic-bezier(.16,.84,.44,1); }
+#mainNav .mega__feature-go svg{ width:15px; height:15px; transition:transform .2s cubic-bezier(.16,.84,.44,1); }
+#mainNav .mega__feature:hover .mega__feature-go svg{ transform:translateX(3px); }
 
-.mega__feature:hover .mega__feature-go svg{ transform:translateX(4px); }
+#mainNav .mega__feature:focus-visible{ outline:3px solid var(--orange); outline-offset:2px; }
 
-.mega__feature:focus-visible{ outline:3px solid var(--orange); outline-offset:3px; }
-
-/* Between 1080 and 1240 the 300px feature column squeezes the six rows
-   into two cramped columns. Drop the photo rather than the content —
-   the categories are the menu, the photo is the garnish. */
+/* Narrower desktops: drop the photo, keep the categories. */
 @media (max-width:1240px){
-  .mega__inner{ grid-template-columns:minmax(0,1fr); }
-  .mega__feature{ display:none; }
+  #mainNav .mega__inner{ grid-template-columns:minmax(0,1fr); }
+  #mainNav .mega__feature{ display:none; }
+}
+@media (max-width:1180px){
+  #mainNav .mega__grid{ grid-template-columns:repeat(2, minmax(0,1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  #mainNav .mega, .nav__backdrop, #mainNav .mega__card, #mainNav .mega__icon,
+  #mainNav .mega__go, #mainNav .mega__feature::after, #mainNav .mega__feature-go svg{
+    transition-duration:.01ms !important;
+  }
+  #mainNav .mega{ transform:none; }
+  #mainNav .mega__feature:hover::after{ transform:none; }
 }
 
 /* ===================================================================

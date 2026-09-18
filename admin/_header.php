@@ -69,6 +69,11 @@ $navCounts = [
 
 $pending = pendingComments($pdo);
 $quotes  = admCount($pdo, 'SELECT COUNT(*) FROM testimonials');
+
+/* Feedback from the public "Send feedback" button. newFeedback() is in
+   _bootstrap.php; $fbTotal is null when the table is not there yet. */
+$newFb   = newFeedback($pdo);
+$fbTotal = admCount($pdo, 'SELECT COUNT(*) FROM feedback');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -188,6 +193,18 @@ try {
         <?php endif; ?>
       </a>
 
+      <a href="feedback.php" class="adm-nav__link<?= $adminHere === 'feedback.php' ? ' is-active' : '' ?>">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-9l-5 4v-4H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M8 9h8"/><path d="M8 12.5h5"/></svg>
+        Feedback
+        <?php if ($newFb): ?>
+          <!-- Gold, like unpublished comments: unread feedback is also
+               something waiting on a decision. -->
+          <span class="adm-nav__flag" title="<?= $newFb ?> unread"><?= $newFb ?></span>
+        <?php elseif ($fbTotal !== null): ?>
+          <span class="adm-nav__count"><?= $fbTotal ?></span>
+        <?php endif; ?>
+      </a>
+
       <a href="users.php" class="adm-nav__link<?= $adminHere === 'users.php' ? ' is-active' : '' ?>">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-1.6a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V20"/><circle cx="9" cy="7.5" r="3.5"/><path d="M22 20v-1.6a4 4 0 0 0-3-3.8"/><path d="M16.5 4.2a4 4 0 0 1 0 6.6"/></svg>
         Users
@@ -229,4 +246,24 @@ try {
     </div>
   </aside>
 
-  <main class="adm-main">
+  <!-- THE SCROLLER. On desktop this, not the page, scrolls (see
+       "APP SHELL" at the end of admin.css). id + tabindex="-1" let
+       the script below give it keyboard focus, so arrow keys, Page
+       Up/Down, Home and End scroll the content straight away. -->
+  <main class="adm-main" id="admMain" tabindex="-1">
+  <script>
+  /* Focus the content area on load so the keyboard scrolls it, unless
+     something else already has focus (an open drawer, an autofocus
+     field) — never steal focus from a form. preventScroll keeps the
+     view where it is. */
+  (function () {
+    var m = document.getElementById('admMain');
+    if (!m) return;
+    window.addEventListener('DOMContentLoaded', function () {
+      var a = document.activeElement;
+      if ((!a || a === document.body) && !document.querySelector('.adm-drawer.is-open')) {
+        try { m.focus({ preventScroll: true }); } catch (e) {}
+      }
+    });
+  })();
+  </script>

@@ -691,6 +691,13 @@ $authPane = in_array($authCode, ['emailtaken', 'missing', 'bademail', 'shortpw',
      =================================================================== -->
 <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('assets/css/auth.css')) ?>">
 
+<?php
+/* FEEDBACK DIALOG. Renders nothing when signed out. Opened by the
+   nav icon / drawer row in header.php, handled by feedback.js,
+   received by includes/feedback-submit.php. */
+require __DIR__ . '/feedback-widget.php';
+?>
+
 <!-- defer on all three. A <script> at the bottom of the body still
      blocks parsing while it downloads, and on a phone over the tunnel
      that is real time. Deferred scripts execute in document order, so
