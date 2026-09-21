@@ -321,7 +321,9 @@ if ($pageCss !== 'assets/css/search.css' && is_file(__DIR__ . '/../' . $pageCss)
      them. It is the only stylesheet that loads after the page file.
 
      Keep it last if you add more links here. -->
+<?php if (is_file(__DIR__ . '/../assets/css/responsive.css')): /* skip the link if the file is missing, so it can't 404 */ ?>
 <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('assets/css/responsive.css')) ?>">
+<?php endif; ?>
 
 <!-- and mobile.css after it. responsive.css fixes what was broken on a
      phone; mobile.css changes what was merely desktop-shaped. Every

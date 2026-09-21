@@ -87,6 +87,12 @@ document.addEventListener('DOMContentLoaded', function () {
   function openPanel() {
     if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
 
+    /* No opening animation: freeze the messages already in the log so
+       they do not all slide in again when the panel appears. */
+    log.querySelectorAll('.bud__row, .bud__msg').forEach(function (el) {
+      el.classList.add('bud-still');
+    });
+
     panel.hidden = false;
 
     /* Same two-frame dance as the reviews modal: removing display:none
@@ -118,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function () {
     closeTimer = setTimeout(function () {
       if (!bud.classList.contains('is-open')) panel.hidden = true;
       closeTimer = null;
-    }, 320);
+    }, 180);   /* the length of the closing fade in bud.css */
 
     toggle.focus();
   }
@@ -319,7 +325,7 @@ document.addEventListener('DOMContentLoaded', function () {
      bound to this button.
      ================================================================== */
   (function () {
-    var MARGIN    = 12;   // px kept clear of the viewport edge
+    var MARGIN    = 24;   // px kept clear of the viewport edge (was 12 — too tight on a laptop)
     var THRESHOLD = 6;    // px of travel before a press becomes a drag
     var KEY       = 'bud.pos';
 
@@ -332,8 +338,12 @@ document.addEventListener('DOMContentLoaded', function () {
     var grabX  = 0, grabY  = 0;     // offset of the press inside the widget
     var baseX  = 0, baseY  = 0;     // where the widget sits at dx=dy=0
 
-    function vw() { return window.innerWidth; }
-    function vh() { return window.innerHeight; }
+    /* clientWidth/clientHeight, NOT innerWidth/innerHeight. The inner
+       sizes include the page scrollbar, so on a laptop "12px from the
+       right edge" landed underneath the scrollbar and the widget — and
+       the chat panel lined up with it — was cut off on the right. */
+    function vw() { return document.documentElement.clientWidth  || window.innerWidth; }
+    function vh() { return document.documentElement.clientHeight || window.innerHeight; }
     function clamp(n, lo, hi) { return n < lo ? lo : (n > hi ? hi : n); }
 
     function apply() {

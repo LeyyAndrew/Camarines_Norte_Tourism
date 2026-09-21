@@ -514,17 +514,24 @@ if (isset($_SESSION['user_id']) && is_numeric($_SESSION['user_id'])) {
                   <p class="ai-budget-none">No fees are recorded yet for any stop on this plan.</p>
                 <?php endif; ?>
 
-                <p class="ai-budget-note">
-                  Cheapest option at each stop, so treat it as a floor rather than a
-                  forecast. Lessons, rentals and tour packages are listed above but
-                  left out of this figure.
-                  <?php if ($noFeeData): ?>
-                    <b><?= (int) $noFeeData ?> of <?= (int) ($noFeeData + $feeStops) ?> stops have no fee data yet.</b>
-                  <?php endif; ?>
-                  Nothing here covers transport between towns, food or accommodation,
-                  and none of it is confirmed &mdash; check with the Provincial Tourism
-                  Office before you travel.
-                </p>
+                <?php if ($noFeeData): ?>
+                  <p class="ai-budget-gap"><?= (int) $noFeeData ?> of <?= (int) ($noFeeData + $feeStops) ?> stops have no fee data yet.</p>
+                <?php endif; ?>
+
+                <!-- The fine print, folded. On a phone six lines of
+                     disclaimer outweighed the one line of actual answer
+                     above it. Opened automatically on wider screens by
+                     the script at the foot of this file. -->
+                <details class="ai-budget-more">
+                  <summary>What this figure includes</summary>
+                  <p class="ai-budget-note">
+                    Cheapest option at each stop, so treat it as a floor rather than a
+                    forecast. Lessons, rentals and tour packages are listed above but
+                    left out of this figure. Nothing here covers transport between towns,
+                    food or accommodation, and none of it is confirmed &mdash; check with
+                    the Provincial Tourism Office before you travel.
+                  </p>
+                </details>
               </div>
 
               <div class="ai-actions">
@@ -581,6 +588,12 @@ if (isset($_SESSION['user_id']) && is_numeric($_SESSION['user_id'])) {
   var nameEl= document.getElementById('aiConfirmName');
   var toast = document.getElementById('aiToast');
   var pending = null;
+
+  /* The budget fine print is folded on phones only. Wider screens have
+     the room, so it opens there on load. */
+  if (window.matchMedia && window.matchMedia('(min-width: 641px)').matches) {
+    document.querySelectorAll('.ai-budget-more').forEach(function (d) { d.open = true; });
+  }
 
   function say(msg, bad) {
     if (!toast) return;

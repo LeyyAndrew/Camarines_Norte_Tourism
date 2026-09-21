@@ -274,9 +274,15 @@
        canvas, which fires as soon as the pane has a real size. */
     var phone = window.matchMedia('(max-width:600px)');
 
+    /* CHANGED: on a phone the map no longer loads just because the
+       panel opened. It belongs to the fullscreen (is-wide) view only —
+       the chat opens on its own, and the map appears when the visitor
+       taps the fullscreen button. setWide() already calls ensureMap(),
+       so this only has to cover a panel that opens already wide. */
     function mapUnderChat() {
       if (!phone.matches) return;
       if (!bud.classList.contains('is-open')) return;
+      if (!bud.classList.contains('is-wide')) return;
       ensureMap();
     }
 
@@ -309,8 +315,10 @@
 
     /* Remembered per tab. Somebody who opened the map once is usually
        planning a route and wants it again on the next page. */
+    /* Not on phones: there the chat should always open on its own,
+       with the map one tap away, rather than reopening fullscreen. */
     try {
-      if (sessionStorage.getItem(WIDE_KEY) === '1') setWide(true, true);
+      if (!phone.matches && sessionStorage.getItem(WIDE_KEY) === '1') setWide(true, true);
     } catch (e) {}
 
     function setWide(on, quiet) {
@@ -691,6 +699,10 @@
     /* ---------- focusing a place ---------- */
 
     function focusPlace(name) {
+      /* Phone, chat-only view: the map is hidden, so a tapped place
+         name opens the fullscreen view first, or the tap would move a
+         map nobody can see. */
+      if (phone.matches && !bud.classList.contains('is-wide')) setWide(true);
       if (!map) { pending = name; ensureMap(); return; }
       var m = markers[name];
       if (!m) return;

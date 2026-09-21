@@ -133,36 +133,51 @@ require __DIR__ . '/includes/header.php';
         <div class="gradient-fill"></div>
 
         <!-- ↓↓↓ THE CLIP. Change this src. ↓↓↓ -->
-        <video class="photo-layer hero-film__video" id="heroFilmVideo"
-               muted loop playsinline
-               preload="none"
-               disablepictureinpicture
-               disableremoteplayback>
-                   <source src="<?= htmlspecialchars(assetUrl('uploads/0727.mp4')) ?>"
-                  type="video/mp4">
-        </video>
+        <iframe class="hero-film__vimeo"
+                src="https://player.vimeo.com/video/1228094298?title=0&amp;byline=0&amp;portrait=0&amp;dnt=1"
+                style="position:absolute; inset:0; width:100%; height:100%; border:0; z-index:5; pointer-events:auto;"
+                allow="autoplay; fullscreen; picture-in-picture"
+                loading="lazy"
+                title="Camarines Norte"></iframe>
+        <style>
+          /* Let clicks reach the Vimeo player: nothing may sit on top of
+             it or swallow the click. The high z-index is what makes it
+             clickable; the script below lifts the header above it. */
+          #heroFilm .hero-film__frame{
+            position:relative;
+            aspect-ratio:16/9; height:auto !important; min-height:0 !important;
+          }
+          #heroFilm .gradient-fill,
+          #heroFilm .hero-film__scrim,
+          #heroFilm .hero-film__frame::before,
+          #heroFilm .hero-film__frame::after,
+          #heroFilm::before,
+          #heroFilm::after{ pointer-events:none !important; }
+          #heroFilm .hero-film__vimeo{ pointer-events:auto !important; z-index:50 !important; }
+        </style>
+        <script>
+          /* Keep the sticky header above the video. Finds the bar that
+             holds the logo and, if its layer is 50 or lower, raises it
+             to 100 so the player slides under it when scrolling. */
+          document.addEventListener('DOMContentLoaded', function () {
+            var el = document.querySelector('.nav__logo-word');
+            while (el && el !== document.body) {
+              var pos = getComputedStyle(el).position;
+              if (pos === 'fixed' || pos === 'sticky') {
+                var z = parseInt(getComputedStyle(el).zIndex, 10);
+                if (isNaN(z) || z <= 50) el.style.zIndex = '100';
+                break;
+              }
+              el = el.parentElement;
+            }
+          });
+        </script>
         <!-- ↑↑↑ THE CLIP. Change this src. ↑↑↑ -->
 
         <!-- <img class="photo-layer hero-film__video" src="uploads/about-banner.jpg" alt=""> -->
 
         <div class="hero-film__scrim" aria-hidden="true"></div>
 
-        <!-- ---------- CONTROLS ----------
-             Pause/play in the corner. The clip is always muted. The pause
-             button's label and icon follow the video's real state (see
-             the script below), so they are never out of step. -->
-        <div class="hero-film__controls">
-        <button type="button" class="hero-film__ctrl hero-film__play" id="heroFilmPlay"
-                aria-label="Pause video" title="Pause">
-          <svg class="hero-film__ctrl-icon hero-film__ctrl-icon--pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <rect x="6.5" y="5" width="3.6" height="14" rx="1"/><rect x="13.9" y="5" width="3.6" height="14" rx="1"/>
-          </svg>
-          <svg class="hero-film__ctrl-icon hero-film__ctrl-icon--play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M8 5.6v12.8a1 1 0 0 0 1.5.86l10.2-6.4a1 1 0 0 0 0-1.72L9.5 4.74A1 1 0 0 0 8 5.6z"/>
-          </svg>
-        </button>
-
-        </div>
 
         <style>
           /* The corner pause/play button. Kept here, beside the markup,

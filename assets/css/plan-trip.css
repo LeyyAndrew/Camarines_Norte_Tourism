@@ -419,3 +419,88 @@
   .pt-prev,.pt-prev-h h3,.pt-prev-row b,.pt-prev-row time,.pt-prev-row small{color:#000 !important}
   .pt-prev-day h4{color:#8A5A12 !important}
 }
+
+/* ===================================================================
+   SAVED ITINERARIES — PHONE LAYOUT
+
+   The panel's own sheet (ai-itineraries.css) is linked from the BODY,
+   so it loads after this file and wins ties. Every selector here starts
+   .pt .ai-itins to out-rank it on specificity instead.
+
+   What was wrong on a phone:
+     - the headings had a 24px gutter, everything under them had none,
+       so day rows, the cost box and both buttons ran into the card edge
+     - six lines of disclaimer under a one-line answer
+     - a full-width solid red Delete, the loudest thing on screen,
+       right under Save as PDF
+     - blocks stacked with almost no space between them
+   =================================================================== */
+
+/* the folded fine print — all widths */
+.pt .ai-itins .ai-budget-gap{margin:8px 0 0;font-size:13px;font-weight:600;color:var(--pt-dim)}
+.pt .ai-itins .ai-budget-more{margin-top:10px}
+.pt .ai-itins .ai-budget-more > summary{
+  display:inline-flex;align-items:center;gap:8px;
+  list-style:none;cursor:pointer;
+  font-size:12.5px;font-weight:600;color:var(--pt-muted);
+}
+.pt .ai-itins .ai-budget-more > summary::-webkit-details-marker{display:none}
+.pt .ai-itins .ai-budget-more > summary::before{
+  content:'';width:6px;height:6px;
+  border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;
+  transform:rotate(-45deg);transition:transform .2s var(--pt-ease);
+}
+.pt .ai-itins .ai-budget-more[open] > summary::before{transform:rotate(45deg)}
+.pt .ai-itins .ai-budget-more .ai-budget-note{margin-top:8px}
+
+@media(max-width:640px){
+
+  /* one gutter for everything: heading, trip, days, box, buttons */
+  .pt .ai-itins > .pt-card-h{padding:16px 18px}
+  .pt .ai-itins .ai-list{margin:0;padding:0;list-style:none}
+  .pt .ai-itins .ai-item{padding:16px 18px 22px}
+  .pt .ai-itins .ai-item + .ai-item{border-top:1px solid var(--pt-line)}
+  .pt .ai-itins .ai-item > details > summary{padding-inline:0}
+
+  .pt .ai-itins .ai-meta{font-size:13px;line-height:1.5}
+
+  /* even spacing between the blocks inside an open plan */
+  .pt .ai-itins .ai-days{
+    display:flex;flex-direction:column;gap:10px;
+    margin-top:14px;padding:0;
+  }
+  .pt .ai-itins .ai-days > *{margin-block:0}
+
+  /* "Expand all days" — a quiet link, not a heading-weight label */
+  .pt .ai-itins .ai-days > button{
+    align-self:flex-end;
+    padding:4px 0;background:none;border:0;
+    font-size:13px;font-weight:600;color:var(--pt-amber);
+  }
+
+  /* the cost box */
+  .pt .ai-itins .ai-budget{padding:14px 16px;border-radius:var(--pt-r-md);margin-top:4px}
+  .pt .ai-itins .ai-budget-h{font-size:11px;letter-spacing:.08em}
+  .pt .ai-itins .ai-budget-none{font-size:14px;margin-top:6px}
+  .pt .ai-itins .ai-budget-note{font-size:12.5px;line-height:1.6}
+
+  /* the buttons: Save is the main action, Delete steps back */
+  .pt .ai-itins .ai-actions{
+    display:flex;flex-direction:column;gap:12px;
+    margin-top:8px;
+  }
+  .pt .ai-itins .ai-actions .ai-btn{
+    display:flex;align-items:center;justify-content:center;
+    width:100%;min-height:46px;text-align:center;
+  }
+  /* only the one in the panel — the confirm dialog's Delete stays solid */
+  .pt .ai-itins .ai-actions .ai-del{
+    background:transparent;
+    color:var(--pt-red);
+    border:1px solid rgba(226,89,63,.45);
+    box-shadow:none;
+    min-height:42px;
+    font-weight:600;
+  }
+  .pt .ai-itins .ai-actions .ai-del:active{background:rgba(226,89,63,.12)}
+}

@@ -2274,3 +2274,45 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ===================================================================
+   27. THE NAV BAR OVERFLOWS WHEN SCROLLED — THE BURGER GETS PUSHED OFF
+
+   Signed in, the bar holds the seal, the wordmark, search, the avatar,
+   sign-out and the burger. In the scrolled state the wordmark is drawn
+   larger, the row gets wider than the phone, and the burger ends up
+   past the right edge where it cannot be tapped.
+
+   Fix: the bar is pinned to the screen width, the brand/wordmark are
+   the part allowed to shrink, and the icon buttons never shrink.
+   Doubled classes to beat any ".nav.is-scrolled ..." rule in nav.css.
+   =================================================================== */
+@media (max-width:767px){
+  .nav.nav{
+    left:0 !important;
+    right:0 !important;
+    width:100% !important;
+    max-width:100% !important;
+    box-sizing:border-box;
+  }
+
+  .nav .nav__brand.nav__brand{
+    min-width:0;
+    flex:0 1 auto;
+    overflow:hidden;
+  }
+
+  .nav .nav__logo-word.nav__logo-word{
+    height:1.6rem !important;
+    width:auto !important;
+    max-width:30vw !important;
+    min-width:0;
+    flex-shrink:1;
+    object-fit:contain;
+  }
+
+  .nav .nav__burger.nav__burger{
+    flex-shrink:0;
+    margin-right:0;
+  }
+}

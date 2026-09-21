@@ -753,7 +753,8 @@
     visibility:visible;
   }
 
-  .bud .budmap,
+  /* CHANGED: only in the fullscreen (is-wide) view. The plain chat
+     panel shows no map at all on a phone — see the rule just below. */
   .bud.is-wide .budmap,
   .bud.is-wide.show-map .budmap{
     display:flex;
@@ -774,6 +775,9 @@
     border-top:1px solid var(--bud-line);
     background:var(--bud-ink);
   }
+
+  /* Chat-only until the fullscreen button is pressed. */
+  .bud:not(.is-wide) .budmap{ display:none !important; }
 
   /* Nothing left to switch between. */
   .bud__seg{ display:none !important; }

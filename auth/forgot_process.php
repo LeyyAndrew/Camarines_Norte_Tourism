@@ -30,6 +30,7 @@
    =================================================================== */
 
 require_once __DIR__ . '/_auth_db.php';
+require_once __DIR__ . '/_mailer.php';
 
 /* ---------- WHERE THE LINK POINTS ----------
    Must be the full public URL of reset_password.php. Change this if
@@ -65,8 +66,12 @@ if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
 $sameAnswer = 'sent=1&mode=reset';
 
 try {
+    /* LOWER() on both sides: PostgreSQL compares text case-sensitively,
+       so "Juan@Gmail.com" never matched "juan@gmail.com" and the
+       request silently ended as "no account". */
     $user = auth_one(
-        'SELECT ' . AUTH_ID . ' AS id FROM ' . AUTH_TABLE . ' WHERE ' . AUTH_EMAIL . ' = ? LIMIT 1',
+        'SELECT ' . AUTH_ID . ' AS id, ' . AUTH_EMAIL . ' AS email FROM ' . AUTH_TABLE
+        . ' WHERE LOWER(' . AUTH_EMAIL . ') = LOWER(?) LIMIT 1',
         [$email]
     );
 
@@ -74,6 +79,12 @@ try {
        the work above — a reply that comes back faster for unknown
        addresses than for known ones leaks the same fact by timing. */
     if (!$user) { auth_back($sameAnswer); }
+
+    /* From here on, use the address EXACTLY as the users table stores
+       it. reset_password.php updates the password WHERE email = the
+       stored reset row, so a differently-cased copy here would make
+       the final UPDATE match nobody. */
+    $email = $user['email'] ?? $user['EMAIL'] ?? $email;
 
     /* ---------- the cap ---------- */
     $recent = auth_one(
@@ -123,11 +134,9 @@ try {
           . "Provincial Tourism Office\r\n"
           . "Capitol Compound, Daet, Camarines Norte";
 
-    $headers = "From: Explore Camarines Norte <tourism@camarinesnorte.gov.ph>\r\n"
-             . "Reply-To: tourism@camarinesnorte.gov.ph\r\n"
-             . "Content-Type: text/plain; charset=UTF-8\r\n";
-
-    $sent = @mail($email, $subject, $body, $headers);
+    /* Sent through Gmail SMTP (see auth/_mailer.php). PHP's mail()
+       cannot send anything on XAMPP: there is no mail server. */
+    $sent = auth_send_mail($email, $subject, $body);
 
     if (!$sent && RESET_DEV_LOG) {
         @file_put_contents(

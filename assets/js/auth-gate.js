@@ -175,9 +175,23 @@
      the message survives every refresh and every bookmark of that
      URL, long after it stopped being true.
      --------------------------------------------------------------- */
-  (function reopenOnError() {
-    if (!/[?&]error=/.test(location.search)) return;
-    if (!modal.querySelector('.auth-error')) return;
+  /* Also reopens after a SUCCESSFUL reset request (?sent=1) — that
+     redirect carries no error=, so the "link is on its way" notice sat
+     in a closed modal and the button looked like it did nothing.
+
+     And #signin / #reset in the address, which is where the buttons
+     on auth/reset_password.php point. footer.php already chose the
+     right pane (data-mode) for the query cases; the hash cases pick it
+     here. */
+  (function reopenOnReturn() {
+    var q    = location.search;
+    var hash = location.hash.replace('#', '');
+    var byQuery = /[?&](error|sent|registered)=/.test(q);
+    var byHash  = hash === 'signin' || hash === 'reset';
+
+    if (!byQuery && !byHash) return;
+
+    if (byHash && !byQuery && box) box.dataset.mode = hash;
 
     modal.classList.add('is-open');
     modal.setAttribute('aria-hidden', 'false');
@@ -185,8 +199,11 @@
 
     if (window.history && history.replaceState) {
       var url = new URL(location.href);
-      url.searchParams.delete('error');
-      history.replaceState({}, '', url.pathname + url.search + url.hash);
+      ['error', 'sent', 'mode', 'registered'].forEach(function (k) {
+        url.searchParams.delete(k);
+      });
+      var keepHash = byHash ? '' : url.hash;
+      history.replaceState({}, '', url.pathname + url.search + keepHash);
     }
   })();
 

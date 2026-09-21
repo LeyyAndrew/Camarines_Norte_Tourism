@@ -120,12 +120,12 @@ $footerCoords = '14.11° N   122.95° E';
 
         <ul class="footer__social">
           <li>
-            <a href="#" aria-label="Camarines Norte tourism on Instagram">
+            <a href="https://www.instagram.com/explorecamnorte/" target="_blank" rel="noopener noreferrer" aria-label="Explore Camarines Norte on Instagram">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none"/></svg>
             </a>
           </li>
           <li>
-            <a href="#" aria-label="Camarines Norte tourism on Facebook">
+            <a href="https://camsnorte.com/" target="_blank" rel="noopener noreferrer" aria-label="Camarines Norte official website">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 21v-8h2.7l.4-3.1h-3.1V7.9c0-.9.3-1.5 1.6-1.5h1.6V3.6c-.3 0-1.3-.1-2.4-.1-2.4 0-4 1.4-4 4.1v2.3H7.6V13h2.7v8h3.2z"/></svg>
             </a>
           </li>
@@ -301,9 +301,19 @@ $authSent = isset($_GET['sent'])
 $authResetReady = is_file(__DIR__ . '/../auth/forgot_process.php');
 
 /* which pane the message belongs on */
-$authPane = in_array($authCode, ['emailtaken', 'missing', 'bademail', 'shortpw', 'server', 'mismatch', 'terms'], true)
-          ? 'register'
-          : ($authCode === 'expired' ? 'reset' : 'signin');
+/* forgot_process.php sends bademail and server too, with mode=reset.
+   Without reading mode, those codes landed on the REGISTER pane, so a
+   mistyped address on the reset form showed its error on a form the
+   visitor was not looking at. */
+$authMode = $_GET['mode'] ?? '';
+
+if ($authMode === 'reset' || $authCode === 'expired') {
+    $authPane = 'reset';
+} elseif (in_array($authCode, ['emailtaken', 'missing', 'bademail', 'shortpw', 'server', 'mismatch', 'terms'], true)) {
+    $authPane = 'register';
+} else {
+    $authPane = 'signin';
+}
 ?>
 <!-- ===================================================================
      NOTE ON inert: there isn't one, deliberately.

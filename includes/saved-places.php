@@ -76,6 +76,14 @@ $userId = isset($_SESSION['user_id']) && is_numeric($_SESSION['user_id'])
     : null;
 
 if ($userId === null) {
+    /* A visitor who is not logged in simply has no saved places. The
+       ids call runs on every page load, so answer it with an empty
+       list instead of a 401 that shows up red in the console. Saving
+       or listing still needs a login and still gets the 401. */
+    $wanted = $_POST['action'] ?? $_GET['action'] ?? 'list';
+    if ($wanted === 'ids') {
+        sp_respond(['ok' => true, 'ids' => [], 'count' => 0, 'guest' => true]);
+    }
     sp_respond([
         'ok'      => false,
         'error'   => 'not_logged_in',

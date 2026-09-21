@@ -418,9 +418,9 @@
   border-radius:1.3rem;
   box-shadow:0 30px 70px -25px rgba(0,0,0,.85);
   overflow:hidden;
-  opacity:0; transform:translateY(14px) scale(.97);
-  transform-origin:bottom right;
-  transition:opacity .28s ease, transform .35s cubic-bezier(.16,.84,.44,1);
+  /* Opening animation: see OPEN / CLOSE at the end of this file. */
+  opacity:0;
+  transition:none;
 }
 
 .bud.is-open .bud__panel{ opacity:1; transform:none; }
@@ -613,10 +613,29 @@
   /* Near-fullscreen, and pinned to the viewport rather than to the
      launcher — a 380px panel floating above a phone-width button
      wastes the screen it is sitting on. */
+  /* CHANGED: a compact sheet above the launcher instead of near-
+     fullscreen. It covered almost the whole page; now it takes about
+     60% of the height and leaves the page visible above it. The
+     fullscreen button (is-wide, bud-map.css) still fills the screen. */
   .bud__panel{
-    position:fixed; inset:.75rem .75rem 5.5rem;
-    width:auto; height:auto;
+    position:fixed;
+    top:auto; left:auto;
+    right:.75rem;
+    /* Clears the launcher: .bud's 2.4rem bottom + the 64px button +
+       a .75rem gap. 5.75rem sat on top of the close (X) button. */
+    bottom:calc(2.4rem + 64px + .75rem);
+    width:min(22rem, calc(100vw - 1.5rem));
+    height:min(60vh, 30rem);
+    height:min(60svh, 30rem);
+    max-height:calc(100svh - 2.4rem - 64px - 1.5rem);
+    border-radius:1.1rem;
   }
+
+  /* Tighter header and bubbles so the smaller sheet still shows a
+     couple of messages at once. */
+  .bud:not(.is-wide) .bud__head{ padding-block:.7rem; }
+  .bud:not(.is-wide) .bud__head-role{ font-size:.7rem; }
+  .bud:not(.is-wide) .bud__msg{ font-size:.86rem; }
 }
 
 @media (prefers-reduced-motion:reduce){
@@ -1330,7 +1349,7 @@
 
 /* Chips arrive one after another when the panel opens: the one motion
    here that answers something the visitor did. */
-.bud__suggest .bud__chip{ animation:budMsgIn .35s cubic-bezier(.16,.84,.44,1) both; }
+.bud__suggest .bud__chip{ animation:none; }   /* was a delayed slide-in, one chip after another — it made the bottom of the panel arrive late */
 .bud__suggest .bud__chip:nth-child(1){ animation-delay:.15s; }
 .bud__suggest .bud__chip:nth-child(2){ animation-delay:.25s; }
 .bud__suggest .bud__chip:nth-child(3){ animation-delay:.35s; }
@@ -1355,4 +1374,84 @@
   font-size:.72rem;
   line-height:1.45;
   color:rgba(255,255,255,.5);
+}
+
+/* ===================================================================
+   THE SIGN-IN POPUP GOES ABOVE BUD
+
+   .bud sits at z-index 8000 so it floats over every page. The sign-in
+   popup (.auth-modal, in footer.php) sat lower, so tapping Bud while
+   signed out opened the popup UNDER the launcher and the chat panel.
+
+   Two rules, belt and braces: the open popup is lifted above Bud, and
+   while it is open Bud drops back and stops taking taps. Both key off
+   the classes auth-gate.js and auth-modal.js already set.
+   =================================================================== */
+.auth-modal.is-open{ z-index:9500 !important; }
+
+body.modal-open .bud{
+  z-index:1 !important;
+  pointer-events:none;
+}
+
+
+/* ===================================================================
+   NO OPENING ANIMATION
+
+   The panel no longer slides or fades in (see .bud__panel above).
+   The messages already in the log are marked .bud-still by bud.js
+   each time the panel opens, because showing the panel restarts
+   their slide-in and the whole conversation would animate again.
+   New replies are not marked, so they still slide in as they arrive.
+   =================================================================== */
+.bud .bud-still,
+.bud .bud-still .bud__row-avatar,
+.bud .bud-still .bud__msg{ animation:none !important; }
+
+
+/* ===================================================================
+   OPEN / CLOSE — THE STANDARD CHAT-WIDGET MOTION
+
+   The whole panel fades in with a 6px lift, all at once — header,
+   messages, chips and input together. Nothing inside animates on its
+   own when it opens. Opening 200ms, closing 150ms — closing is always quicker,
+   because nobody wants to wait for something they dismissed.
+
+   No scale: scaling from a corner made it look like it was unfolding.
+
+   The launcher: robot and X simply crossfade with a slight scale. The
+   old version shrank the robot downward and spun the X in from -90deg
+   on a springy curve — that spin is most of what looked amateur.
+   =================================================================== */
+.bud__panel{
+  transform-origin:bottom right;
+  opacity:0;
+  transform:translateY(6px);   /* no scale: the whole panel moves as one piece */
+  transition:opacity .15s ease-in, transform .15s ease-in;
+}
+
+.bud.is-open .bud__panel{
+  opacity:1;
+  transform:none;
+  transition:opacity .2s ease-out, transform .2s ease-out;
+}
+
+/* launcher: a clean icon swap */
+.bud__avatar,
+.bud__btn-close{
+  transition:opacity .18s ease, transform .18s ease !important;
+}
+.bud__btn-close{ transform:scale(.7); }
+.bud.is-open .bud__btn-close{ transform:scale(1); }
+.bud.is-open .bud__avatar{ transform:scale(.7); }
+.bud__badge{ transition:opacity .15s ease, transform .15s ease !important; }
+.bud__disc{ transition:background-color .18s ease, border-color .18s ease, box-shadow .18s ease; }
+
+/* Messages already in the chat stay put when it reopens (bud.js marks
+   them .bud-still); only new replies slide in. */
+
+@media (prefers-reduced-motion:reduce){
+  .bud__panel,
+  .bud.is-open .bud__panel{ transform:none; transition:opacity .1s linear; }
+  .bud__avatar, .bud__btn-close{ transition:opacity .1s linear !important; transform:none !important; }
 }
