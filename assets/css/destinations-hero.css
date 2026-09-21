@@ -2479,3 +2479,149 @@
   max-width:none !important;
   min-width:0 !important;
 }
+
+/* ===================================================================
+   21.  PHONES: TWO FULL CARDS, LIGHTER PHOTOS
+
+   Appended last so it wins over everything above at equal weight.
+
+   TWO WHOLE CARDS PER SCREEN. The row used 10rem columns, which on a
+   390px phone showed two and a third cards and cut the third one's
+   name in half. Each column is now half the row, so every card you
+   can see is a card you can read. Swiping still reveals the rest.
+
+   LIGHTER. On a phone the scrim over the big photo ran from .5 to .9
+   black, which turned most photographs into a dark smear, and every
+   card but the current one was dimmed to 72% brightness. There is no
+   hover on a touch screen to bring a card back up, so on phones the
+   dimming is gentler and the scrim only darkens where the text sits.
+   =================================================================== */
+@media (max-width:767px){
+
+  .hero-feature.hero-feature .hero-rail{
+    padding:.75rem 1.25rem 2rem !important;
+    gap:.75rem !important;
+    /* two whole cards plus a 2.5rem sneak peek of the one before */
+    grid-auto-columns:calc((100% - 2.5rem - 1.5rem) / 2) !important;
+    scroll-padding-inline:1.25rem;
+  }
+
+  .hero-feature.hero-feature .hero-rail__card{
+    aspect-ratio:4/5;
+  }
+
+  /* long names wrap inside the card instead of running off its edge */
+  .hero-feature.hero-feature .hero-rail__name{
+    overflow-wrap:anywhere;
+    hyphens:auto;
+  }
+
+  .hero-feature.hero-feature .hero-rail__card .photo-layer{
+    filter:saturate(.9) brightness(.88);
+  }
+
+  .hero-feature.hero-feature .hero-rail__card.is-current .photo-layer{
+    filter:none;
+  }
+
+  .hero-feature.hero-feature .hero-rail__shade{
+    background:linear-gradient(to top,
+      rgba(6,10,16,.85) 0%,
+      rgba(6,10,16,.35) 40%,
+      rgba(6,10,16,0) 65%);
+  }
+
+  .hero-feature.hero-feature .hero-feature__scrim{
+    background:
+      radial-gradient(90% 46% at 50% 100%,
+        rgba(255,150,60,.14) 0%,
+        rgba(255,150,60,0) 70%),
+      linear-gradient(to top,
+        rgba(6,10,16,.85) 0%,
+        rgba(6,10,16,.45) 45%,
+        rgba(6,10,16,.2) 100%);
+  }
+}
+
+/* No hover on a touch screen. The lift and zoom would otherwise stick
+   to whichever card was tapped last. */
+@media (hover:none){
+  .hero-feature.hero-feature .hero-rail__card:hover{ transform:none; }
+  .hero-feature.hero-feature .hero-rail__card:hover .photo-layer{ transform:none; }
+}
+
+
+/* ===================================================================
+   22.  PHONES: THE TEXT BLOCK KEEPS ONE HEIGHT
+
+   Switching destination changed the height of the text above the
+   cards — a one-line name and a three-line name, a two-line
+   description and a three-line one — so the arrows and the card row
+   jumped up and down with every switch.
+
+   Each line of text now has a fixed amount of room:
+     location      one line, cut with "…" if it is too long
+     name          a fixed box, the words sit at the bottom of it
+     description   exactly three lines, whether it fills them or not
+
+   So the arrows and the cards stay in the same place every time.
+   =================================================================== */
+@media (max-width:767px){
+
+  .hero-feature.hero-feature .hero-feature__loc{
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    max-width:100%;
+  }
+
+  /* room for three lines at the smaller name sizes, or two at the
+     largest. The name sits on the bottom edge of the box, right above
+     the description, so short names do not float away from it. */
+  .hero-feature.hero-feature .hero-feature__title{
+    height:6.6rem;
+    line-height:1.02;
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-end;
+  }
+
+  .hero-feature.hero-feature .hero-feature__desc{
+    line-height:1.7;
+    -webkit-line-clamp:3;
+    height:calc(3 * 1.7em);
+    min-height:0;
+  }
+}
+
+
+/* ===================================================================
+   24.  PHONES: CARDS NEVER DISAPPEAR
+
+   On a computer the cards fade in the first time each one scrolls
+   into the row. On a phone, fast switching and swiping could carry a
+   card past before it was ever counted as seen, and it stayed
+   invisible — dragging back showed an empty row. On phones every card
+   is simply always visible.
+   =================================================================== */
+@media (max-width:767px){
+  .hero-feature.hero-feature .hero-rail.has-reveal > li{
+    opacity:1 !important;
+    transform:none !important;
+  }
+}
+
+
+/* ===================================================================
+   25.  PHONES: A SNEAK PEEK, NOT A SHRINK
+
+   Pressing next slides the row so the new card sits near the front,
+   with the edge of the previous card still showing on the left and
+   the next card beside it. Nothing shrinks or fades; the row just
+   moves along.
+   =================================================================== */
+@media (max-width:767px){
+  .hero-feature.hero-feature .hero-rail{
+    scroll-padding-inline-start:calc(1.25rem + 2.5rem + .75rem);
+  }
+}

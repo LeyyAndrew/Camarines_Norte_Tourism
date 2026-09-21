@@ -205,7 +205,9 @@ $footerCoords = '14.11° N   122.95° E';
 
    COORDINATES ARE REAL, and must stay that way. The caption's only
    value is that a visitor could check it against a map. */
-$authPhotoDir = '/Tourism_System/uploads/Homepage-Photo/';
+/* The project folder, detected: '/Tourism_System' on XAMPP, '' on Render. */
+$siteBase = rtrim(str_replace('\\', '/', substr(realpath(__DIR__ . '/..'), strlen(realpath($_SERVER['DOCUMENT_ROOT'])))), '/');
+$authPhotoDir = $siteBase . '/uploads/Homepage-Photo/';
 
 $authSlides = [
     [

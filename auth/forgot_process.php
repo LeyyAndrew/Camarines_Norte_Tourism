@@ -35,7 +35,9 @@ require_once __DIR__ . '/_mailer.php';
 /* ---------- WHERE THE LINK POINTS ----------
    Must be the full public URL of reset_password.php. Change this if
    your project does not sit at /Tourism_System/. */
-define('RESET_URL_BASE', '/Tourism_System/auth/reset_password.php');
+/* The project folder, detected: '/Tourism_System' on XAMPP, '' on Render. */
+$siteBase = rtrim(str_replace('\\', '/', substr(realpath(__DIR__ . '/..'), strlen(realpath($_SERVER['DOCUMENT_ROOT'])))), '/');
+define('RESET_URL_BASE', $siteBase . '/auth/reset_password.php');
 
 /* How long a link lives, in minutes. An hour is the usual figure:
    long enough to find the email, short enough that a forwarded one is
@@ -50,7 +52,9 @@ define('RESET_TTL_MIN', 60);
 
    TURN THIS OFF BEFORE THIS SITE IS PUBLIC. A file full of live
    reset links is a file full of live passwords. */
-define('RESET_DEV_LOG', true);
+/* On only when running on your own computer. On the live site this
+   file would be readable by anyone who guessed its address. */
+define('RESET_DEV_LOG', in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'], true));
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { auth_back(); }
 
@@ -121,7 +125,10 @@ try {
     );
 
     /* ---------- the email ---------- */
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    /* Render ends HTTPS before the request reaches Apache and says so in
+       X-Forwarded-Proto, so check that too or the link comes out http:// */
+    $scheme = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+               || strtolower($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') ? 'https' : 'http';
     $link   = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . RESET_URL_BASE . '?token=' . $token;
 
     $subject = 'Reset your Explore Camarines Norte password';

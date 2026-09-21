@@ -13,6 +13,90 @@ document.addEventListener('DOMContentLoaded', function(){
 
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  /* ===================================================================
+     SMOOTH SCROLL
+
+     A mouse wheel moves the page in hard 100px steps. Lenis eases
+     between them, so the page glides and every scroll-linked effect
+     below (the hero zoom, the parallax, the windows) moves in one
+     continuous line instead of ticking.
+
+     WHO GETS IT
+       Mouse and trackpad only. Touch screens already scroll with
+       momentum and are left alone, and anyone with reduced motion
+       switched on gets the normal browser scroll.
+
+     LOADED HERE, NOT IN THE FOOTER
+       The script is fetched by this block so there is nothing to add
+       anywhere else. If it cannot load — offline, blocked — the page
+       simply scrolls normally. To self-host it instead, download
+       lenis.min.js into your assets and change LENIS_SRC.
+
+     WHAT IT HAS TO COOPERATE WITH
+       - ScrollTrigger is told about every Lenis frame, and Lenis runs
+         on GSAP's own clock, so the two can never drift apart.
+       - Scrollable things inside the page (the register modal, the
+         Bud chat, the thumbnail strip) keep their own scrolling:
+         allowNestedScroll hands the wheel to whatever is under it.
+       - Any modal that adds body.modal-open pauses it, and closing
+         the modal resumes it. Without this, the wheel would keep
+         moving the page behind the dialog.
+       - #links glide to their section instead of jumping, and still
+         respect the scroll-margin-top set in homepage.css.
+     =================================================================== */
+  var LENIS_SRC = 'https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js';
+  var wantsSmooth = !reduceMotion &&
+    window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+  if (wantsSmooth) {
+    var lenisTag = document.createElement('script');
+    lenisTag.src = LENIS_SRC;
+    lenisTag.async = true;
+    lenisTag.onload = startSmoothScroll;
+    document.head.appendChild(lenisTag);
+  }
+
+  function startSmoothScroll() {
+    if (!window.Lenis) return;
+
+    var lenis = new Lenis({
+      lerp: 0.12,               /* lower = silkier but floatier, higher = snappier.
+                                   0.085 felt like lag; 0.12 glides but keeps up */
+      smoothWheel: true,
+      allowNestedScroll: true
+    });
+    window.lenis = lenis;       /* handy in devtools: lenis.stop() */
+
+    lenis.on('scroll', ScrollTrigger.update);
+    gsap.ticker.add(function (time) { lenis.raf(time * 1000); });
+    gsap.ticker.lagSmoothing(0);
+
+    // pause behind any modal, resume when it closes
+    var syncModal = function () {
+      if (document.body.classList.contains('modal-open')) lenis.stop();
+      else lenis.start();
+    };
+    new MutationObserver(syncModal)
+      .observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    syncModal();
+
+    // same-page #links glide instead of jumping. Runs in the bubble
+    // phase, so auth-gate.js (capture phase) still gets first say.
+    var easeOutQuart = function (t) { return 1 - Math.pow(1 - t, 4); };
+    document.addEventListener('click', function (e) {
+      if (e.defaultPrevented || e.button !== 0 ||
+          e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      var link = e.target.closest && e.target.closest('a[href^="#"]');
+      if (!link) return;
+      var id = link.getAttribute('href').slice(1);
+      var target = id && document.getElementById(id);
+      if (!target) return;
+      e.preventDefault();
+      lenis.scrollTo(target, { duration: 1.4, easing: easeOutQuart });
+      if (history.pushState) history.pushState(null, '', '#' + id);
+    });
+  }
+
   var nav = document.getElementById('mainNav');
   /* Scroll events fire far more often than the screen refreshes, and
      touching classList inside one forces a style recalculation. Coalesce
@@ -59,20 +143,31 @@ document.addEventListener('DOMContentLoaded', function(){
   if (document.getElementById('heroContent')) {
     gsap.to('#heroContent', { opacity: 1, y: 0, duration: 1.2, ease: 'power3.out', delay: .2 });
 
-  // slow zoom on the hero as you scroll away from it.
-  // this works on the drone video too — it scales #heroBg, which is the
-  // wrapper around whichever one you're using, image or video.
-    gsap.timeline({
+  /* SCROLLING AWAY FROM THE HERO — why this was laggy, and the fix.
+
+     1. Two animations were fighting over #heroContent. The load-in
+        tween above fades it in over 1.2s, and this scroll timeline
+        faded the SAME element out. Scroll during the first second and
+        both wrote its opacity and position every frame, which reads as
+        a stutter. The scroll fade now moves the PARENT (.hero__content)
+        so the two never touch the same element.
+
+     2. The background was scaled. Scaling a wrapper around a playing
+        video makes the browser resize every decoded frame. It now
+        slides down slightly instead (a parallax), which the graphics
+        card can do without redrawing anything.
+
+     3. Both layers are promoted to their own GPU layer in homepage.css
+        (will-change), so the headline's large soft text-shadows are
+        not repainted on every scroll frame. */
+    var heroWrap = document.querySelector('.hero__content');
+    var heroScroll = gsap.timeline({
       scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true }
-    })
-      /* Scaling a wrapper that contains a <video> forces the browser to
-       recomposite every decoded frame at a new size, which is a real
-       cost on a laptop. Pull the zoom back when a video is in there. */
-    .to('#heroBg', {
-      scale: document.querySelector('#heroBg video') ? 1.06 : 1.15,
-      ease: 'none'
-    }, 0)
-    .to('#heroContent', { opacity: 0, y: -60, ease: 'none' }, 0);
+    });
+    heroScroll.fromTo('#heroBg', { yPercent: 0 }, { yPercent: 14, ease: 'none' }, 0);
+    if (heroWrap) {
+      heroScroll.fromTo(heroWrap, { opacity: 1, y: 0 }, { opacity: 0, y: -60, ease: 'none' }, 0);
+    }
   }
 
   // continuous, subtle zoom on the destination background as you scroll through it —
@@ -899,7 +994,7 @@ document.addEventListener('DOMContentLoaded', function(){
        photos        drift slowly inside their frame as you scroll
                      (parallax, tied to scroll position rather than a
                      timer, so it tracks how fast you move)
-       collage art   the squircle blocks counter-rotate a touch
+       collage art   the photos meet from opposite sides
        feature rows  slide in from the left in sequence
 
      Everything is `once` except the parallax, so nothing re-triggers
@@ -913,6 +1008,45 @@ document.addEventListener('DOMContentLoaded', function(){
   var isLaptop = window.matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)').matches;
 
   if (!reduceMotion && isLaptop) {
+
+    /* ONE MOTION LANGUAGE for the whole page.
+       Professional motion is mostly restraint: short distances, one
+       easing curve, no bounce, no spin. Things arrive, they do not
+       perform. What keeps it alive is that nothing is ever fully still
+       — photos drift inside their frames as you scroll, and the scroll
+       itself glides.
+
+         EASE    expo.out — quick start, long soft landing
+         DUR     how long an entrance takes
+         SHIFT   how far anything travels. Small on purpose: far enough
+                 to read as movement, not so far it reads as a trick. */
+    var EASE  = 'power3.out';
+    var DUR   = .95;
+    var SHIFT = 30;
+
+    /* ===================================================================
+       THE WINDOW — destination spotlight only
+
+       The destination photo starts as a rounded frame inset from the
+       edges and opens out to full width as you arrive. Scrubbed, so it
+       follows the scrollbar exactly and runs backwards on the way up.
+
+       The landing hero is deliberately left out: shrinking it as you
+       scroll away made the page look like it was getting smaller.
+
+       The clip sits on the photo wrapper (#destWindow), never the
+       section, so the carousel buttons stay clickable throughout.
+       =================================================================== */
+    var destWindow = document.getElementById('destWindow');
+    if (destWindow) {
+      gsap.fromTo(destWindow,
+        { clipPath: 'inset(6% 5% 6% 5% round 48px 48px 48px 48px)' },
+        {
+          clipPath: 'inset(0% 0% 0% 0% round 0px 0px 0px 0px)',
+          ease: 'power1.out',
+          scrollTrigger: { trigger: '#destinations', start: 'top 95%', end: 'top 12%', scrub: true }
+        });
+    }
 
     /* Animate a group of elements with a stagger, once, as their
        container scrolls in. Takes the container and the child selector
@@ -950,17 +1084,12 @@ document.addEventListener('DOMContentLoaded', function(){
         });
       });
 
-    /* --- card grids: pieces come in from alternating sides and
-       assemble into the row.
-
-       Odd items enter from the left, even from the right, each one
-       slightly rotated and scaled down so it reads as a piece dropping
-       into place rather than a block fading in. The stagger means they
-       land in sequence, left to right. --- */
+    /* --- card grids: items come in from alternating sides, a short
+       way, and land in sequence left to right. --- */
     function assemble(containerSel, childSel, opts) {
       opts = opts || {};
-      var dist  = opts.distance || 90;
-      var tilt  = opts.tilt || 4;
+      var dist  = opts.distance || SHIFT;
+      var tilt  = opts.tilt || 0;
       var stag  = opts.stagger || 0.11;
       gsap.utils.toArray(containerSel).forEach(function (container) {
         var group = gsap.utils.toArray(container.querySelectorAll(childSel));
@@ -969,13 +1098,12 @@ document.addEventListener('DOMContentLoaded', function(){
           var fromLeft = (i % 2 === 0);
           gsap.from(el, {
             x: fromLeft ? -dist : dist,
-            y: opts.lift || 30,
+            y: opts.lift || 0,
             rotate: fromLeft ? -tilt : tilt,
-            scale: .92,
             opacity: 0,
-            duration: opts.duration || .95,
+            duration: opts.duration || DUR,
             delay: i * stag,
-            ease: 'power3.out',
+            ease: EASE,
             scrollTrigger: { trigger: container, start: 'top 82%', once: true },
             // GSAP leaves its own inline transform on the element once
             // this finishes. That inline style outranks any CSS :hover
@@ -988,7 +1116,7 @@ document.addEventListener('DOMContentLoaded', function(){
       });
     }
 
-    assemble('.why-visit__grid', '.photo-card', { distance: 80, tilt: 3 });
+    assemble('.why-visit__grid', '.photo-card');
     /* --- simple, professional reveal ---
        One shared motion for the About photos, the experience cards, the
        travel notes and the stats: a short rise and fade, in order, with
@@ -1011,14 +1139,66 @@ document.addEventListener('DOMContentLoaded', function(){
       });
     }
 
-    // experience cards: rise in one after another
+
+    /* ===================================================================
+       PICTURE CARDS — three sections, three quiet entrances
+
+         experiences   glide in from the right; the photo settles
+                       from a very slight zoom
+         travel notes  glide in from the left; the photo settles, the
+                       text fades in a beat later
+         gallery       a diagonal ripple: each photo rises and grows
+                       slightly, column by column; the label follows
+
+       Every effect is kept, just small: short travel, 5% zoom, under a
+       second each. No tilts or bounces. Transform, opacity and
+       clip-path go back to the CSS when done, so hover effects work.
+       =================================================================== */
+
+    // --- 1. experiences: from the right ---
     gsap.utils.toArray('.exp__grid').forEach(function (grid) {
-      riseIn(grid.querySelectorAll('.exp-card'), grid, { y: 40, duration: .9, stagger: .15 });
+      var cards = gsap.utils.toArray(grid.querySelectorAll('.exp-card'));
+      if (!cards.length) return;
+      var imgs = cards.map(function (c) { return c.querySelector('img'); }).filter(Boolean);
+      var all  = cards.concat(imgs);
+
+      gsap.set(all, { transition: 'none' });
+      var tl = gsap.timeline({
+        scrollTrigger: { trigger: grid, start: 'top 80%', once: true },
+        onComplete: function () { gsap.set(all, { clearProps: 'transform,transition,opacity' }); }
+      });
+      cards.forEach(function (card, i) {
+        var img = card.querySelector('img');
+        var at  = i * .12;
+        tl.from(card, { x: SHIFT * 1.2, opacity: 0, duration: DUR, ease: EASE }, at);
+        if (img) tl.from(img, { scale: 1.05, duration: DUR * 1.3, ease: EASE }, at);
+      });
     });
 
-    // travel note cards: same idea
+    // --- 2. travel notes: from the left, text a beat behind ---
     gsap.utils.toArray('.notes__grid').forEach(function (grid) {
-      riseIn(grid.querySelectorAll('.note-card'), grid, { y: 40, duration: .9, stagger: .15 });
+      var cards = gsap.utils.toArray(grid.querySelectorAll('.note-card'));
+      if (!cards.length) return;
+      var parts = cards.slice();
+      cards.forEach(function (c) {
+        ['.note-card__media img', '.note-card__body'].forEach(function (s) {
+          var el = c.querySelector(s); if (el) parts.push(el);
+        });
+      });
+
+      gsap.set(parts, { transition: 'none' });
+      var tl = gsap.timeline({
+        scrollTrigger: { trigger: grid, start: 'top 80%', once: true },
+        onComplete: function () { gsap.set(parts, { clearProps: 'transform,transition,opacity' }); }
+      });
+      cards.forEach(function (card, i) {
+        var img  = card.querySelector('.note-card__media img');
+        var body = card.querySelector('.note-card__body');
+        var at   = i * .12;
+        tl.from(card, { x: -SHIFT * 1.2, opacity: 0, duration: DUR, ease: EASE }, at);
+        if (img)  tl.from(img,  { scale: 1.05, duration: DUR * 1.3, ease: EASE }, at);
+        if (body) tl.from(body, { opacity: 0, y: 8, duration: .7, ease: EASE }, at + .25);
+      });
     });
 
     // the register is a list, so the rows rise straight up in sequence
@@ -1036,7 +1216,7 @@ document.addEventListener('DOMContentLoaded', function(){
     gsap.utils.toArray('.craft__list').forEach(function (list) {
       gsap.utils.toArray(list.querySelectorAll('.craft__row')).forEach(function (el, i) {
         gsap.from(el, {
-          x: i % 2 ? 46 : -46,
+          x: i % 2 ? SHIFT : -SHIFT,
           opacity: 0, duration: .8, delay: i * .1,
           ease: 'power3.out',
           scrollTrigger: { trigger: list, start: 'top 84%', once: true }
@@ -1058,14 +1238,11 @@ document.addEventListener('DOMContentLoaded', function(){
         var el = wrap.querySelector(sel);
         if (!el) return;
         gsap.from(el, {
-          x: i === 0 ? -70 : 70,
-          y: i === 2 ? 40 : 0,
-          rotate: i === 0 ? -3 : 3,
-          scale: .9,
+          x: i === 0 ? -SHIFT : SHIFT,
           opacity: 0,
-          duration: 1.05,
-          delay: i * .13,
-          ease: 'power3.out',
+          duration: DUR,
+          delay: i * .12,
+          ease: EASE,
           scrollTrigger: { trigger: wrap, start: 'top 80%', once: true }
         });
       });
@@ -1080,8 +1257,20 @@ document.addEventListener('DOMContentLoaded', function(){
       if (!wrap) return;
       var body = wrap.querySelector('.story__body');
       if (body) riseIn(body.children, wrap, { y: 24, stagger: .1 });
-      riseIn(wrap.querySelectorAll('.story__tall, .story__aside-shot, .story__aside-title, .story__aside-text'),
-             wrap, { y: 36, duration: .9, stagger: .14, delay: .15 });
+      // the two photos come in from opposite sides, then the caption rises
+      var tall  = wrap.querySelector('.story__tall');
+      var small = wrap.querySelector('.story__aside-shot');
+      [[tall, -SHIFT], [small, SHIFT]].forEach(function (p, n) {
+        if (!p[0]) return;
+        gsap.set(p[0], { transition: 'none' });
+        gsap.from(p[0], {
+          x: p[1], opacity: 0, duration: DUR, delay: .15 + n * .12,
+          ease: EASE, clearProps: 'transform,transition',
+          scrollTrigger: { trigger: wrap, start: 'top 82%', once: true }
+        });
+      });
+      riseIn(wrap.querySelectorAll('.story__aside-title, .story__aside-text'),
+             wrap, { y: 24, duration: .8, stagger: .12, delay: .45 });
 
       wrap.querySelectorAll('.story__tall img, .story__aside-shot img').forEach(function (img) {
         gsap.fromTo(img, { yPercent: -4 }, {
@@ -1123,7 +1312,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var hexIntro = document.querySelector('.hexplore__intro');
     if (hexIntro && hexIntro.children.length) {
       gsap.from(hexIntro.children, {
-        x: -52, opacity: 0,
+        x: -SHIFT, opacity: 0,
         duration: .8, stagger: .07,
         ease: 'power3.out',
         scrollTrigger: { trigger: hexIntro, start: 'top 80%', once: true },
@@ -1136,9 +1325,9 @@ document.addEventListener('DOMContentLoaded', function(){
       var tiles = gsap.utils.toArray(comb.querySelectorAll('.hex-cell'));
       if (tiles.length) {
         gsap.from(tiles, {
-          scale: .82, opacity: 0,
-          duration: .7, stagger: .08,
-          ease: 'back.out(1.4)',
+          scale: .94, opacity: 0,
+          duration: DUR, stagger: .08,
+          ease: EASE,
           /* the comb sits lower than its own heading, so it triggers on
              itself rather than the section, or the tiles would have
              finished before you had scrolled far enough to see them */
@@ -1162,7 +1351,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
     if (spotMain) {
       gsap.from(spotMain, {
-        x: -56, opacity: 0, duration: .95, ease: 'power3.out',
+        x: -SHIFT, opacity: 0, duration: DUR, ease: EASE,
         scrollTrigger: { trigger: spotMain, start: 'top 80%', once: true },
         onComplete: function () { gsap.set(spotMain, { clearProps: 'transform' }); }
       });
@@ -1170,7 +1359,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
     if (spotRail) {
       gsap.from(spotRail, {
-        x: 56, opacity: 0, duration: .95, delay: .12, ease: 'power3.out',
+        x: SHIFT, opacity: 0, duration: DUR, delay: .12, ease: EASE,
         scrollTrigger: { trigger: spotRail, start: 'top 84%', once: true },
         onComplete: function () { gsap.set(spotRail, { clearProps: 'transform' }); }
       });
@@ -1209,7 +1398,7 @@ document.addEventListener('DOMContentLoaded', function(){
       var media = row.querySelector('.about-split__media');
       if (body)  gsap.from(body,  { x: -60, opacity: 0, duration: 1, ease: 'power3.out',
                     scrollTrigger: { trigger: row, start: 'top 80%', once: true } });
-      if (media) gsap.from(media, { x: 60, opacity: 0, rotate: 2, scale: .93, duration: 1.05,
+      if (media) gsap.from(media, { x: SHIFT, opacity: 0, duration: DUR,
                     delay: .12, ease: 'power3.out',
                     scrollTrigger: { trigger: row, start: 'top 80%', once: true } });
     });
@@ -1308,16 +1497,31 @@ document.addEventListener('DOMContentLoaded', function(){
       });
     });
 
-    // --- gallery: tiles alternate sides as the masonry knits together ---
+    /* --- 3. gallery: a diagonal ripple ---
+       Each photo rises a short way and grows from 97% to full size.
+       The left column moves first, the middle a beat later, the right
+       a beat after that, so every row lands as a gentle wave across
+       the grid rather than all at once. The label fades in last.
+
+       Transform and opacity only, which the graphics card handles on
+       its own, so it stays smooth while you keep scrolling. */
     gsap.utils.toArray('.masonry').forEach(function (grid) {
-      gsap.utils.toArray(grid.querySelectorAll('.masonry-item')).forEach(function (el, i) {
-        gsap.from(el, {
-          x: i % 2 ? 60 : -60,
-          y: 34, rotate: i % 2 ? 2.5 : -2.5, scale: .94, opacity: 0,
-          duration: .9, delay: (i % 3) * .1,
-          ease: 'power3.out',
-          scrollTrigger: { trigger: el, start: 'top 88%', once: true }
+      var box = grid.getBoundingClientRect();
+
+      gsap.utils.toArray(grid.querySelectorAll('.masonry-item')).forEach(function (el) {
+        var r     = el.getBoundingClientRect();
+        var col   = Math.min(2, Math.floor(((r.left + r.width / 2) - box.left) / (box.width / 3)));
+        var label = el.querySelector('.media__label');
+        var touched = [el, label].filter(Boolean);
+
+        var ripple = gsap.timeline({
+          delay: col * .12,
+          scrollTrigger: { trigger: el, start: 'top 90%', once: true },
+          onComplete: function () { gsap.set(touched, { clearProps: 'transform,opacity' }); }
         });
+        ripple.from(el, { y: SHIFT, scale: .97, opacity: 0, transformOrigin: '50% 100%',
+                          duration: DUR, ease: EASE });
+        if (label) ripple.from(label, { opacity: 0, y: 6, duration: .5, ease: EASE }, .45);
       });
     });
 
@@ -1358,9 +1562,8 @@ document.addEventListener('DOMContentLoaded', function(){
           y: 24, opacity: 0, duration: .8, ease: 'power3.out'
         }, '-=0.6')
         .from(ctaInner.querySelectorAll('.cta__actions > *'), {
-          x: function (i) { return i % 2 ? 50 : -50; },
-          y: 20, scale: .9, opacity: 0,
-          duration: .8, stagger: .1, ease: 'back.out(1.6)'
+          y: 16, opacity: 0,
+          duration: .8, stagger: .1, ease: EASE
         }, '-=0.45');
     }
 

@@ -543,6 +543,11 @@ $spotPhotos = [
        the selected one to the front, so only the first is eager-loaded
        — the other 23 wait until they are actually needed. data-place is
        there so you can tell which is which in devtools. -->
+  <!-- THE WINDOW. Holds the photo stack and its overlay so homepage.js
+       can open them from a rounded frame to full width as the section
+       scrolls in. It is only a wrapper: position absolute, inset 0, so
+       nothing inside it moves or resizes. -->
+  <div class="dest-spotlight__window" id="destWindow">
   <div class="dest-spotlight__bgwrap" id="destBgWrap">
 <?php foreach ($spotPhotos as $i => [$file, $place]): ?>
     <img class="spot-bg<?= $i === 0 ? ' spot-bg--front' : '' ?>"
@@ -555,6 +560,7 @@ $spotPhotos = [
   </div>
 
   <div class="dest-spotlight__overlay"></div>
+  </div>
 
   <div class="wrap dest-spotlight__inner">
     <div class="dest-spotlight__main" data-aos="fade-up">

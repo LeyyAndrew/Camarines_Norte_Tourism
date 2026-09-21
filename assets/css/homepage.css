@@ -1749,3 +1749,43 @@ body.modal-open{ overflow:hidden; }
   .story__tall img, .story__aside-shot img{ transition:filter .4s ease; }
   .story__tall:hover img, .story__aside-shot:hover img{ filter:brightness(1.05); }
 }
+
+/* ===================================================================
+   SCROLL FEEL — smooth scrolling and the window frames
+   (driven by the SMOOTH SCROLL and THE WINDOW blocks in homepage.js)
+   =================================================================== */
+
+/* Lenis moves the page itself, so the browser must not smooth it a
+   second time on top — two smoothers fighting read as a stutter. */
+html.lenis, html.lenis body{ height:auto; }
+html.lenis{ scroll-behavior:auto !important; }
+.lenis.lenis-stopped{ overflow:clip; }
+
+/* The spotlight's photo and overlay sit inside this wrapper so the
+   frame can be clipped without clipping the text and carousel. */
+.dest-spotlight__window{
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+}
+
+/* What shows round the edges while the window is still opening. It
+   matches the bottom of the honeycomb section directly above, so the
+   frame reads as cut out of that page rather than floating on grey.
+   At rest the photo covers it completely. */
+.dest-spotlight{ background-color:#F3EFE7; }
+
+/* Cards slide in from the sides in these sections. Clipping the
+   section's sideways overflow stops a card that is still off to the
+   side from adding a horizontal scrollbar for that split second.
+   clip, not hidden: it does not create a scroll box, so nothing
+   sticky or scroll-linked inside is affected. */
+.exp, .notes{ overflow-x:clip; }
+
+/* Hero layers that move while you scroll get their own GPU layer, so
+   the video and the headline's soft shadows are not redrawn on every
+   frame. Only these two: will-change on everything costs memory. */
+@media (hover:hover) and (pointer:fine){
+  #heroBg, .hero__content{ will-change:transform, opacity; }
+}

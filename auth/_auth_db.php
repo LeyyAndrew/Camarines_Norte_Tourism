@@ -347,7 +347,9 @@ function auth_back($query = '') {
     }
 
     if ($path === '' || substr($path, 0, 1) !== '/') {
-        $path = '/Tourism_System/homepage.php';   /* the one fallback */
+        /* the project folder, detected: '/Tourism_System' on XAMPP, '' on Render */
+        $siteBase = rtrim(str_replace('\\', '/', substr(realpath(__DIR__ . '/..'), strlen(realpath($_SERVER['DOCUMENT_ROOT'])))), '/');
+        $path = $siteBase . '/homepage.php';   /* the one fallback */
     }
 
     header('Location: ' . $path . ($query ? '?' . $query : ''));

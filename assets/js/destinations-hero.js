@@ -558,14 +558,43 @@
      scroll-behavior on .hero-rail is already auto in the stylesheet,
      deliberately, so behavior here is honoured. See the note there
      before setting smooth in CSS again. */
+  /* ON A PHONE THE CURRENT CARD MOVES NEAR THE FRONT of the row, with
+     a sneak peek of the previous card to its left, instead of the
+     middle. With two cards on screen, "the middle" is the gap
+     between them, so the row seemed to stand still. Lining the current
+     card up on the left makes every switch visibly slide the row along,
+     with the next card waiting beside it. */
+  function isPhone() {
+    return !!(window.matchMedia && window.matchMedia('(max-width: 767px)').matches);
+  }
+
   function centreCard(card) {
     if (!card) return;
 
     var cr = card.getBoundingClientRect();
     var rr = rail.getBoundingClientRect();
     var max  = rail.scrollWidth - rail.clientWidth;
-    var want = rail.scrollLeft +
-               (cr.left + cr.width / 2) - (rr.left + rr.width / 2);
+    var want;
+
+    if (isPhone()) {
+      /* the card's left edge, lined up with the row's own left padding.
+         Measured from the card's slot (its <li>), because the card
+         itself may be mid-shrink and its box is not where it will end. */
+      var slot = card.parentNode && card.parentNode.getBoundingClientRect
+               ? card.parentNode.getBoundingClientRect() : cr;
+      var cs   = getComputedStyle(rail);
+      var pad  = parseFloat(cs.paddingLeft) || 0;
+      var gap  = parseFloat(cs.columnGap) || 0;
+      /* a sneak peek of the card before it: 2.5rem of it stays in view
+         on the left, so you can see where you came from. The stylesheet
+         sizes the cards to leave exactly this much room. */
+      var rem  = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      var peek = 2.5 * rem + gap;
+      want = rail.scrollLeft + (slot.left - rr.left) - pad - peek;
+    } else {
+      want = rail.scrollLeft +
+             (cr.left + cr.width / 2) - (rr.left + rr.width / 2);
+    }
 
     want = Math.max(0, Math.min(want, max));
 
@@ -949,6 +978,46 @@
     e.stopPropagation();
   }, true);
 
+  /* ---- A TAP ON A PHONE, handled directly --------------------------
+     A tap switches the section to that card, the same as a click on a
+     computer. Some phones never send the click for a tap on a card: the first
+     tap is spent on :hover, or the row's scrolling swallows it. So a
+     touch that goes down and comes up in the same place, quickly, is
+     treated as the tap itself. A swipe never reaches pointerup — the
+     browser takes it over for scrolling and sends pointercancel — so
+     this cannot fire in the middle of scrolling the row. */
+  var tapX = 0, tapY = 0, tapAt = 0, tapHandled = false;
+
+  rail.addEventListener('pointerdown', function (e) {
+    if (e.pointerType !== 'touch') return;
+    tapX = e.clientX; tapY = e.clientY; tapAt = Date.now();
+    tapHandled = false;
+  });
+
+  rail.addEventListener('pointerup', function (e) {
+    if (e.pointerType !== 'touch' || !tapAt) return;
+    var still = Math.abs(e.clientX - tapX) < 10 && Math.abs(e.clientY - tapY) < 10;
+    var quick = Date.now() - tapAt < 600;
+    tapAt = 0;
+    if (!still || !quick) return;
+
+    var card = e.target.closest ? e.target.closest('.hero-rail__card') : null;
+    if (!card) return;
+    var i = parseInt(card.getAttribute('data-slide'), 10);
+    if (isNaN(i) || !SLIDES[i]) return;
+
+    /* the card already showing keeps its link: tapping it again goes
+       to its card in the list, the same as on a computer */
+    if (i === current) return;
+
+    tapHandled = true;
+    show(i);
+    /* if no click follows, do not leave the flag set for the next tap */
+    setTimeout(function () { tapHandled = false; }, 700);
+  });
+
+  rail.addEventListener('pointercancel', function () { tapAt = 0; });
+
   /* delegated: twenty-four cards, one listener */
   rail.addEventListener('click', function (e) {
     var card = e.target.closest ? e.target.closest('.hero-rail__card') : null;
@@ -956,6 +1025,10 @@
 
     var i = parseInt(card.getAttribute('data-slide'), 10);
     if (isNaN(i) || !SLIDES[i]) return;
+
+    /* the touch handler above already switched to this card; this is
+       the click the browser sends after the same tap */
+    if (tapHandled) { tapHandled = false; e.preventDefault(); return; }
 
     /* Clicking the card that is ALREADY showing means the person wants
        the thing the block is offering, so let the #anchor run and take
