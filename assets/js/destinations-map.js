@@ -403,6 +403,52 @@
     openSheet(hook.getAttribute('data-detail'));
   });
 
+  /* ---------------------------------------------------------------
+     OPEN A DESTINATION'S POPUP FROM A LINK
+
+     Any page can link straight to a destination's popup:
+
+         destinations.php?open=calaguas
+         destinations.php?open=calaguas-island
+
+     The slug is the part after "dest-" in the card's id. If the
+     visitor is not signed in, openSheet shows the sign-in prompt
+     instead, exactly as clicking the card would.
+     --------------------------------------------------------------- */
+  (function () {
+    var params = new URLSearchParams(location.search);
+    var key    = (params.get('open') || '').trim().toLowerCase();
+    if (!key) return;
+
+    /* exact slug first (calaguas-island), then a keyword that appears
+       in the slug or the name (calaguas, panit, "mt panit") */
+    var slug = BY_SLUG[key] ? key : null;
+    if (!slug) {
+      var words = key.replace(/[-_]+/g, ' ');
+      POINTS.some(function (p) {
+        var s = String(p.slug || '').toLowerCase().replace(/-/g, ' ');
+        var n = String(p.name || '').toLowerCase();
+        if (s.indexOf(words) !== -1 || n.indexOf(words) !== -1) {
+          slug = p.slug;
+          return true;
+        }
+        return false;
+      });
+    }
+    if (!slug) return;
+
+    /* remove ?open= from the address bar so refreshing the page
+       does not open the popup again */
+    params.delete('open');
+    var rest = params.toString();
+    history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash);
+
+    /* wait until the page has loaded, then open it */
+    function go() { setTimeout(function () { openSheet(slug); }, 300); }
+    if (document.readyState === 'complete') go();
+    else window.addEventListener('load', go);
+  })();
+
   /* "Read the full card" inside the sheet */
   document.addEventListener('click', function (e) {
     var go = e.target.closest ? e.target.closest('[data-sheet-card]') : null;

@@ -822,6 +822,21 @@ $showIntro = true;
     </button>
   </form>
 
+  <style>
+    /* the card a search jumped to: a short glow so the eye lands on it */
+    .dest-card.is-found {
+      animation: destFound 2.4s ease-out;
+      scroll-margin-top: 110px;
+    }
+    @keyframes destFound {
+      0%, 35% { box-shadow: 0 0 0 4px #f5a524, 0 18px 40px rgba(245, 165, 36, .35); }
+      100%    { box-shadow: 0 0 0 0 rgba(245, 165, 36, 0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .dest-card.is-found { animation: none; outline: 4px solid #f5a524; outline-offset: 2px; }
+    }
+  </style>
+
   <!-- ===================================================================
        SEARCHING AND FILTERING WITHOUT THE PAGE BLINKING
 
@@ -883,6 +898,61 @@ $showIntro = true;
 
       var REGIONS = ['destFilters', 'destMain'];
       var inflight = null;
+
+      /* ---- JUMP TO THE CARD YOU SEARCHED FOR ----
+         Pressing Enter or the search icon takes you straight to the
+         matching card: "calaguas" lands on the Calaguas card. Best
+         match wins: exact name, then name starting with the term, then
+         a word in the name, then anywhere in the name. If no name
+         matches but the search left exactly one result, that one. */
+      function norm(str) {
+        str = String(str || '').toLowerCase();
+        if (str.normalize) str = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return str.replace(/[^a-z0-9]+/g, ' ').trim();
+      }
+
+      function bestCard(term) {
+        var grid = document.getElementById('destGrid');
+        if (!grid) return null;
+        var cards = grid.querySelectorAll('.dest-card');
+        if (!cards.length) return null;
+
+        var t = norm(term);
+        var best = null, score = 0;
+        if (t) {
+          Array.prototype.forEach.call(cards, function (c) {
+            var el = c.querySelector('.dest-card__name');
+            var n  = norm(el ? el.textContent : '');
+            var s  = n === t                            ? 4
+                   : n.indexOf(t) === 0                 ? 3
+                   : (' ' + n).indexOf(' ' + t) !== -1  ? 2
+                   : n.indexOf(t) !== -1                ? 1 : 0;
+            if (s > score) { score = s; best = c; }
+          });
+        }
+        if (!best && cards.length === 1) best = cards[0];
+        return best;
+      }
+
+      var foundTimer = null;
+      function focusCard(card) {
+        var old = document.querySelectorAll('.dest-card.is-found');
+        Array.prototype.forEach.call(old, function (c) { c.classList.remove('is-found'); });
+
+        var still = window.matchMedia &&
+          window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        card.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'center' });
+
+        void card.offsetWidth;            /* restart the glow if repeated */
+        card.classList.add('is-found');
+        clearTimeout(foundTimer);
+        foundTimer = setTimeout(function () { card.classList.remove('is-found'); }, 2600);
+
+        /* move keyboard / screen-reader focus there too, without a
+           second scroll fighting the smooth one */
+        if (!card.hasAttribute('tabindex')) card.setAttribute('tabindex', '-1');
+        try { card.focus({ preventScroll: true }); } catch (e) {}
+      }
 
       /* mirrors destUrl() in the PHP above: empty values dropped, same
          parameter names. Kept in step by hand — if you add a filter,
@@ -984,7 +1054,7 @@ $showIntro = true;
 
          So typing REPLACES the history entry and stays quiet; Enter
          pushes one and does the rest. */
-      function go(url, push, live) {
+      function go(url, push, live, seek) {
         /* a second search while the first is still in the air wins.
            Without this the slower response can land last and put the
            wrong results on screen. */
@@ -1119,8 +1189,17 @@ $showIntro = true;
                looking at the banner is a dead end. Results already in
                view are left where they are. */
             if (!live) {
-              var top = bar.getBoundingClientRect().top;
-              if (top < 0) bar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              /* a search submit goes to the matching card itself;
+                 chips, back/forward and anything unmatched keep the
+                 old correction to the filter bar */
+              var qTerm = new URL(url, location.href).searchParams.get('q');
+              var hit = (seek && qTerm) ? bestCard(qTerm) : null;
+              if (hit) {
+                focusCard(hit);
+              } else {
+                var top = bar.getBoundingClientRect().top;
+                if (top < 0) bar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
             }
             });
           })
@@ -1134,7 +1213,7 @@ $showIntro = true;
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         clearTimeout(typeTimer);   /* Enter beats a pending keystroke */
-        go(formUrl(), true, false);
+        go(formUrl(), true, false, true);
       });
 
       /* THE RESET MAP HOOK.
@@ -1253,6 +1332,14 @@ $showIntro = true;
 
       history.replaceState({ destSwap: true }, '',
         location.pathname + location.search + location.hash);
+
+      var startQ = new URLSearchParams(location.search).get('q');
+      if (startQ) {
+        window.addEventListener('load', function () {
+          var hit = bestCard(startQ);
+          if (hit) setTimeout(function () { focusCard(hit); }, 60);
+        });
+      }
 
     }
   }());

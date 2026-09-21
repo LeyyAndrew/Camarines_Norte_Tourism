@@ -902,7 +902,7 @@ $spotPhotos = [
 
       <a class="exp-card" href="destinations.php#paracale" data-aos="fade-up" data-aos-delay="160">
         <!-- [ PHOTO 34 ] EXPERIENCE 3 — gold country — PORTRAIT, tall, about 3:4.4 -->
-        <img loading="lazy" decoding="async" src="<?= $homephoto('PhotO-Exp-3.jpg') ?>" alt="">
+        <img loading="lazy" decoding="async" src="<?= $homephoto('Photo-Exp-3.jpg') ?>" alt="">
         <span class="exp-card__glow" aria-hidden="true"></span>
         <span class="exp-card__view">View</span>
         <div class="exp-card__body">
@@ -1324,7 +1324,7 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
         <div class="note-card__media">
           <span class="note-card__tag">Seasons</span>
           <!-- [ PHOTO 39 ] TRAVEL NOTE 2 — landscape 4:3 -->
-          <img loading="lazy" decoding="async" src="<?= $homephoto('Travel-Quiet-Month.JPG') ?>" alt="">
+          <img loading="lazy" decoding="async" src="<?= $homephoto('Travel-Quiet-Month.jpg') ?>" alt="">
         </div>
         <div class="note-card__body">
           <h3 class="note-card__title">When to visit: swell, rain, and the quiet months</h3>
