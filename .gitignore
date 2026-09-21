@@ -1,6 +1,5 @@
 # Credentials
-/config/database.php
-/config/gemini.php
+
 .env
 
 
