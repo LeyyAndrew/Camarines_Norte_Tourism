@@ -846,7 +846,19 @@
   .voices__more--mobile{
     display:flex;
     justify-content:center;
-    margin-top:-1rem;
+    margin-top:1.5rem;
+  }
+
+  /* The rows are position:relative, so any row that overlaps this
+     button paints ON TOP of it and swallows the tap. Lift both
+     buttons into their own layer above the register. */
+  .voices__more{
+    position:relative;
+    z-index:3;
+  }
+  .voices__more-btn{
+    min-height:44px;
+    touch-action:manipulation;
   }
 
   /* homepage.php only renders .voices__more--full (the "See the full
