@@ -135,6 +135,39 @@ $tagCat = [];
 foreach ($categories as $label => $tags) {
     foreach ($tags as $t) { $tagCat[strtolower($t)] = $label; }
 }
+/* SEARCH NORMALISING. "Taba-Taba", "taba taba", "TabaTaba" and
+   "Pañungon"/"Panungon" should all find the same place. Both the
+   search term and the text are lowercased, accents dropped, and every
+   run of punctuation or spacing turned into a single space. */
+function searchNorm($str) {
+    $str = function_exists('mb_strtolower') ? mb_strtolower($str, 'UTF-8') : strtolower($str);
+    $str = strtr($str, [
+        'á'=>'a','à'=>'a','â'=>'a','ä'=>'a','ã'=>'a',
+        'é'=>'e','è'=>'e','ê'=>'e','ë'=>'e',
+        'í'=>'i','ì'=>'i','î'=>'i','ï'=>'i',
+        'ó'=>'o','ò'=>'o','ô'=>'o','ö'=>'o','õ'=>'o',
+        'ú'=>'u','ù'=>'u','û'=>'u','ü'=>'u','ñ'=>'n','ç'=>'c',
+    ]);
+    $str = preg_replace('/[^a-z0-9]+/', ' ', $str);
+    return trim($str);
+}
+
+/* true when the search term matches the text:
+     - the cleaned phrase appears as-is          ("taba-taba" -> "taba taba")
+     - or it appears with all spaces removed    ("tabataba")
+     - or every word of it appears somewhere    ("resort taba") */
+function searchHit($hay, $q) {
+    $h = searchNorm($hay);
+    $n = searchNorm($q);
+    if ($n === '') return true;
+    if (strpos($h, $n) !== false) return true;
+    if (strpos(str_replace(' ', '', $h), str_replace(' ', '', $n)) !== false) return true;
+    foreach (explode(' ', $n) as $w) {
+        if (strpos($h, $w) === false) return false;
+    }
+    return true;
+}
+
 function catOf($tag, $tagCat) {
     return $tagCat[strtolower($tag)] ?? 'Other';
 }
@@ -146,8 +179,8 @@ $destinations = array_values(array_filter($destinations, function ($d) use ($typ
     if ($cat  !== '' && catOf($d['tag'], $tagCat) !== $cat) return false;
     if ($town !== '' && strcasecmp($d['town'], $town) !== 0) return false;
     if ($q !== '') {
-        $hay = strtolower($d['name'] . ' ' . $d['town'] . ' ' . $d['tag'] . ' ' . $d['desc']);
-        if (strpos($hay, strtolower($q)) === false) return false;
+        $hay = $d['name'] . ' ' . $d['town'] . ' ' . $d['tag'] . ' ' . $d['desc'];
+        if (!searchHit($hay, $q)) return false;
     }
     return true;
 }));
@@ -923,10 +956,11 @@ $showIntro = true;
           Array.prototype.forEach.call(cards, function (c) {
             var el = c.querySelector('.dest-card__name');
             var n  = norm(el ? el.textContent : '');
-            var s  = n === t                            ? 4
-                   : n.indexOf(t) === 0                 ? 3
+            var ns = n.replace(/ /g, ''), ts = t.replace(/ /g, '');
+            var s  = (n === t || ns === ts)             ? 4
+                   : (n.indexOf(t) === 0 || ns.indexOf(ts) === 0) ? 3
                    : (' ' + n).indexOf(' ' + t) !== -1  ? 2
-                   : n.indexOf(t) !== -1                ? 1 : 0;
+                   : ns.indexOf(ts) !== -1              ? 1 : 0;
             if (s > score) { score = s; best = c; }
           });
         }
