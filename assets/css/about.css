@@ -1480,19 +1480,35 @@ img.crack__img.is-broken{ display:none; }
    deliberate placeholder rather than something broken — no red, no
    warning icon, same frame as the other two.
    =================================================================== */
-.town-film{ margin:0; }
+/* Slightly smaller than the column, centred, with rounded corners. */
+.town-film{ margin:0 auto; max-width:48rem; }
 
 .town-film__frame{
   position:relative;
   aspect-ratio:16/9;
   overflow:hidden;
+  border-radius:1.25rem;
+  isolation:isolate;
+  transform:translateZ(0);   /* Safari: clip the video to the corners */
   background:var(--navy);
 }
+
+.town-film .map-figure__cap{ margin-top:1rem; }
+
+/* --town-zoom crops off black bars that are baked INTO the clips
+   (letterboxing from the export, not from this page). 1.14 trims about
+   7% top and bottom, which covers the bars on the current footage.
+   If a clip still shows a thin line, nudge it up (1.18); once the files
+   are re-exported without bars, set it back to 1. */
+.town-film{ --town-zoom:1.14; }
 
 .town-film__video{
   position:absolute; inset:0;
   width:100%; height:100%;
-  object-fit:cover;
+  object-fit:cover !important;
+  transform:scale(var(--town-zoom));
+  transform-origin:center;
+  background:transparent;
   opacity:0;
   transition:opacity .6s ease;
 }
@@ -1517,6 +1533,7 @@ img.crack__img.is-broken{ display:none; }
 .town-film__badge{
   position:absolute; top:0; left:0; z-index:3;
   padding:.55rem .9rem;
+  border-bottom-right-radius:.9rem;
   font-family:'Poppins', Arial, sans-serif;
   font-weight:700; font-size:.75rem; letter-spacing:.14em; text-transform:uppercase;
   color:var(--navy); background:var(--orange);
@@ -1524,26 +1541,43 @@ img.crack__img.is-broken{ display:none; }
 
 .town-film__badge:empty{ display:none; }
 
-.town-film__sound{
-  position:absolute; top:.85rem; right:.85rem; z-index:3;
-  display:inline-flex; align-items:center; gap:.4rem;
-  padding:.45rem .8rem; margin:0;
-  border:1px solid rgba(255,255,255,.3); border-radius:999px;
-  background:rgba(10,12,14,.55); color:#fff;
-  font:inherit; font-size:.7rem; letter-spacing:.12em; text-transform:uppercase;
-  cursor:pointer;
-  transition:background .25s ease, border-color .25s ease;
+/* ---- the one control: play/pause, bottom right ---- */
+.town-film__controls{
+  position:absolute; right:1rem; bottom:1rem; z-index:3;
+  display:flex; gap:.55rem;
 }
 
-.town-film__sound:hover{ background:rgba(10,12,14,.8); border-color:rgba(255,255,255,.6); }
+/* display:flex above beats the browser's own [hidden] rule, so the
+   script's hidden attribute needs this to actually hide the pair. */
+.town-film__controls[hidden]{ display:none; }
 
-.town-film__sound:focus-visible{ outline:2px solid var(--orange); outline-offset:2px; }
+.town-film__ctrl{
+  display:grid; place-items:center;
+  width:42px; height:42px; padding:0; margin:0;
+  border:0; border-radius:50%;
+  background:rgba(16,20,24,.72);
+  -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  color:#fff; cursor:pointer;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.28), 0 4px 14px -6px rgba(0,0,0,.5);
+  transition:background .2s ease, transform .2s ease;
+}
 
-/* The script hides this with the hidden attribute, and the rule above
-   sets display:inline-flex, which beats the browser's own [hidden] rule
-   — so without this the control stayed on screen over a panel with no
-   film in it. Any element given a display here needs this pair. */
-.town-film__sound[hidden]{ display:none; }
+.town-film__ctrl:hover{ background:rgba(16,20,24,.9); transform:scale(1.05); }
+
+.town-film__ctrl:focus-visible{ outline:2px solid var(--orange); outline-offset:3px; }
+
+.town-film__ctrl svg{ width:18px; height:18px; }
+
+/* pause icon while playing, play icon while paused */
+.town-film__icon--play{ display:none; }
+.town-film__play.is-paused .town-film__icon--pause{ display:none; }
+.town-film__play.is-paused .town-film__icon--play{ display:block; margin-left:2px; }
+
+@media (max-width:640px){
+  .town-film__frame{ border-radius:1rem; }
+  .town-film__controls{ right:.7rem; bottom:.7rem; gap:.45rem; }
+  .town-film__ctrl{ width:38px; height:38px; }
+}
 
 /* --- the list rows say which one is playing --- */
 .town-index__item[aria-pressed="true"] .town-index__name::after{
@@ -1566,6 +1600,10 @@ img.crack__img.is-broken{ display:none; }
 @media (prefers-reduced-motion:reduce){
 
    .town-film__video{ transition:none; }
+
+   .town-film__ctrl{ transition:none; }
+
+   .town-film__ctrl:hover{ transform:none; }
 }
 
 
@@ -1971,4 +2009,193 @@ img.crack__img.is-broken{ display:none; }
    .onward__link:hover .onward__arrow{ transform:none; }
 
    .onward__back:hover .onward__back-arrow{ transform:none; }
+}
+
+/* ===================================================================
+   THE FOUR WINDS — 2x2 grid, square photo left, copy right
+   =================================================================== */
+/* Full-bleed off-white band. The section spans the whole page width;
+   .wrap inside it keeps the content lined up with the rest of the page. */
+.winds{ background:#f4f3ef; padding-top:0; }
+
+/* The hairline sits at the top of the content column, not edge to edge. */
+.winds__inner{ border-top:1px solid rgba(22,25,28,.1); padding-top:4.5rem; }
+
+@media (min-width:768px){
+  .winds__inner{ padding-top:5.5rem; }
+}
+
+.winds{ --wind-people:#c2410c; --wind-commerce:#1f7a8c; --wind-culture:#4f5d9e; --wind-experience:#a16207; }
+
+.winds__title{
+  font-weight:700; font-size:clamp(1.8rem,3.4vw,2.6rem);
+  line-height:1.2; letter-spacing:-.02em; color:#16191c;
+  max-width:24ch; margin:0 0 4rem;
+}
+
+.winds__grid{ display:grid; grid-template-columns:minmax(0,1fr); gap:3.5rem 3rem; }
+
+@media (min-width:1024px){
+  .winds__title{ margin-bottom:9rem; }
+  .winds__grid{ grid-template-columns:repeat(2,minmax(0,1fr)); row-gap:6rem; }
+}
+
+.wind{ display:grid; grid-template-columns:minmax(0,1fr); gap:1.25rem; align-items:start; }
+
+@media (min-width:560px){
+  .wind{ grid-template-columns:clamp(9rem,15vw,14rem) minmax(0,1fr); gap:1rem; }
+}
+
+.wind__media{ position:relative; overflow:hidden; aspect-ratio:1/1; border-radius:.6rem; background:var(--navy); }
+.wind__media .photo-layer{ transition:scale .8s cubic-bezier(.16,.84,.44,1); }
+.wind:hover .wind__media .photo-layer{ scale:1.05; }
+
+.wind__kicker{
+  display:block; margin:.35rem 0 .7rem;
+  font-family:'Inter', Arial, sans-serif; font-weight:600;
+  font-size:.78rem; letter-spacing:.28em; text-transform:uppercase;
+  color:var(--wind-tone);
+}
+.wind--people    { --wind-tone:var(--wind-people); }
+.wind--commerce  { --wind-tone:var(--wind-commerce); }
+.wind--culture   { --wind-tone:var(--wind-culture); }
+.wind--experience{ --wind-tone:var(--wind-experience); }
+
+.wind__title{
+  font-weight:700; font-size:clamp(1.3rem,2vw,1.6rem);
+  line-height:1.2; letter-spacing:-.02em; color:#16191c; margin:0 0 .9rem;
+}
+
+.wind__body{
+  font-family:'Inter', Arial, sans-serif;
+  color:rgba(22,25,28,.68); font-size:1.05rem; line-height:1.75;
+  max-width:34rem; margin:0 0 1.6rem;
+}
+
+.wind__quote{
+  font-family:'Mr Dafoe', 'Brush Script MT', cursive;
+  font-size:clamp(1.6rem,2.4vw,2rem); line-height:1.2;
+  color:#16191c; margin:0;
+}
+
+@media (prefers-reduced-motion:reduce){
+  .wind:hover .wind__media .photo-layer{ scale:1; }
+}
+
+
+/* ===================================================================
+   THE TWELVE — drop-down panels
+   Each row opens a dark photo card under it when the town is pinned.
+   The open/close is grid-template-rows 0fr -> 1fr, which animates to the
+   card's real height without a fixed max-height.
+   =================================================================== */
+.town-index__row--orange { --tone:#f0a32c; }
+.town-index__row--coral  { --tone:#ee8866; }
+.town-index__row--teal   { --tone:#35a9c1; }
+.town-index__row--gold   { --tone:#c9a13b; }
+.town-index__row--green  { --tone:#3fae6a; }
+
+/* a chevron on each row says it opens */
+.town-index__note::after{
+  content:""; display:inline-block;
+  width:.45rem; height:.45rem; margin-left:.6rem;
+  border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor;
+  transform:translateY(-.15rem) rotate(45deg);
+  transition:transform .35s cubic-bezier(.16,.84,.44,1);
+}
+.town-index__row.is-open .town-index__note::after{ transform:translateY(.05rem) rotate(-135deg); }
+
+.town-panel{
+  display:grid; grid-template-rows:0fr;
+  transition:grid-template-rows .5s cubic-bezier(.16,.84,.44,1);
+}
+.town-index__row.is-open .town-panel{ grid-template-rows:1fr; }
+.town-panel__clip{ overflow:hidden; min-height:0; }
+
+.town-panel__card{
+  position:relative; isolation:isolate;
+  margin:.35rem 0 .9rem;
+  padding:clamp(1.4rem,3vw,2rem);
+  border-radius:1rem;
+  color:#fff;
+  overflow:hidden;
+  background:linear-gradient(135deg, #2a3440, #14191e);
+  opacity:0; transform:translateY(-8px);
+  transition:opacity .4s ease .1s, transform .5s cubic-bezier(.16,.84,.44,1) .05s;
+}
+.town-index__row.is-open .town-panel__card{ opacity:1; transform:none; }
+
+/* the photo sits behind everything, with a dark wash over it so the
+   white text stays readable */
+.town-panel__photo{
+  position:absolute; inset:0; z-index:-2;
+  width:100%; height:100%; object-fit:cover;
+}
+.town-panel__card::before{
+  content:""; position:absolute; inset:0; z-index:-1;
+  background:linear-gradient(180deg, rgba(16,20,24,.55) 0%, rgba(16,20,24,.8) 55%, rgba(16,20,24,.93) 100%);
+}
+
+.town-panel__num{
+  display:block; margin-bottom:.6rem;
+  font-family:'Poppins', Arial, sans-serif; font-weight:700;
+  font-size:1.35rem; line-height:1; color:var(--tone);
+}
+
+.town-panel__title{
+  margin:0 0 .8rem;
+  font-family:'Poppins', Arial, sans-serif; font-weight:800;
+  font-size:clamp(1.35rem,2.2vw,1.75rem); line-height:1.1;
+  letter-spacing:-.01em; text-transform:uppercase;
+  color:#fff;
+}
+
+.town-panel__lead{
+  margin:0 0 .9rem;
+  font-size:.95rem; line-height:1.55; color:var(--tone);
+}
+
+.town-panel__body{
+  margin:0 0 1.3rem;
+  font-size:.86rem; line-height:1.75; color:rgba(255,255,255,.82);
+}
+
+.town-panel__facts{
+  display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.8rem;
+  margin:0 0 1.2rem; padding:1rem 0;
+  border-top:1px solid rgba(255,255,255,.18);
+  border-bottom:1px solid rgba(255,255,255,.18);
+}
+.town-panel__facts dt{
+  font-family:'Poppins', Arial, sans-serif; font-weight:700;
+  font-size:1.05rem; color:var(--tone); margin-bottom:.3rem;
+}
+.town-panel__facts dd{
+  margin:0; font-size:.62rem; font-weight:600;
+  letter-spacing:.16em; text-transform:uppercase; color:rgba(255,255,255,.62);
+}
+
+.town-panel__quote{
+  margin:0 0 1.3rem;
+  font-family:'Mr Dafoe', 'Brush Script MT', cursive;
+  font-size:1.5rem; line-height:1.2; color:rgba(255,255,255,.9);
+}
+
+.town-panel__link{
+  display:inline-block;
+  padding:.7rem 1.2rem;
+  border:1px solid var(--tone); border-radius:.4rem;
+  font-size:.72rem; font-weight:600; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--tone); text-decoration:none;
+  transition:background .25s ease, color .25s ease;
+}
+.town-panel__link:hover{ background:var(--tone); color:#14191e; }
+.town-panel__link:focus-visible{ outline:2px solid #fff; outline-offset:3px; }
+
+@media (max-width:430px){
+  .town-panel__facts{ grid-template-columns:1fr; gap:.6rem; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .town-panel, .town-panel__card, .town-index__note::after{ transition:none; }
 }

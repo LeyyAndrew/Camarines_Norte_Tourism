@@ -287,13 +287,13 @@ $itephoto  = function (string $f) use ($uploadPath) { return $uploadPath('ITE-SE
 
     <!-- middle: the tall photo -->
     <div class="story__tall squircle" data-aos="fade-up" data-aos-delay="80">
-      <img loading="lazy" decoding="async" src="<?= $homephoto('photo-2.jpg') ?>" alt="">
+      <img decoding="async" src="<?= $homephoto('photo-2.jpg') ?>" alt="">
     </div>
 
     <!-- right: small photo, then its own heading and copy -->
     <div class="story__aside" data-aos="fade-up" data-aos-delay="160">
       <div class="story__aside-shot squircle--alt">
-        <img loading="lazy" decoding="async" src="<?= $homephoto('photo-3.jpg') ?>" alt="">
+        <img decoding="async" src="<?= $homephoto('photo-3.jpg') ?>" alt="">
       </div>
       <h3 class="story__aside-title">Gateway to<br>the northern<br>Bicol coast</h3>
       <p class="story__aside-text">Daet is where almost everyone arrives, and nothing in the province is more than a few hours from it. Two or three destinations in a day is an ordinary plan here rather than an ambitious one &mdash; a waterfall in the morning, a beach by the afternoon.</p>
@@ -550,12 +550,18 @@ $spotPhotos = [
   <div class="dest-spotlight__window" id="destWindow">
   <div class="dest-spotlight__bgwrap" id="destBgWrap">
 <?php foreach ($spotPhotos as $i => [$file, $place]): ?>
+    <?php /* LOAD FIX: only the first photo gets a real src (lazy, so it
+             waits until the section is close). The other 23 ship as
+             data-src and are loaded by homepage.js only when the section
+             nears the screen. Before this, all 24 full-size JPEGs came
+             down in one burst ~2.3s after load, right as people start
+             scrolling off the hero. */ ?>
     <img class="spot-bg<?= $i === 0 ? ' spot-bg--front' : '' ?>"
-         src="<?= $photocard($file) ?>"
+         <?= $i === 0 ? 'src' : 'data-src' ?>="<?= $photocard($file) ?>"
          data-place="<?= htmlspecialchars($place, ENT_QUOTES) ?>"
          alt=""
          decoding="async"
-         <?= $i === 0 ? 'fetchpriority="high"' : 'loading="lazy"' ?>>
+         loading="lazy">
 <?php endforeach; ?>
   </div>
 

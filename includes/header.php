@@ -370,9 +370,14 @@ if ($pageCss !== 'assets/css/search.css' && is_file(__DIR__ . '/../' . $pageCss)
   <!-- ---------- MAIN BAR ---------- -->
   <div class="wrap nav__inner">
 
-    <a href="homepage.php" class="nav__brand">
-      <img class="nav__logo-mark" src="uploads/logo.png" alt="">
-      <img class="nav__logo-word" src="uploads/lakbai.png" alt="LAKBAI — Explore Camarines Norte">
+    <!-- Brand: the wave mark (uploads/new-logo.png) and the name set as
+         live text. lakbai.png is no longer linked; the file can stay in
+         uploads/ or be deleted. The name is real text rather than an
+         image, so it stays sharp at any size and a screen reader reads
+         it without needing alt text. -->
+    <a href="homepage.php" class="nav__brand" aria-label="CamNorte — home">
+      <img class="nav__logo-mark" src="uploads/new-logo.png" alt="">
+      <span class="nav__logo-text" aria-hidden="true">CamNorte<span class="nav__logo-dot">.</span></span>
     </a>
 
     <!-- ul rather than a bare div: a screen reader announces "list, 4

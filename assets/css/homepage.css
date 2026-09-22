@@ -1788,4 +1788,12 @@ html.lenis{ scroll-behavior:auto !important; }
    frame. Only these two: will-change on everything costs memory. */
 @media (hover:hover) and (pointer:fine){
   #heroBg, .hero__content{ will-change:transform, opacity; }
+
+  /* FPS FIX: the About photos slide/fade in and their images parallax
+     inside rounded frames. Without this, GSAP promotes them to GPU
+     layers at the exact moment the section enters, which means
+     rasterising two large photos mid-scroll. Promoting them up front
+     moves that cost to page load. */
+  .story__tall, .story__aside-shot{ will-change:transform, opacity; }
+  .story__tall img, .story__aside-shot img{ will-change:transform; }
 }

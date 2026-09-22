@@ -47,8 +47,8 @@
      to .45rem, which turned out to be too tight, and settled here.
      These are the values to change if it still is not right; nothing
      else needs touching. */
-  --nav-pad-y:.6rem;         /* main bar, at rest       */
-  --nav-pad-y-sm:.42rem;     /* main bar, once scrolled */
+  --nav-pad-y:.95rem;        /* main bar, at rest       (was .6rem)  */
+  --nav-pad-y-sm:.65rem;     /* main bar, once scrolled (was .42rem) */
 
   /* The mega panel is white on a site whose nav is near-black. That is
      deliberate: it reads as a sheet of paper pulled down over the
@@ -173,49 +173,92 @@
   padding-bottom:var(--nav-pad-y-sm);
 }
 
-/* ---------- the logos ----------
-   The seal sets the height of the whole header, so it is the one
-   number to change if this is still not right. Below about 40px the
-   lettering around its rim stops resolving and it reads as a smudge;
-   above about 60px it starts pushing the header back toward the
-   oversized version this replaced. 50px sits between the two.
+/* ---------- the brand: wave mark + "CamNorte." ----------
+   The mark (uploads/new-logo.png) is a WIDE image, so only its height
+   is set and the width follows. The old rule here was written for the
+   round provincial seal: a fixed 50x50 box with border-radius:50% and
+   object-fit:cover, which cropped the wave into a small circle. That
+   is gone on purpose — do not put a width or a radius back on it.
 
-   The wordmark is set SMALLER than the seal, not matched to it. It is
-   a busy multi-coloured file, and at equal heights it shouts over
-   everything else in the bar. Held at 38px it reads as a name sitting
-   next to a crest rather than a second logo competing with the first.
-
-   Both shrink on scroll, together — the seal shrinking alone would
-   leave the wordmark looking suddenly oversized beside it. */
-.nav__brand{ display:flex; align-items:center; gap:.8rem; flex-shrink:0; }
-
-.nav__logo-mark{
-  height:50px; width:50px;
-  border-radius:50%;
-  object-fit:cover; display:block; flex-shrink:0;
-  transition:height .3s cubic-bezier(.16,.84,.44,1), width .3s cubic-bezier(.16,.84,.44,1);
+   Mark and name shrink together on scroll, the same way the seal and
+   wordmark used to. */
+.nav__brand{
+  display:flex; align-items:center; gap:.6rem; flex-shrink:0;
+  text-decoration:none;
 }
 
-.nav__logo-word{
-  height:45px; width:auto;
-  display:block; object-fit:contain; flex-shrink:0;
-  transform:translateY(-3px);
+.nav__logo-mark{
+  height:40px; width:auto;
+  display:block; flex-shrink:0;
   transition:height .3s cubic-bezier(.16,.84,.44,1);
 }
 
-.nav.scrolled .nav__logo-mark{ height:43px; width:43px; }
+/* The name is a quiet wordmark: capitals, medium weight, opened up
+   slightly rather than squeezed. It says where you are without
+   competing with the headline below it. The logo mark carries the
+   colour; the text stays calm. The capitals come from text-transform,
+   so the HTML still reads "CamNorte". */
+.nav__logo-text{
+  font-family:var(--font-display, "Plus Jakarta Sans", system-ui, sans-serif);
+  font-weight:600;
+  font-size:1.2rem;
+  line-height:1;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.94);
+  white-space:nowrap;
+  transition:font-size .3s cubic-bezier(.16,.84,.44,1);
+}
 
-.nav.scrolled .nav__logo-word{ height:39px; }
+.nav__logo-dot{
+  display:inline-block;
+  color:var(--orange, #F0A32C);
+  margin-left:-.02em;
+  transition:transform .35s cubic-bezier(.34,1.56,.64,1);
+}
+
+.nav.scrolled .nav__logo-mark{ height:34px; }
+
+.nav.scrolled .nav__logo-text{ font-size:1.12rem; }
+
+/* The one playful touch, and only when you point at it: the wave tips
+   forward like a swell and the full stop hops. Small, quick, and it
+   settles back on its own — enough to feel alive, not enough to look
+   like a toy. Mouse only; nothing moves on its own. */
+@media (hover:hover) and (pointer:fine){
+  .nav__logo-mark{ transition:height .3s cubic-bezier(.16,.84,.44,1), transform .45s cubic-bezier(.34,1.56,.64,1); }
+  .nav__brand:hover .nav__logo-mark{ transform:rotate(-8deg) translateY(-1px); }
+  .nav__brand:hover .nav__logo-dot{ transform:translateY(-.22em); }
+}
+
+/* HARD LEFT, laptops and up. The brand leaves the centred column the
+   rest of the bar uses and sits 2rem from the edge of the screen.
+
+   position:relative + left moves it WITHOUT changing the layout, so the
+   menu links and the icons on the right stay exactly where they were.
+   The 100% in the sum is the width of the centred column, so
+   (100vw - 100%) / 2 is the empty margin beside it — whatever size
+   the screen is. min(0px, ...) stops it ever moving the logo inward
+   on a screen narrow enough to have no margin. */
+@media (min-width:1024px){
+  .nav__brand{
+    position:relative;
+    left:min(0px, calc(2rem - (100vw - 100%) / 2));
+  }
+}
 
 .nav__brand:focus-visible{ outline:2px solid var(--orange); outline-offset:5px; border-radius:.5rem; }
 
 @media (max-width:1180px){
-  .nav__logo-mark{ height:44px; width:44px; }
-  .nav__logo-word{ height:40px; }
+  .nav__logo-mark{ height:36px; }
+  .nav__logo-text{ font-size:1.12rem; }
 }
 
+/* The name is short enough to keep on a phone, so it stays; only the
+   sizes come down. */
 @media (max-width:640px){
-  .nav__logo-word{ display:none; }
+  .nav__logo-mark{ height:30px; }
+  .nav__logo-text{ font-size:1.05rem; }
 }
 
 /* ===================================================================
@@ -788,7 +831,7 @@ body.nav-open{ overflow:hidden; }
    is disabled, only de-animated.
    =================================================================== */
 @media (prefers-reduced-motion: reduce){
-  .nav, .nav__inner, .nav__logo-mark, .nav__logo-word,
+  .nav, .nav__inner, .nav__logo-mark, .nav__logo-text, .nav__logo-dot,
   .mega, .mega__card, .mega__icon, .mega__feature::before,
   .mega__feature-go svg, .nav__cta, .nav__chev, .nav__link::after,
   .nav__burger span, .nav-drawer__panel, .nav-drawer__scrim,

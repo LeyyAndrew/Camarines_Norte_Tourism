@@ -128,101 +128,127 @@ require __DIR__ . '/includes/header.php';
 
     <figure class="hero-film hero-in" id="heroFilm" style="--in:260ms">
       <div class="hero-film__frame">
-        <!-- a gradient behind the clip, so a missing file shows a field
-             of colour rather than a broken-image icon -->
+        <!-- a gradient behind the clip, so a missing video shows colour
+             rather than an empty box -->
         <div class="gradient-fill"></div>
 
-        <!-- ↓↓↓ THE CLIP. Change this src. ↓↓↓ -->
-        <iframe class="hero-film__vimeo"
-                src="https://player.vimeo.com/video/1228094298?title=0&amp;byline=0&amp;portrait=0&amp;dnt=1"
-                style="position:absolute; inset:0; width:100%; height:100%; border:0; z-index:5; pointer-events:auto;"
+        <!-- ↓↓↓ THE CLIP. Change the video number in this src. ↓↓↓
+             controls=0 hides ALL of Vimeo's own buttons (like, watch
+             later, share, embed, the play bar and the logo). Our own
+             play/pause and sound buttons below drive the player through
+             the Vimeo Player API instead. -->
+        <iframe class="hero-film__vimeo" id="heroFilmVimeo"
+                src="https://player.vimeo.com/video/1228094298?controls=0&amp;title=0&amp;byline=0&amp;portrait=0&amp;badge=0&amp;vimeo_logo=0&amp;playsinline=1&amp;dnt=1"
                 allow="autoplay; fullscreen; picture-in-picture"
                 loading="lazy"
                 title="Camarines Norte"></iframe>
+        <!-- ↑↑↑ THE CLIP ↑↑↑ -->
+
+        <!-- Clicking anywhere on the picture plays or pauses. Hidden from
+             screen readers and the tab order: the real button below does
+             the same job and says what it does. -->
+        <div class="hero-film__hit" id="heroFilmHit" aria-hidden="true">
+          <span class="hero-film__bigplay">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+          </span>
+        </div>
+
+        <div class="hero-film__controls">
+          <button type="button" class="hero-film__ctrl hero-film__play is-paused" id="heroFilmPlay" aria-label="Play video" title="Play">
+            <svg class="hero-film__ctrl-icon--pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6.5" y="5" width="3.5" height="14" rx="1"/><rect x="14" y="5" width="3.5" height="14" rx="1"/></svg>
+            <svg class="hero-film__ctrl-icon--play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+          </button>
+          <button type="button" class="hero-film__ctrl hero-film__mute" id="heroFilmMute" aria-pressed="false" aria-label="Mute sound" title="Mute">
+            <svg class="hero-film__ctrl-icon--on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+            <svg class="hero-film__ctrl-icon--off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>
+          </button>
+        </div>
+
         <style>
-          /* Let clicks reach the Vimeo player: nothing may sit on top of
-             it or swallow the click. The high z-index is what makes it
-             clickable; the script below lifts the header above it. */
+          /* Smaller than the full column, centred, with rounded corners. */
+          #heroFilm{
+            max-width:60rem;
+            margin-left:auto; margin-right:auto;
+          }
           #heroFilm .hero-film__frame{
             position:relative;
             aspect-ratio:16/9; height:auto !important; min-height:0 !important;
+            border-radius:1.5rem;
+            overflow:hidden;
+            isolation:isolate;
+            transform:translateZ(0);   /* Safari: clip the iframe to the corners */
+            background:#000;
+          }
+          #heroFilm .hero-film__vimeo{
+            position:absolute; inset:0; width:100%; height:100%;
+            border:0; z-index:1; pointer-events:none;
           }
           #heroFilm .gradient-fill,
-          #heroFilm .hero-film__scrim,
           #heroFilm .hero-film__frame::before,
           #heroFilm .hero-film__frame::after,
           #heroFilm::before,
           #heroFilm::after{ pointer-events:none !important; }
-          #heroFilm .hero-film__vimeo{ pointer-events:auto !important; z-index:50 !important; }
-        </style>
-        <script>
-          /* Keep the sticky header above the video. Finds the bar that
-             holds the logo and, if its layer is 50 or lower, raises it
-             to 100 so the player slides under it when scrolling. */
-          document.addEventListener('DOMContentLoaded', function () {
-            var el = document.querySelector('.nav__logo-word');
-            while (el && el !== document.body) {
-              var pos = getComputedStyle(el).position;
-              if (pos === 'fixed' || pos === 'sticky') {
-                var z = parseInt(getComputedStyle(el).zIndex, 10);
-                if (isNaN(z) || z <= 50) el.style.zIndex = '100';
-                break;
-              }
-              el = el.parentElement;
-            }
-          });
-        </script>
-        <!-- ↑↑↑ THE CLIP. Change this src. ↑↑↑ -->
 
-        <!-- <img class="photo-layer hero-film__video" src="uploads/about-banner.jpg" alt=""> -->
+          /* the click layer, with a big play button until it starts */
+          #heroFilm .hero-film__hit{
+            position:absolute; inset:0; z-index:2;
+            display:grid; place-items:center; cursor:pointer;
+          }
+          #heroFilm .hero-film__bigplay{
+            display:grid; place-items:center;
+            width:84px; height:84px; border-radius:50%;
+            background:rgba(16,20,24,.6);
+            -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+            color:#fff;
+            box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);
+            transition:opacity .3s ease, transform .3s ease;
+          }
+          #heroFilm .hero-film__bigplay svg{ width:34px; height:34px; margin-left:4px; }
+          #heroFilm .hero-film__hit:hover .hero-film__bigplay{ transform:scale(1.06); }
+          #heroFilm.is-started .hero-film__bigplay{ opacity:0; transform:scale(.9); }
 
-        <div class="hero-film__scrim" aria-hidden="true"></div>
-
-
-        <style>
-          /* The corner pause/play button. Kept here, beside the markup,
-             so the control is self-contained. */
-          /* Black until the visitor presses play. preload="none" means
-             nothing is downloaded before that either. */
-          #heroFilm .hero-film__frame,
-          #heroFilm .hero-film__video{ background:#000; }
-          #heroFilm:not(.is-started) .hero-film__video,
-          #heroFilm:not(.is-started) .gradient-fill,
-          #heroFilm:not(.is-started) .hero-film__scrim{ visibility:hidden; }
-
-          .hero-film__controls{
+          /* the two corner buttons */
+          #heroFilm .hero-film__controls{
             position:absolute; right:1rem; bottom:1rem; z-index:3;
             display:flex; gap:.6rem;
           }
-          .hero-film__controls .hero-film__ctrl{
-            position:static; inset:auto; margin:0;
+          #heroFilm .hero-film__ctrl{
             display:grid; place-items:center;
-            width:46px; height:46px; padding:0;
+            width:46px; height:46px; padding:0; margin:0;
             border:0; border-radius:50%;
             background:rgba(16,20,24,.72);
             -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
-            color:#fff;
-            cursor:pointer;
+            color:#fff; cursor:pointer;
             box-shadow:inset 0 0 0 1px rgba(255,255,255,.28), 0 4px 14px -6px rgba(0,0,0,.5);
             transition:background .2s ease, transform .2s ease;
           }
-          .hero-film__controls .hero-film__ctrl:hover{ background:rgba(16,20,24,.9); transform:scale(1.05); }
-          .hero-film__controls .hero-film__ctrl:focus-visible{ outline:2px solid #fff; outline-offset:3px; }
-          .hero-film__controls .hero-film__ctrl svg{ width:20px; height:20px; }
+          #heroFilm .hero-film__ctrl:hover{ background:rgba(16,20,24,.9); transform:scale(1.05); }
+          #heroFilm .hero-film__ctrl:focus-visible{ outline:2px solid #fff; outline-offset:3px; }
+          #heroFilm .hero-film__ctrl svg{ width:20px; height:20px; }
 
-          /* pause shows while playing, play shows while paused */
-          .hero-film__ctrl-icon--play{ display:none; }
-          .hero-film__play.is-paused .hero-film__ctrl-icon--pause{ display:none; }
-          .hero-film__play.is-paused .hero-film__ctrl-icon--play{ display:block; margin-left:2px; }
+          /* play shows while paused, pause shows while playing */
+          #heroFilm .hero-film__ctrl-icon--play{ display:none; }
+          #heroFilm .hero-film__play.is-paused .hero-film__ctrl-icon--pause{ display:none; }
+          #heroFilm .hero-film__play.is-paused .hero-film__ctrl-icon--play{ display:block; margin-left:2px; }
+
+          /* speaker waves while sound is on, a cross when muted */
+          #heroFilm .hero-film__ctrl-icon--off{ display:none; }
+          #heroFilm .hero-film__mute[aria-pressed="true"] .hero-film__ctrl-icon--on{ display:none; }
+          #heroFilm .hero-film__mute[aria-pressed="true"] .hero-film__ctrl-icon--off{ display:block; }
 
           @media (max-width:640px){
-            .hero-film__controls{ right:.7rem; bottom:.7rem; gap:.45rem; }
-            .hero-film__controls .hero-film__ctrl{ width:40px; height:40px; }
-            .hero-film__controls .hero-film__ctrl svg{ width:18px; height:18px; }
+            #heroFilm .hero-film__frame{ border-radius:1rem; }
+            #heroFilm .hero-film__controls{ right:.7rem; bottom:.7rem; gap:.45rem; }
+            #heroFilm .hero-film__ctrl{ width:40px; height:40px; }
+            #heroFilm .hero-film__ctrl svg{ width:18px; height:18px; }
+            #heroFilm .hero-film__bigplay{ width:64px; height:64px; }
+            #heroFilm .hero-film__bigplay svg{ width:26px; height:26px; }
           }
           @media (prefers-reduced-motion:reduce){
-            .hero-film__controls .hero-film__ctrl{ transition:none; }
-            .hero-film__controls .hero-film__ctrl:hover{ transform:none; }
+            #heroFilm .hero-film__ctrl,
+            #heroFilm .hero-film__bigplay{ transition:none; }
+            #heroFilm .hero-film__ctrl:hover,
+            #heroFilm .hero-film__hit:hover .hero-film__bigplay{ transform:none; }
           }
         </style>
       </div>
@@ -233,135 +259,107 @@ require __DIR__ . '/includes/header.php';
   </div>
 </section>
 
+<script src="https://player.vimeo.com/api/player.js"></script>
 <script>
 /* --------------------------------------------------------------------
-   THE OPENING FILM
+   THE OPENING FILM (Vimeo)
 
-   Two jobs: the pause/play button, and stopping the clip when nobody
-   is looking at it.
-
-   The second one matters more than it sounds. This clip autoplays, so
-   without this it keeps running for the whole time the reader is somewhere further down
-   the page. Pausing, not clearing: the position is kept, so scrolling
-   back does not restart it from the top.
-
-   The clip does not autoplay. The frame is black until the visitor
-   presses play, and nothing is downloaded before then.
+   Vimeo's own controls are switched off (controls=0 in the iframe src),
+   so these are the only controls: play/pause, and sound on/off.
+   It also pauses the clip when it scrolls out of view or the tab is
+   hidden, and picks up again when it comes back — unless the visitor
+   paused it themselves.
    -------------------------------------------------------------------- */
 (function () {
   var film  = document.getElementById('heroFilm');
-  var video = document.getElementById('heroFilmVideo');
+  var frame = document.getElementById('heroFilmVimeo');
   var play  = document.getElementById('heroFilmPlay');
-  if (!film || !video) return;
+  var mute  = document.getElementById('heroFilmMute');
+  var hit   = document.getElementById('heroFilmHit');
+  if (!film || !frame || !window.Vimeo) return;
 
-  /* ---------- PAUSE / PLAY ----------
-     userPaused remembers that the visitor chose to stop the clip, so
-     scrolling away and back (or switching tabs) does not start it again
-     behind their back. The button's icon and label follow the video's
-     real state through the play/pause events. */
-  /* Nothing plays until the button is pressed. userStarted also
-     guards against any other script on the site autoplaying the clip:
-     a play that did not come from the button is stopped at once. */
+  var player = new Vimeo.Player(frame);
+  var playing = false;
   var userPaused = true;
-  var userStarted = false;
-  video.removeAttribute('autoplay');
-  video.muted = true;        /* no sound control on this clip, so never unmuted */
   var pausedOffscreen = false;
 
+  /* keep the sticky header above the video */
+  var el = document.querySelector('.nav__logo-word');
+  while (el && el !== document.body) {
+    var pos = getComputedStyle(el).position;
+    if (pos === 'fixed' || pos === 'sticky') {
+      var z = parseInt(getComputedStyle(el).zIndex, 10);
+      if (isNaN(z) || z <= 50) el.style.zIndex = '100';
+      break;
+    }
+    el = el.parentElement;
+  }
+
+  /* ---------- PLAY / PAUSE ---------- */
   function syncPlay() {
-    if (!play) return;
-    var paused = video.paused;
-    play.classList.toggle('is-paused', paused);
-    play.setAttribute('aria-label', paused ? 'Play video' : 'Pause video');
-    play.title = paused ? 'Play' : 'Pause';
+    play.classList.toggle('is-paused', !playing);
+    play.setAttribute('aria-label', playing ? 'Pause video' : 'Play video');
+    play.title = playing ? 'Pause' : 'Play';
   }
 
-  if (play) {
-    play.addEventListener('click', function () {
-      if (video.paused) {
-        userStarted = true;
-        film.classList.add('is-started');
-        userPaused = false;
-        pausedOffscreen = false;
-        var p = video.play();
-        if (p && p.catch) p.catch(function () {});
-      } else {
-        userPaused = true;
-        video.pause();
-      }
-    });
-    video.addEventListener('play', function () {
-      if (!userStarted) { video.pause(); return; }
-      syncPlay();
-    });
-    video.addEventListener('pause', syncPlay);
-    video.pause();
-    syncPlay();
+  function toggle() {
+    if (playing) {
+      userPaused = true;
+      player.pause();
+    } else {
+      userPaused = false;
+      pausedOffscreen = false;
+      film.classList.add('is-started');
+      player.play().catch(function () {});
+    }
   }
 
-  /* ---------- PLAYBACK SPEED ----------
-     0727.mp4 is edited fast (60 s at 24 fps). 1 = normal speed,
-     0.5 = half. Below about 0.6 a 24 fps clip starts to look choppy;
-     for slower than that, export a slowed file with ffmpeg instead and
-     set this back to 1.
+  play.addEventListener('click', toggle);
+  hit.addEventListener('click', toggle);
 
-     Re-applied on every play and on loadedmetadata, because some
-     browsers reset playbackRate to 1 when a new source loads. */
-  var FILM_SPEED = 0.65;
+  player.on('play',  function () { playing = true;  syncPlay(); });
+  player.on('pause', function () { playing = false; syncPlay(); });
+  player.on('ended', function () { playing = false; userPaused = true; syncPlay(); });
 
-  function applySpeed() {
-    video.defaultPlaybackRate = FILM_SPEED;
-    video.playbackRate = FILM_SPEED;
-  }
-  applySpeed();
-  video.addEventListener('loadedmetadata', applySpeed);
-  video.addEventListener('play', applySpeed);
-
-
-
-  function filmVisible() {
-    var box = film.getBoundingClientRect();
-    var tall = window.innerHeight || document.documentElement.clientHeight;
-    /* the same quarter the observer uses, so the two agree */
-    return box.bottom > tall * 0.25 && box.top < tall * 0.75;
+  /* ---------- SOUND ON / OFF ---------- */
+  function syncMute(muted) {
+    mute.setAttribute('aria-pressed', muted ? 'true' : 'false');
+    mute.setAttribute('aria-label', muted ? 'Turn sound on' : 'Mute sound');
+    mute.title = muted ? 'Sound on' : 'Mute';
   }
 
+  mute.addEventListener('click', function () {
+    player.getMuted().then(function (muted) {
+      return player.setMuted(!muted).then(function () { syncMute(!muted); });
+    }).catch(function () {});
+  });
+
+  player.getMuted().then(syncMute).catch(function () {});
+
+  /* ---------- PAUSE WHEN NOBODY IS LOOKING ---------- */
   function suspendFilm() {
-    if (video.paused) return;
-    video.pause();
+    if (!playing) return;
+    player.pause();
     pausedOffscreen = true;
   }
 
   function resumeFilm() {
     if (!pausedOffscreen || userPaused) return;
     pausedOffscreen = false;
-    var playing = video.play();
-    if (playing && playing.catch) playing.catch(function () {});
+    player.play().catch(function () {});
   }
 
   if ('IntersectionObserver' in window) {
-    /* A quarter of the panel, not a pixel of it. A sliver clipping the
-       edge of the screen is not somebody watching. */
     new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (entry.isIntersecting) resumeFilm(); else suspendFilm();
       });
     }, { threshold: 0.25 }).observe(film);
-  } else {
-    window.addEventListener('scroll', function () {
-      if (filmVisible()) resumeFilm(); else suspendFilm();
-    }, { passive: true });
   }
 
-  /* Switching tabs hides it as completely as scrolling past it. Browsers
-     throttle a hidden tab anyway, but none of them reliably stop the
-     audio, so say it. */
   document.addEventListener('visibilitychange', function () {
-    if (document.hidden) suspendFilm();
-    else if (filmVisible()) resumeFilm();
+    if (document.hidden) suspendFilm(); else resumeFilm();
   });
-
-
 })();
 </script>
 
@@ -426,6 +424,101 @@ require __DIR__ . '/includes/header.php';
       <p class="intro__body">The capital is where the buses arrive and where most trips begin, and it is close enough to the rest of the province that you can base yourself there for the whole visit if you want to. Bagasbas, its surf beach, is a few minutes out of town.</p>
     </div>
 
+  </div>
+</section>
+
+<!-- ---------- the four winds ---------- -->
+<!-- ====================================================================
+     THE FOUR WINDS — people, commerce, culture, experience
+
+     A 2x2 grid. Each entry is a square photo on the left and the copy on
+     the right: coloured kicker, headline, paragraph, handwritten line.
+
+     Driven by the $winds array below, so to change a photo or a line you
+     edit the array and nothing else. 'tone' picks the kicker colour
+     (people / commerce / culture / experience — see about.css).
+
+     PHOTOS: square, 800x800 or better, in uploads/About-Section-Photo/.
+       Winds-People.jpg      faces, not scenery — a fisherman mending
+                             nets in Mercedes, a vendor in Daet market
+       Winds-Commerce.jpg    Formosa pineapples piled or in the field,
+                             or small-scale gold panning in Paracale
+       Winds-Culture.jpg     the Rizal monument in Daet, or Bantayog /
+                             Pinyasan street dancers
+       Winds-Experience.jpg  surfer at Bagasbas, or the Calaguas sandbar
+     A missing file shows the gradient, not a broken icon.
+
+     ⚠ FACT CHECK: the 1898 date on the Daet Rizal monument is the widely
+     cited one; confirm the wording with the Provincial Tourism Office.
+     ==================================================================== -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mr+Dafoe&display=swap">
+
+<section class="section--lg winds" id="four-winds">
+  <div class="wrap winds__inner">
+  <h2 class="font-display winds__title" data-aos="fade-up">People, commerce, culture, experience<br>&mdash; the four winds of the province.</h2>
+
+  <?php
+    $windsDir = 'uploads/About-Section-Photo/';
+    $winds = [
+      [
+        'tone'  => 'people',
+        'label' => 'The People',
+        'photo' => 'Winds-People.jpg',
+        'alt'   => 'Fisherman mending nets in Mercedes, Camarines Norte',
+        'title' => 'Half Bikol, half Tagalog, all Norte',
+        'body'  => 'Camarines Norte is where two languages meet and neither wins. Walk from Daet to Basud and you hear Tagalog turn into Bikol mid-conversation. The result is a province of fishermen, farmers, and miners who will feed a stranger first and ask questions later.',
+        'quote' => 'Taga-Norte kami.',
+      ],
+      [
+        'tone'  => 'commerce',
+        'label' => 'Commerce',
+        'photo' => 'Winds-Commerce.jpg',
+        'alt'   => 'Formosa pineapples freshly harvested in Camarines Norte',
+        'title' => 'Gold below the ground, gold above it',
+        'body'  => 'Paracale and Jose Panganiban have been mining gold since before the Spanish arrived. Up top, the sweet Formosa pineapple fills the fields around Daet and Basud, and Mercedes sends smoked tinapa out by the tray. A province that has always paid its own way.',
+        'quote' => 'Sweet fruit, heavy soil.',
+      ],
+      [
+        'tone'  => 'culture',
+        'label' => 'Culture',
+        'photo' => 'Winds-Culture.jpg',
+        'alt'   => 'Rizal monument in Daet, Camarines Norte',
+        'title' => 'They remembered him first',
+        'body'  => 'In 1898, Daet raised the first monument to Jose Rizal anywhere in the country &mdash; two years after his death, before Manila built its own. The Bantayog Festival still gathers the town around it, and every fiesta after carries the same stubborn pride.',
+        'quote' => 'The first stone was ours.',
+      ],
+      [
+        'tone'  => 'experience',
+        'label' => 'Experience',
+        'photo' => 'Winds-Experience.jpg',
+        'alt'   => 'Surfer riding a wave at Bagasbas Beach',
+        'title' => 'Surf by morning, sandbar by noon',
+        'body'  => 'Catch a wave at Bagasbas before breakfast, take a banca out to the white sand of Calaguas, and end the day with a zipline over the river in San Lorenzo Ruiz. It is a province that rewards people who say yes to one more stop.',
+        'quote' => 'One more stop, then home.',
+      ],
+    ];
+  ?>
+
+  <div class="winds__grid">
+    <?php foreach ($winds as $i => $w): ?>
+    <article class="wind wind--<?= $w['tone'] ?>" data-aos="fade-up" data-aos-delay="<?= ($i % 2) * 80 ?>">
+      <div class="wind__media">
+        <div class="gradient-fill"></div>
+        <img loading="lazy" decoding="async" class="photo-layer"
+             src="<?= htmlspecialchars($windsDir . $w['photo']) ?>"
+             alt="<?= htmlspecialchars($w['alt']) ?>">
+      </div>
+      <div class="wind__copy">
+        <span class="wind__kicker"><?= sprintf('%02d', $i + 1) ?> &mdash; <?= $w['label'] ?></span>
+        <h3 class="font-display wind__title"><?= $w['title'] ?></h3>
+        <p class="wind__body"><?= $w['body'] ?></p>
+        <p class="wind__quote">&ldquo;<?= $w['quote'] ?>&rdquo;</p>
+      </div>
+    </article>
+    <?php endforeach; ?>
+  </div>
   </div>
 </section>
 
@@ -529,9 +622,15 @@ require __DIR__ . '/includes/header.php';
 
           <span class="town-film__badge" id="townFilmBadge" aria-hidden="true"></span>
 
-          <button type="button" class="town-film__sound" id="townFilmSound" hidden aria-pressed="false">
-            <span class="town-film__sound-label">Sound off</span>
-          </button>
+          <!-- Only one control: play/pause. The town clips have no audio
+               track, so there is no sound button. Hidden until a clip
+               has actually loaded. -->
+          <div class="town-film__controls" id="townFilmControls" hidden>
+            <button type="button" class="town-film__ctrl town-film__play" id="townFilmPlay" aria-label="Pause video" title="Pause">
+              <svg class="town-film__icon--pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6.5" y="5" width="3.5" height="14" rx="1"/><rect x="14" y="5" width="3.5" height="14" rx="1"/></svg>
+              <svg class="town-film__icon--play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+            </button>
+          </div>
         </div>
 
         <figcaption class="map-figure__cap" id="mapReadout" aria-live="polite">
@@ -636,19 +735,170 @@ require __DIR__ . '/includes/header.php';
       <h3 class="town-index__title">The twelve municipalities</h3>
       <p class="town-index__lead">Every one of these has at least two places worth stopping for. Select a town to find it on the map and watch it.</p>
 
+      <!-- ================================================================
+           THE TWELVE, AS AN ACCORDION
+
+           Each row is still the same button that lights the map and loads
+           the film. Clicking it now also drops open a dark photo panel
+           under it with the town's story — number, title, lead, a few
+           facts, a handwritten line and a link.
+
+           EDIT EVERYTHING IN $townInfo BELOW. Nothing else refers to it.
+             video  the clip for the film panel above (unchanged paths)
+             photo  background of the drop-down panel, in uploads/About-Section-Photo/towns/
+                    landscape, 1200x800 or better. A missing file shows
+                    the navy gradient, not a broken image.
+             tone   colour of the number, lead and button:
+                    orange / coral / teal / gold / green
+             facts  three [value, label] pairs
+
+           ⚠ FACT CHECK before publishing — see the note at the bottom of
+           the array for the claims worth confirming with the Tourism
+           Office.
+           ================================================================ -->
+      <?php
+        $townInfo = [
+          'Basud' => [
+            'note'  => 'Coast and mangrove', 'video' => 'uploads/towns/Basud.mp4',
+            'photo' => 'uploads/About-Section-Photo/towns/basud.jpg', 'tone' => 'orange',
+            'title' => 'Where the land gives way to water',
+            'lead'  => 'A southern town of fishing villages and mangrove edges.',
+            'body'  => 'Basud is the quiet side of the coast: nipa and mangrove lining the inlets, small barangays that still head out before dawn, and beaches that see more carabao than tourists. Come for an afternoon and you will likely have the shoreline to yourself.',
+            'facts' => [['Coast', 'Mangrove edges'], ['Farms', 'Pineapple country'], ['Quiet', 'Few crowds']],
+            'quote' => 'The tide keeps the time here.',
+          ],
+          'Capalonga' => [
+            'note'  => 'Pilgrimage town', 'video' => 'uploads/towns/Capalonga.mp4',
+            'photo' => 'uploads/About-Section-Photo/towns/capalonga.jpg', 'tone' => 'coral',
+            'title' => 'A town that people walk to',
+            'lead'  => 'The far western corner, and the province\'s pilgrim town.',
+            'body'  => 'Capalonga sits at the end of the road where Camarines Norte meets Quezon. Its old church draws pilgrims every feast season, and between the devotions there are coves and river mouths that most of the province never gets around to visiting.',
+            'facts' => [['West', 'Borders Quezon'], ['Faith', 'Pilgrim feast'], ['Coves', 'Coastal barangays']],
+            'quote' => 'Every road here ends in a prayer.',
+          ],
+          'Daet' => [
+            'note'  => 'Capital, surf, Rizal monument', 'video' => 'uploads/towns/Daet.mp4',
+            'photo' => 'uploads/About-Section-Photo/towns/daet.jpg', 'tone' => 'orange',
+            'title' => 'The capital that remembered first',
+            'lead'  => 'Where the buses stop, the surf starts, and the country\'s first Rizal monument stands.',
+            'body'  => 'Daet raised a monument to Jose Rizal in 1898, before anywhere else in the Philippines. A few minutes out of town, Bagasbas Beach catches the Pacific swell that made it a surf and kiteboarding stop. Most trips around the province begin and end here.',
+            'facts' => [['1898', 'Rizal monument'], ['Capital', 'Of the province'], ['Bagasbas', 'Surf beach']],
+            'quote' => 'The first stone was ours.',
+          ],
+          'Jose Panganiban' => [
+            'note'  => 'Bay, islands, mining history', 'video' => 'uploads/towns/JPANG.mp4',
+            'photo' => 'uploads/About-Section-Photo/towns/jose-panganiban.jpg', 'tone' => 'teal',
+            'title' => 'The old Mambulao',
+            'lead'  => 'A bay town that kept a hero\'s name and a miner\'s memory.',
+            'body'  => 'Once called Mambulao, the town was renamed for Jose Maria Panganiban, the Propaganda Movement writer born here. Its bay is dotted with islets and fish cages, and the hills behind it have been worked for gold for centuries.',
+            'facts' => [['Mambulao', 'Old name'], ['Bay', 'Islets and cages'], ['Gold', 'Mining history']],
+            'quote' => 'A hero\'s name on a miner\'s town.',
+          ],
+          'Labo' => [
+            'note'  => 'Falls and high ground', 'video' => 'uploads/towns/Labo.mp4',
+            'photo' => 'uploads/About-Section-Photo/towns/labo.jpg', 'tone' => 'green',
+            'title' => 'The province\'s high ground',
+            'lead'  => 'The biggest town by land, and the only one that is mostly mountain.',
+            'body'  => 'Labo covers most of the interior, with Mount Labo rising over the forest. Rivers come down fast here, which means waterfalls, cold swimming holes, and farm roads that turn into trails within minutes of the highway.',
+            'facts' => [['Largest', 'By land area'], ['Mt. Labo', 'Highest ground'], ['Falls', 'Forest rivers']],
+            'quote' => 'Up here, the air changes first.',
+          ],
+          'Mercedes' => [
+            'note'  => 'Fishing port and islets', 'video' => 'uploads/towns/MERCEDES.mp4',
+            'photo' => 'uploads/About-Section-Photo/towns/mercedes.webp', 'tone' => 'teal',
+            'title' => 'The port that smokes the catch',
+            'lead'  => 'The province\'s fishing port, and the island-hopping town.',
+            'body'  => 'Mercedes lands much of the province\'s fish and smokes a good share of it into tinapa, tray after tray over coconut husk. From the port, bancas run out to a string of islets and sandbars, including the Quinamanukan marine sanctuary.',
+            'facts' => [['Port', 'Fishing hub'], ['Tinapa', 'Smoked fish'], ['Islets', 'Island hopping']],
+            'quote' => 'Smoke on the shore, salt in the air.',
+          ],
+          'Paracale' => [
+            'note'  => 'Gold country', 'video' => 'uploads/towns/PARACALE.mp4',
+            'photo' => 'uploads/About-Section-Photo/towns/paracale.jpg', 'tone' => 'gold',
+            'title' => 'Gold before the galleons',
+            'lead'  => 'People were panning here long before the Spanish wrote it down.',
+            'body'  => 'Paracale\'s gold drew the Spanish to this coast, and small-scale miners still work the rivers and hills today. The Pabirik Festival turns that work into a street dance, and the old church of the Candelaria keeps watch over the town.',
+            'facts' => [['Gold', 'Since pre-colonial'], ['Pabirik', 'Mining festival'], ['Coast', 'Calm water']],
+            'quote' => 'Every river here remembers gold.',
+          ],
+          'San Lorenzo Ruiz' => [
+            'note'  => 'Uplands and rivers', 'video' => 'uploads/towns/SAN_LORENZO_RUIZ.mp4',
+            'photo' => 'uploads/About-Section-Photo/towns/san-lorenzo-ruiz.jpeg', 'tone' => 'green',
+            'title' => 'Rivers, ridges and a zipline',
+            'lead'  => 'An upland town named for the first Filipino saint.',
+            'body'  => 'San Lorenzo Ruiz is green and rolling: pineapple farms, river bends and a zipline that sends you over the valley. The Mampurog River is the easy afternoon here, and the farms will let you pick your own fruit.',
+            'facts' => [['Zipline', 'Over the valley'], ['Mampurog', 'River'], ['Farms', 'Pineapple picking']],
+            'quote' => 'Hold on and look down.',
+          ],
+          'San Vicente' => [
+            'note'  => 'Waterfalls', 'video' => 'uploads/towns/SAN_VICENTE.mp4',
+            'photo' => 'uploads/About-Section-Photo/towns/san-vicente.webp', 'tone' => 'teal',
+            'title' => 'The town of falling water',
+            'lead'  => 'Small, inland, and full of waterfalls.',
+            'body'  => 'San Vicente is one of the smallest towns in the province, but its streams drop through the forest in a run of falls and pools. Bring shoes that can get wet and someone local who knows which trail is dry this week.',
+            'facts' => [['Falls', 'Several nearby'], ['Inland', 'Forest town'], ['Small', 'Easy to cross']],
+            'quote' => 'Follow the sound of water.',
+          ],
+          'Santa Elena' => [
+            'note'  => 'Northern boundary', 'video' => 'uploads/towns/SANTA_ELENA.mp4',
+            'photo' => 'uploads/About-Section-Photo/towns/santa-elena.png', 'tone' => 'gold',
+            'title' => 'The first town in',
+            'lead'  => 'Where the road from Manila crosses into Bicol.',
+            'body'  => 'Santa Elena is the doorway: the first town you reach coming down from Quezon, and the place where the landscape starts to look like Bicol. Rivers, rice fields and roadside stops make it the first pause of a long drive.',
+            'facts' => [['North', 'Borders Quezon'], ['Gateway', 'Into Bicol'], ['Rivers', 'Lowland farms']],
+            'quote' => 'Welcome to Bicol, finally.',
+          ],
+          'Talisay' => [
+            'note'  => 'Mangrove park and church', 'video' => 'uploads/towns/TALISAY.mp4',
+            'photo' => 'uploads/About-Section-Photo/towns/talisay.jpg', 'tone' => 'coral',
+            'title' => 'A church and a mangrove walk',
+            'lead'  => 'A short hop from Daet, and a slower pace.',
+            'body'  => 'Talisay sits right next to the capital but feels far from it. Its mangrove park lets you walk out over the water on boardwalks, and its old parish church anchors a town that still closes up early.',
+            'facts' => [['Next door', 'To Daet'], ['Mangroves', 'Boardwalk park'], ['Church', 'Old parish']],
+            'quote' => 'Slow down, it is only next door.',
+          ],
+          'Vinzons' => [
+            'note'  => 'Calaguas jump-off', 'video' => 'uploads/towns/VINZONS.mp4',
+            'photo' => 'uploads/About-Section-Photo/towns/vinzons.webp', 'tone' => 'orange',
+            'title' => 'The road to Calaguas',
+            'lead'  => 'The town that owns the islands everyone comes for.',
+            'body'  => 'Vinzons was once called Indan and was renamed after Wenceslao Vinzons, the wartime guerrilla leader born here. Its waters reach out to the Calaguas Islands, whose long white beach is the reason many visitors come to the province at all.',
+            'facts' => [['Calaguas', 'Islands'], ['Indan', 'Old name'], ['Vinzons', 'WWII hero']],
+            'quote' => 'The boat leaves at dawn. Be on it.',
+          ],
+          /* ⚠ CONFIRM: Capalonga's pilgrim feast and which image it honours;
+             the Candelaria as Paracale's patroness; Quinamanukan's status;
+             San Vicente's falls; Labo as largest by area. */
+        ];
+        $n = 0;
+      ?>
       <ul class="town-index__list">
-        <li><button type="button" class="town-index__item" data-town="Basud" data-video="uploads/towns/Basud.mp4"><span class="town-index__name">Basud</span><span class="town-index__note">Coast and mangrove</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="Capalonga" data-video="uploads/towns/Capalonga.mp4"><span class="town-index__name">Capalonga</span><span class="town-index__note">Pilgrimage town</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="Daet" data-video="uploads/towns/Daet.mp4"><span class="town-index__name">Daet</span><span class="town-index__note">Capital, surf, Rizal monument</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="Jose Panganiban" data-video="uploads/towns/JPANG.mp4"><span class="town-index__name">Jose Panganiban</span><span class="town-index__note">Bay, islands, mining history</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="Labo" data-video="uploads/towns/Labo.mp4"><span class="town-index__name">Labo</span><span class="town-index__note">Falls and high ground</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="Mercedes" data-video="uploads/towns/MERCEDES.mp4"><span class="town-index__name">Mercedes</span><span class="town-index__note">Fishing port and islets</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="Paracale" data-video="uploads/towns/PARACALE.mp4"><span class="town-index__name">Paracale</span><span class="town-index__note">Gold country</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="San Lorenzo Ruiz" data-video="uploads/towns/SAN_LORENZO_RUIZ.mp4"><span class="town-index__name">San Lorenzo Ruiz</span><span class="town-index__note">Uplands and rivers</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="San Vicente" data-video="uploads/towns/SAN_VICENTE.mp4"><span class="town-index__name">San Vicente</span><span class="town-index__note">Waterfalls</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="Santa Elena" data-video="uploads/towns/SANTA_ELENA.mp4"><span class="town-index__name">Santa Elena</span><span class="town-index__note">Northern boundary</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="Talisay" data-video="uploads/towns/TALISAY.mp4"><span class="town-index__name">Talisay</span><span class="town-index__note">Mangrove park and church</span></button></li>
-        <li><button type="button" class="town-index__item" data-town="Vinzons" data-video="uploads/towns/VINZONS.mp4"><span class="town-index__name">Vinzons</span><span class="town-index__note">Calaguas jump-off</span></button></li>
+        <?php foreach ($townInfo as $town => $t): $n++; $pid = 'town-panel-' . $n; ?>
+        <li class="town-index__row town-index__row--<?= $t['tone'] ?>">
+          <button type="button" class="town-index__item" data-town="<?= htmlspecialchars($town) ?>" data-video="<?= htmlspecialchars($t['video']) ?>" aria-expanded="false" aria-controls="<?= $pid ?>"><span class="town-index__name"><?= htmlspecialchars($town) ?></span><span class="town-index__note"><?= htmlspecialchars($t['note']) ?></span></button>
+          <div class="town-panel" id="<?= $pid ?>">
+            <div class="town-panel__clip">
+              <div class="town-panel__card">
+                <!-- A real <img>, not a CSS url(): a relative url() passed
+                     through a CSS variable is resolved from the stylesheet's
+                     folder (assets/), so the photo was never found. -->
+                <img class="town-panel__photo" src="<?= htmlspecialchars($t['photo']) ?>" alt="" loading="lazy" decoding="async" onerror="console.warn('Town photo not found:', this.getAttribute('src')); this.remove()">
+                <span class="town-panel__num"><?= sprintf('%02d', $n) ?></span>
+                <h4 class="town-panel__title"><?= htmlspecialchars($t['title']) ?></h4>
+                <p class="town-panel__lead"><?= htmlspecialchars($t['lead']) ?></p>
+                <p class="town-panel__body"><?= htmlspecialchars($t['body']) ?></p>
+                <dl class="town-panel__facts">
+                  <?php foreach ($t['facts'] as $f): ?>
+                  <div><dt><?= htmlspecialchars($f[0]) ?></dt><dd><?= htmlspecialchars($f[1]) ?></dd></div>
+                  <?php endforeach; ?>
+                </dl>
+                <p class="town-panel__quote">&ldquo;<?= htmlspecialchars($t['quote']) ?>&rdquo;</p>
+                <a class="town-panel__link" href="destinations.php">See <?= htmlspecialchars($town) ?></a>
+              </div>
+            </div>
+          </div>
+        </li>
+        <?php endforeach; ?>
       </ul>
 
       <a href="destinations.php" class="town-index__link">See what is in each town</a>
@@ -732,13 +982,20 @@ require __DIR__ . '/includes/header.php';
   var video = document.getElementById('townFilmVideo');
   var pending = document.getElementById('townFilmPending');
   var badge = document.getElementById('townFilmBadge');
-  var sound = document.getElementById('townFilmSound');
+  var playBtn = document.getElementById('townFilmPlay');
+  var controls = document.getElementById('townFilmControls');
+  /* true once the visitor presses pause, so scrolling away and back
+     does not start the clip again behind their back */
+  var userPaused = false;
   var restingPending = pending ? pending.textContent : '';
   var still = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-  function soundLabel(text) {
-    var el = sound && sound.querySelector('.town-film__sound-label');
-    if (el) el.textContent = text;
+  function syncPlay() {
+    if (!playBtn || !video) return;
+    var paused = video.paused;
+    playBtn.classList.toggle('is-paused', paused);
+    playBtn.setAttribute('aria-label', paused ? 'Play video' : 'Pause video');
+    playBtn.title = paused ? 'Play' : 'Pause';
   }
 
   function clearFilm() {
@@ -756,7 +1013,8 @@ require __DIR__ . '/includes/header.php';
     }
     if (pending) pending.textContent = restingPending;
     if (badge) badge.textContent = '';
-    if (sound) { sound.hidden = true; sound.setAttribute('aria-pressed', 'false'); soundLabel('Sound off'); }
+    if (controls) controls.hidden = true;
+    userPaused = false;
     Array.prototype.forEach.call(buttons, function (b) { b.classList.remove('is-filmless'); });
   }
 
@@ -774,7 +1032,7 @@ require __DIR__ . '/includes/header.php';
        previous town's unmuted state over means the next film starts
        talking on its own, which nobody asked for. */
     video.muted = true;
-    if (sound) { sound.setAttribute('aria-pressed', 'false'); soundLabel('Sound off'); }
+    userPaused = false;
     Array.prototype.forEach.call(buttons, function (b) { b.classList.remove('is-filmless'); });
 
     if (t.poster) video.setAttribute('poster', t.poster);
@@ -801,7 +1059,8 @@ require __DIR__ . '/includes/header.php';
     video.addEventListener('loadeddata', function () {
       film.classList.remove('is-missing');
       if (pending) pending.textContent = '';
-      if (sound) sound.hidden = false;
+      if (controls) controls.hidden = false;
+      syncPlay();
     });
 
     video.addEventListener('error', function () {
@@ -810,7 +1069,7 @@ require __DIR__ . '/includes/header.php';
       film.classList.add('is-missing');
       film.classList.remove('is-playing');
       if (pending) pending.textContent = 'Film for this town has not been uploaded yet.';
-      if (sound) sound.hidden = true;
+      if (controls) controls.hidden = true;
       /* the row said "Playing"; there is nothing playing */
       if (pinned && towns[pinned] && towns[pinned].button) {
         towns[pinned].button.classList.add('is-filmless');
@@ -818,13 +1077,22 @@ require __DIR__ . '/includes/header.php';
     });
   }
 
-  if (sound && video) {
-    sound.addEventListener('click', function () {
-      video.muted = !video.muted;
-      sound.setAttribute('aria-pressed', String(!video.muted));
-      soundLabel(video.muted ? 'Sound off' : 'Sound on');
+  if (playBtn && video) {
+    playBtn.addEventListener('click', function () {
+      if (video.paused) {
+        userPaused = false;
+        pausedOffscreen = false;
+        var p = video.play();
+        if (p && p.catch) p.catch(function () {});
+      } else {
+        userPaused = true;
+        video.pause();
+      }
     });
+    video.addEventListener('play', syncPlay);
+    video.addEventListener('pause', syncPlay);
   }
+
 
   /* ---- stop the film when nobody is looking at it ---------------------
      A clip still running in a panel the reader has scrolled past is data
@@ -856,7 +1124,7 @@ require __DIR__ . '/includes/header.php';
   }
 
   function resumeFilm() {
-    if (!video || !pausedOffscreen) return;
+    if (!video || !pausedOffscreen || userPaused) return;
     pausedOffscreen = false;
     /* reduced motion never had it playing; leave the poster alone */
     if (still.matches) return;
@@ -901,7 +1169,11 @@ require __DIR__ . '/includes/header.php';
     Array.prototype.forEach.call(shapes, function (el) { el.classList.remove('is-active'); });
     Array.prototype.forEach.call(buttons, function (b) {
       b.classList.remove('is-active');
-      b.setAttribute('aria-pressed', String(pinned === b.getAttribute('data-town')));
+      var open = pinned === b.getAttribute('data-town');
+      b.setAttribute('aria-pressed', String(open));
+      /* the drop-down panel follows the pin, not the hover */
+      b.setAttribute('aria-expanded', String(open));
+      if (b.parentNode) b.parentNode.classList.toggle('is-open', open);
     });
 
     var t = name && towns[name];
@@ -964,6 +1236,7 @@ require __DIR__ . '/includes/header.php';
 
     if (t.button) {
       t.button.setAttribute('aria-pressed', 'false');
+      t.button.setAttribute('aria-expanded', 'false');
       t.button.addEventListener('mouseenter', function () { preview(name); });
       t.button.addEventListener('focus', function () { preview(name); });
       t.button.addEventListener('blur', release);

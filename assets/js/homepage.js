@@ -13,6 +13,15 @@ document.addEventListener('DOMContentLoaded', function(){
 
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  /* FPS FIX: decode the About photos ahead of time.
+     They were loading="lazy", so the browser only decoded the big JPEGs
+     at the moment they scrolled in, on the same frames as the hero fade
+     and the About entrance tweens. decode() does that work up front, off
+     the scroll. */
+  document.querySelectorAll('.story img').forEach(function (img) {
+    if (img.decode) { img.decode().catch(function () {}); }
+  });
+
   /* ===================================================================
      SMOOTH SCROLL
 
@@ -418,7 +427,14 @@ document.addEventListener('DOMContentLoaded', function(){
     return Math.min(d, total - d);
   }
 
+  /* LOAD FIX: the strip and the backgrounds stay empty until the
+     spotlight is within about one screen of the viewport. Until then
+     both window functions do nothing, so page load no longer pulls
+     ~11 full-size destination photos for a section 3 screens down. */
+  var photosArmed = !window.IntersectionObserver;
+
   function windowThumbs(){
+    if (!photosArmed) return;
     var here = ((slot % total) + total) % total;
     var kids = track.children;
     for (var n = 0; n < kids.length; n++){
@@ -438,6 +454,7 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   function windowBackgrounds(){
+    if (!photosArmed) return;
     bgLayers.forEach(function(img, n){
       var url = img.getAttribute('data-src');
       if (!url) return;
@@ -806,6 +823,21 @@ document.addEventListener('DOMContentLoaded', function(){
   updateCounter();
   windowThumbs();
   windowBackgrounds();
+  if (!photosArmed) {
+    var armSec = document.getElementById('destinations');
+    if (armSec) {
+      var armObs = new IntersectionObserver(function(entries){
+        if (!entries[0].isIntersecting) return;
+        armObs.disconnect();
+        photosArmed = true;
+        windowThumbs();
+        windowBackgrounds();
+      }, { rootMargin: '100% 0px' });
+      armObs.observe(armSec);
+    } else {
+      photosArmed = true; windowThumbs(); windowBackgrounds();
+    }
+  }
   /* seat the strip on the next frame, once the browser has laid the
      tiles out and offsetLeft means something */
   requestAnimationFrame(function(){ syncStrip(true); });
@@ -962,12 +994,18 @@ document.addEventListener('DOMContentLoaded', function(){
         if (p && p.catch) { p.catch(function () {}); }
       };
 
+      /* FPS FIX: pause once less than 40% of the hero is on screen.
+         At 0.1 the full-screen video kept decoding through the whole
+         hero -> About transition, exactly when the About photos, the
+         parallax and the entrance tweens all start. By 40% the scrim
+         and the fading headline hide the frozen frame. */
+      var VIDEO_MIN_RATIO = 0.4;
       var vidObserver = new IntersectionObserver(function (entries) {
         entries.forEach(function (entry) {
-          if (entry.isIntersecting) { safePlay(entry.target); }
+          if (entry.intersectionRatio >= VIDEO_MIN_RATIO) { safePlay(entry.target); }
           else { entry.target.pause(); }
         });
-      }, { threshold: 0.1 });
+      }, { threshold: [0, VIDEO_MIN_RATIO] });
 
       bgVideos.forEach(function (v) { vidObserver.observe(v); });
 
@@ -975,7 +1013,8 @@ document.addEventListener('DOMContentLoaded', function(){
         bgVideos.forEach(function (v) {
           if (document.hidden) { v.pause(); return; }
           var r = v.getBoundingClientRect();
-          if (r.bottom > 0 && r.top < window.innerHeight) { safePlay(v); }
+          var seen = Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0);
+          if (r.height && seen / r.height >= VIDEO_MIN_RATIO) { safePlay(v); }
         });
       });
     }
