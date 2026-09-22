@@ -1870,3 +1870,44 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 });
+
+/* ====================================================================
+   VISITOR REGISTER — mobile "See more reviews" expand
+
+   mobile.css (section 11e) hides review rows 3-6 on phones and shows
+   them again when #voicesRegister has .is-expanded. Its comment says
+   "the matching addendum at the tail of homepage.js" toggles that
+   class — but the addendum was never added, so the button had no
+   click handler at all. This is it.
+
+   It listens on WINDOW in the CAPTURE phase, which is the very first
+   stop for any click on the page. That puts it ahead of auth-gate.js
+   (a capture listener on document) and every other document-level
+   click handler in this file, so nothing can swallow or double-toggle
+   the tap. It is delegated, so it does not matter when the button is
+   parsed relative to this script.
+   ==================================================================== */
+(function () {
+  window.addEventListener('click', function (e) {
+    var btn = e.target && e.target.closest && e.target.closest('[data-voices-expand]');
+    if (!btn) return;
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    var reg = document.getElementById(btn.getAttribute('aria-controls') || 'voicesRegister');
+    if (!reg) return;
+
+    var open  = reg.classList.toggle('is-expanded');
+    var label = btn.querySelector('[data-voices-expand-label]');
+    var icon  = btn.querySelector('svg');
+
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (label) label.textContent = open ? 'Show fewer reviews' : 'See more reviews';
+    if (icon)  icon.style.transform = open ? 'rotate(180deg)' : '';
+
+    // Collapsing removes four rows above the button, which would leave
+    // the reader far below where they were. Bring the list back.
+    if (!open) reg.scrollIntoView({ block: 'start' });
+  }, true);
+})();

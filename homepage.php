@@ -1124,24 +1124,19 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
       <?php endforeach; ?>
     </div>
 
-    <!-- MOBILE ONLY. The page still prints all six rows above — this
-         just gives phones a button that reveals rows 3-6 in place,
-         instead of showing all six at once on a screen that only
-         comfortably fits two. Hidden on desktop by mobile.css.
-
-         If there are more than six published reviews total, the
-         existing "See the full register" button below appears once
-         this one has been used, so the path to all of them still
-         exists on a phone. -->
+    <!-- MOBILE ONLY. Phones show the first two rows above; this button
+         opens every review in the pop-up register (#voicesModal below)
+         so nobody has to scroll past a long list on the page itself.
+         Hidden on desktop by mobile.css. -->
     <?php if ($voicesTotal > 2): ?>
       <div class="voices__more voices__more--mobile">
         <button type="button"
                 class="voices__more-btn"
-                data-voices-expand
-                aria-expanded="false"
-                aria-controls="voicesRegister">
-          <span data-voices-expand-label>See more reviews</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                data-voices-open
+                aria-haspopup="dialog"
+                aria-controls="voicesModal">
+          <span>See all <?= (int) $voicesTotal ?> reviews</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
       </div>
     <?php endif; ?>
@@ -1164,7 +1159,9 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
   </div>
 </section>
 
-<?php if ($voicesHidden): ?>
+<?php /* Also printed when there are only 3-6 reviews: the mobile
+         "See all reviews" button opens this same pop-up. */ ?>
+<?php if ($voicesTotal > 2): ?>
 <!-- ===================================================================
      FULL REGISTER — modal
 
@@ -1202,7 +1199,7 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
       </button>
     </header>
 
-    <div class="voices-modal__body">
+    <div class="voices-modal__body" data-lenis-prevent>
       <!-- Every entry, not just the hidden ones. Someone who opens the
            full register expects all of them in one list, not the
            leftovers with the first six missing. -->

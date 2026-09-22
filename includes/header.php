@@ -853,33 +853,10 @@ if ($pageCss !== 'assets/css/search.css' && is_file(__DIR__ . '/../' . $pageCss)
       <a href="homepage.php" class="nav-drawer__link<?= $here === 'homepage.php' ? ' is-active' : '' ?>">Home</a>
       <a href="about.php" class="nav-drawer__link<?= $here === 'about.php' ? ' is-active' : '' ?>">About</a>
 
-      <!-- The accordion. Same five rows as the mega-menu, from the same
-           array. The row is a button, not a link, because on a phone
-           its whole job is to open the list under it — and the "All
-           destinations" link inside is how you reach the page itself. -->
-      <div class="nav-drawer__acc" data-acc>
-        <button type="button" class="nav-drawer__link nav-drawer__acc-btn" data-acc-btn aria-expanded="false">
-          Destinations
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-        </button>
-
-        <div class="nav-drawer__acc-body" data-acc-body>
-          <?php foreach ($navDestinations as $d): ?>
-            <?php if ($navSignedIn): ?>
-              <a href="<?= htmlspecialchars($d['href']) ?>" class="nav-drawer__sub">
-                <?= navIconMarkup($d, $navIcons, 20) ?>
-                <?= htmlspecialchars($d['label']) ?>
-              </a>
-            <?php else: ?>
-              <button type="button" class="nav-drawer__sub" data-auth-gate>
-                <?= navIconMarkup($d, $navIcons, 20) ?>
-                <?= htmlspecialchars($d['label']) ?>
-              </button>
-            <?php endif; ?>
-          <?php endforeach; ?>
-          <a href="destinations.php" class="nav-drawer__sub nav-drawer__sub--all">All destinations</a>
-        </div>
-      </div>
+      <!-- Plain link, same as Home / About / Gallery. The phone menu no
+           longer has a Destinations dropdown; the categories are on the
+           destinations page itself. -->
+      <a href="destinations.php" class="nav-drawer__link<?= $here === 'destinations.php' ? ' is-active' : '' ?>">Destinations</a>
 
       <a href="gallery.php" class="nav-drawer__link<?= $here === 'gallery.php' ? ' is-active' : '' ?>">Gallery</a>
 

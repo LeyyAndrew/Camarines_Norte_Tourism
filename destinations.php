@@ -172,18 +172,37 @@ function catOf($tag, $tagCat) {
     return $tagCat[strtolower($tag)] ?? 'Other';
 }
 
-$destinations = array_values(array_filter($destinations, function ($d) use ($type, $town, $cat, $q, $tagCat) {
+$destinations = array_values(array_filter($destinations, function ($d) use ($type, $town, $cat, $tagCat) {
     /* ?type= is an exact tag match. The homepage trip finder still sends
        it, so it has to keep working exactly as it did. */
     if ($type !== '' && strcasecmp($d['tag'], $type) !== 0) return false;
     if ($cat  !== '' && catOf($d['tag'], $tagCat) !== $cat) return false;
     if ($town !== '' && strcasecmp($d['town'], $town) !== 0) return false;
-    if ($q !== '') {
-        $hay = $d['name'] . ' ' . $d['town'] . ' ' . $d['tag'] . ' ' . $d['desc'];
-        if (!searchHit($hay, $q)) return false;
-    }
     return true;
 }));
+
+/* ---- THE SEARCH, IN TWO TIERS ----
+   Tier 1 looks only at what a place IS: its name, town and type.
+   Tier 2 also reads the description, and is used ONLY when tier 1
+   finds nothing.
+
+   Why: "calaguas" used to bring up Mt. Panit as well, because its
+   description mentions the view of Calaguas. Someone typing a place
+   name wants that place, not every place that talks about it. But a
+   word that only lives in descriptions ("sunset", "surf") still
+   finds something through tier 2. */
+if ($q !== '') {
+    $strong = array_values(array_filter($destinations, function ($d) use ($q) {
+        return searchHit($d['name'] . ' ' . $d['town'] . ' ' . $d['tag'], $q);
+    }));
+    if ($strong) {
+        $destinations = $strong;
+    } else {
+        $destinations = array_values(array_filter($destinations, function ($d) use ($q) {
+            return searchHit($d['name'] . ' ' . $d['town'] . ' ' . $d['tag'] . ' ' . $d['desc'], $q);
+        }));
+    }
+}
 
 /* builds a link that changes one filter and keeps the others.
 
@@ -847,6 +866,16 @@ $showIntro = true;
            id="destSearch" type="search" name="q"
            value="<?= htmlspecialchars($q) ?>"
            placeholder="Search tourist spots" autocomplete="off">
+    <!-- our own clear button. The browser's built-in x for type=search
+         is hidden below: it was either invisible on the dark field or
+         showing as a grey dot, and Firefox never draws one at all. -->
+    <button class="hero-search__clear" id="destSearchClear" type="button"
+            aria-label="Clear search"<?= $q === '' ? ' hidden' : '' ?>>
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <line x1="7" y1="7" x2="17" y2="17"></line>
+        <line x1="17" y1="7" x2="7" y2="17"></line>
+      </svg>
+    </button>
     <button class="hero-search__go" type="submit" aria-label="Search">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <circle cx="11" cy="11" r="7"></circle>
@@ -856,6 +885,46 @@ $showIntro = true;
   </form>
 
   <style>
+    /* ---- the clear (x) button ---- */
+    .hero-search__field::-webkit-search-cancel-button,
+    .hero-search__field::-webkit-search-decoration {
+      -webkit-appearance: none;
+      appearance: none;
+      display: none;
+    }
+    .hero-search__clear {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      margin: 0 8px 0 4px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .16);
+      color: #fff;
+      cursor: pointer;
+      vertical-align: middle;
+      transition: background .15s ease, transform .15s ease;
+    }
+    .hero-search__clear[hidden] { display: none; }
+    .hero-search__clear:hover,
+    .hero-search__clear:focus-visible {
+      background: rgba(255, 255, 255, .3);
+      outline: none;
+    }
+    .hero-search__clear:active { transform: scale(.92); }
+    .hero-search__clear svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.4;
+      stroke-linecap: round;
+    }
+
     /* the card a search jumped to: a short glow so the eye lands on it */
     .dest-card.is-found {
       animation: destFound 2.4s ease-out;
@@ -932,6 +1001,13 @@ $showIntro = true;
       var REGIONS = ['destFilters', 'destMain'];
       var inflight = null;
 
+      /* show the x only when the box has something in it */
+      function syncClear() {
+        var f = document.getElementById('destSearch');
+        var b = document.getElementById('destSearchClear');
+        if (f && b) b.hidden = f.value === '';
+      }
+
       /* ---- JUMP TO THE CARD YOU SEARCHED FOR ----
          Pressing Enter or the search icon takes you straight to the
          matching card: "calaguas" lands on the Calaguas card. Best
@@ -966,6 +1042,83 @@ $showIntro = true;
         }
         if (!best && cards.length === 1) best = cards[0];
         return best;
+      }
+
+      /* ---- THE FEATURED BLOCK FOLLOWS THE TYPING ----
+         Type "calaguas" and the big featured block above the rail
+         (background photo, name, description, Explore) switches to
+         Calaguas straight away, no search button needed. It works by
+         pressing the matching rail card, the same thing a visitor's
+         click does, so destinations-hero.js stays in charge of the
+         crossfade. Names win; a town name ("daet") picks that
+         town's first place. */
+      var slideData = null;
+      function heroSlideFor(term) {
+        if (slideData === null) {
+          try {
+            var isle = document.getElementById('heroSlides');
+            slideData = isle ? JSON.parse(isle.textContent) : [];
+          } catch (e) { slideData = []; }
+        }
+        var t = norm(term);
+        if (!t) return -1;
+        var ts = t.replace(/ /g, '');
+        var best = -1, score = 0;
+        slideData.forEach(function (d, i) {
+          var n  = norm(d.name), ns = n.replace(/ /g, '');
+          var tw = norm(d.town);
+          var s  = (n === t || ns === ts)                          ? 5
+                 : (n.indexOf(t) === 0 || ns.indexOf(ts) === 0)    ? 4
+                 : (' ' + n).indexOf(' ' + t) !== -1               ? 3
+                 : ns.indexOf(ts) !== -1                           ? 2
+                 : (tw === t || tw.indexOf(t) === 0)               ? 1 : 0;
+          if (s > score) { score = s; best = i; }
+        });
+        return best;
+      }
+
+      function heroSwitch(term) {
+        var i = heroSlideFor(term);
+        if (i < 0) return;
+        var rail = document.getElementById('heroRail');
+        var card = rail && rail.querySelector('.hero-rail__card[data-slide="' + i + '"]');
+        if (!card) return;
+
+        if (!card.classList.contains('is-current')) {
+          /* the rail cards are #dest-... anchors underneath. Make sure
+             this programmatic press only switches the block and never
+             follows the link down to the grid mid-typing. */
+          var before = location.hash;
+          var stop = function (e) { e.preventDefault(); };
+          /* capture phase, so it runs even if the slideshow script
+             stops the click from bubbling */
+          document.addEventListener('click', stop, true);
+          card.click();
+          document.removeEventListener('click', stop, true);
+          /* and if anything still set #dest-..., put the old hash back
+             so the "land on the photo card" script below does not open
+             the details pop-up */
+          if (location.hash !== before) {
+            history.replaceState(history.state, '',
+              location.pathname + location.search + before);
+          }
+        }
+
+        /* slide the rail sideways so the card is in view, without
+           moving the page up or down */
+        var r = rail.getBoundingClientRect(), c = card.getBoundingClientRect();
+        var dx = (c.left - r.left) - (r.width - c.width) / 2;
+        if (Math.abs(dx) > 2) {
+          if (rail.scrollBy) rail.scrollBy({ left: dx, behavior: 'smooth' });
+          else rail.scrollLeft += dx;
+        }
+
+        /* keep typing where you were */
+        var field = document.getElementById('destSearch');
+        if (field && document.activeElement !== field) {
+          var pos = field.value.length;
+          try { field.focus({ preventScroll: true }); field.setSelectionRange(pos, pos); } catch (e) {}
+        }
       }
 
       var foundTimer = null;
@@ -1191,6 +1344,7 @@ $showIntro = true;
             /* keep the box in step when the back button drives this */
             var field = document.getElementById('destSearch');
             if (field) field.value = new URL(url, location.href).searchParams.get('q') || '';
+            syncClear();
 
             settle();
 
@@ -1247,6 +1401,8 @@ $showIntro = true;
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         clearTimeout(typeTimer);   /* Enter beats a pending keystroke */
+        var sf = document.getElementById('destSearch');
+        if (sf) heroSwitch(sf.value);
         go(formUrl(), true, false, true);
       });
 
@@ -1303,6 +1459,9 @@ $showIntro = true;
         if (term !== '' && term.length < 2) return;
 
         typeTimer = setTimeout(function () {
+          /* the featured block answers instantly, no server needed */
+          if (term !== '') heroSwitch(term);
+
           var url = formUrl();
 
           /* Backspacing to a term already on screen, or any edit that
@@ -1326,6 +1485,31 @@ $showIntro = true;
         /* the little x inside type=search clears the field without
            firing input in some browsers */
         field.addEventListener('search', queueLive);
+      }
+
+      /* ---- THE CLEAR BUTTON ----
+         Shows only while there is text. Clicking it empties the box,
+         brings all 24 back through the same path as typing, and puts
+         the cursor back in the box. Escape does the same. */
+      var clearBtn = document.getElementById('destSearchClear');
+      if (field && clearBtn) {
+        field.addEventListener('input', syncClear);
+
+        clearBtn.addEventListener('click', function () {
+          field.value = '';
+          syncClear();
+          field.focus();
+          queueLive();
+        });
+
+        field.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && field.value !== '') {
+            e.preventDefault();
+            clearBtn.click();
+          }
+        });
+
+        syncClear();
       }
 
       /* the chips are plain <a href> and reload for the same reason the
@@ -2128,13 +2312,11 @@ $showIntro = true;
        name, so treat it as one. More than one and we must not choose —
        the visitor is still deciding, and opening a pin for them would
        be answering a question they have not asked. */
-    if (!params.get('q')) return;
-
-    var cards = document.querySelectorAll('#destGrid .dest-card');
-    if (cards.length !== 1) return;
-
-    var only = cards[0].querySelector('[data-focus]');
-    if (only) press(only.getAttribute('data-focus'));
+    /* A SEARCH NO LONGER OPENS THE PIN BY ITSELF. It used to press
+       the Map button when a search left exactly one card, which popped
+       the details balloon open over the page. A search now just goes
+       to the card and rings it (see the banner search script); the
+       visitor presses Map or View details when they want them. */
   }
 
   ready(run);
