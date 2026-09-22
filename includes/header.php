@@ -251,6 +251,13 @@ function navCardClose($signedIn) {
 <title><?= htmlspecialchars($pageTitle) ?></title>
 <meta name="description" content="<?= htmlspecialchars($pageDesc) ?>" />
 
+<!-- Favicon: the small icon on the browser tab. The files sit in
+     assets/favicon/. siteUrl() keeps the path right
+     both on localhost/Tourism_System/ and on Render. -->
+<link rel="icon" href="<?= htmlspecialchars(siteUrl('assets/favicon/favicon.ico')) ?>" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="<?= htmlspecialchars(siteUrl('assets/favicon/favicon-32x32.png')) ?>">
+<link rel="apple-touch-icon" href="<?= htmlspecialchars(siteUrl('assets/favicon/apple-touch-icon.png')) ?>">
+
 <!-- preconnect opens the TCP + TLS handshake to these hosts while the
      HTML is still being parsed, so the first request to each does not
      pay for it. Worth roughly 200-400 ms on a phone connection here in
