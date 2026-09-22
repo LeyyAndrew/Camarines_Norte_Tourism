@@ -16,6 +16,23 @@
    =================================================================== */
 $pageTitle = 'About Camarines Norte — Explore Camarines Norte';
 $pageDesc  = 'The northernmost province of the Bicol Peninsula: twelve towns, a Pacific-facing coastline, and three centuries of gold.';
+
+/* ---- SIGN-IN GATE for the town map and list ----------------------------
+   Visitors can hover to preview a town, but clicking (which opens the
+   town panel and plays its film) needs an account.
+
+   Signed out, every town shape and list button carries data-auth-gate,
+   the same hook header.php puts on the search icon, the mega-menu cards
+   and "Plan your trip" - so a click opens the site's ONE sign-in prompt
+   rather than a second one invented here.
+
+   Same test as $navSignedIn in header.php. It is repeated here only
+   because this has to run before the header is required.
+   ------------------------------------------------------------------------ */
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
+$isSignedIn = isset($_SESSION['user_id']);
+$gateAttr   = $isSignedIn ? '' : ' data-auth-gate';
+
 require __DIR__ . '/includes/header.php';
 ?>
 
@@ -734,6 +751,9 @@ require __DIR__ . '/includes/header.php';
     <div class="town-index" data-aos="fade-up" data-aos-delay="80">
       <h3 class="town-index__title">The twelve municipalities</h3>
       <p class="town-index__lead">Every one of these has at least two places worth stopping for. Select a town to find it on the map and watch it.</p>
+      <?php if (!$isSignedIn): ?>
+      <p class="town-index__gate">&#128274; <button type="button" class="town-index__gate-btn" data-auth-gate>Sign in</button> to open a town and watch its film.</p>
+      <?php endif; ?>
 
       <!-- ================================================================
            THE TWELVE, AS AN ACCORDION
@@ -875,7 +895,8 @@ require __DIR__ . '/includes/header.php';
       <ul class="town-index__list">
         <?php foreach ($townInfo as $town => $t): $n++; $pid = 'town-panel-' . $n; ?>
         <li class="town-index__row town-index__row--<?= $t['tone'] ?>">
-          <button type="button" class="town-index__item" data-town="<?= htmlspecialchars($town) ?>" data-video="<?= htmlspecialchars($t['video']) ?>" aria-expanded="false" aria-controls="<?= $pid ?>"><span class="town-index__name"><?= htmlspecialchars($town) ?></span><span class="town-index__note"><?= htmlspecialchars($t['note']) ?></span></button>
+          <button type="button" class="town-index__item"<?= $gateAttr ?> data-town="<?= htmlspecialchars($town) ?>" <?php if ($isSignedIn): ?>data-video="<?= htmlspecialchars($t['video']) ?>" <?php endif; ?>aria-expanded="false" aria-controls="<?= $pid ?>"><span class="town-index__name"><?= htmlspecialchars($town) ?></span><span class="town-index__note"><?= htmlspecialchars($t['note']) ?></span></button>
+          <?php if ($isSignedIn): ?>
           <div class="town-panel" id="<?= $pid ?>">
             <div class="town-panel__clip">
               <div class="town-panel__card">
@@ -897,12 +918,20 @@ require __DIR__ . '/includes/header.php';
               </div>
             </div>
           </div>
+          <?php endif; ?>
         </li>
         <?php endforeach; ?>
       </ul>
 
       <a href="destinations.php" class="town-index__link">See what is in each town</a>
     </div>
+
+<?php if (!$isSignedIn): ?>
+<style>
+  .town-index__gate { margin: .25rem 0 1rem; font-size: .9rem; color: #6b6b6b; }
+  .town-index__gate-btn { background: none; border: 0; padding: 0; font: inherit; color: #e8912a; font-weight: 600; cursor: pointer; text-decoration: underline; }
+</style>
+<?php endif; ?>
 
 <script>
 /* --------------------------------------------------------------------
@@ -1194,7 +1223,30 @@ require __DIR__ . '/includes/header.php';
   function preview(name) { paint(name); }
   function release() { paint(pinned); }
 
+  /* ---- sign-in gate -------------------------------------------------
+     Signed out, the shapes and buttons carry data-auth-gate, so the
+     site's own sign-in prompt (header.php / nav.js) handles the click.
+     All toggle() has to do is not open the town as well. Hover preview
+     still works so the map stays alive for everyone. */
+  var signedIn = <?= $isSignedIn ? 'true' : 'false' ?>;
+
+  /* The list buttons are real <button data-auth-gate>, which
+     auth-gate.js always handles. The map shapes are SVG, which it may
+     not, so for a shape this presses the "Sign in" button under the
+     list heading on its behalf - same modal, opened the same way.
+     Skipped when the modal is already up (a list button just opened it). */
+  function openSignIn() {
+    var modal = document.getElementById('authModal');
+    setTimeout(function () {
+      if (modal && modal.getAttribute('aria-hidden') === 'false') return;
+      var proxy = document.querySelector('.town-index__gate-btn') ||
+                  document.querySelector('button[data-auth-gate]');
+      if (proxy) proxy.click();
+    }, 0);
+  }
+
   function toggle(name) {
+    if (!signedIn) { openSignIn(); return; }
     pinned = (pinned === name) ? null : name;
     paint(pinned);
 
