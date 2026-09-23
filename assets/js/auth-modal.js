@@ -36,7 +36,7 @@
      [data-toggle-pw]      togglePassword()   the eye, on all four password fields
      [data-slide-to]       showSlide()        the dots on the photograph
      [data-guest-browse]   browseAsGuest()    keep browsing without an account
-     [data-remember]       rememberEmail()    keep me signed in
+     [data-remember]       rememberEmail()    remember my email
      form submit           submitForm()       all three forms
 
    NOTHING HERE IS SECURITY. Every check in this file is a courtesy to
@@ -320,10 +320,13 @@
   }
 
   /* ===================================================================
-     KEEP ME SIGNED IN
-     The checkbox itself is handled by PHP. This only remembers the
-     ADDRESS, so the next visit starts with the email filled and the
-     cursor in the password field. Never the password.
+     REMEMBER MY EMAIL
+     Browser-only. Remembers the ADDRESS on this device, so the next
+     visit starts with the email filled in. Never the password, and
+     nothing is sent to the server.
+
+     Saved on submit (see the form listeners near the bottom) and on
+     change, so unticking the box forgets the address immediately.
      =================================================================== */
 
   var STORE_KEY = 'cn_auth_email';
@@ -581,7 +584,17 @@
   });
 
   modal.querySelectorAll('[data-auth-form]').forEach(function (form) {
-    form.addEventListener('submit', function (e) { submitForm(form, e); });
+    form.addEventListener('submit', function (e) {
+      /* Save the remembered address NOW, not only when the checkbox
+         changes. Saving on change alone missed two cases: ticking
+         the box before typing the email (nothing was saved, the
+         field was empty then), and fixing a typo after ticking it
+         (the typo was what got saved). */
+      var remember = form.querySelector('[data-remember]');
+      if (remember) { rememberEmail(remember); }
+
+      submitForm(form, e);
+    });
   });
 
   /* --- Esc, and the focus trap ---

@@ -42,7 +42,10 @@ if ($email === '' || $password === '') {
     back_with_error('Please enter your email and password.', 'badlogin');
 }
 
-$stmt = $pdo->prepare('SELECT * FROM users WHERE email = :email');
+/* LOWER() on both sides: PostgreSQL compares text case-sensitively,
+   so "Juan@Gmail.com" never matched "juan@gmail.com" and a correct
+   password was rejected. forgot_process.php already does the same. */
+$stmt = $pdo->prepare('SELECT * FROM users WHERE LOWER(email) = LOWER(:email) LIMIT 1');
 $stmt->execute([':email' => $email]);
 
 $user = $stmt->fetch(PDO::FETCH_ASSOC);

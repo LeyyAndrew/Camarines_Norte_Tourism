@@ -17,6 +17,18 @@ if (!function_exists('e_auth')) {
         return htmlspecialchars($v ?? '', ENT_QUOTES, 'UTF-8');
     }
 }
+
+/* The project folder, detected: '/Tourism_System' on XAMPP, '' on Render.
+   MOVED UP HERE so every link in the footer and the modal can use it.
+   Without it, links like "destinations.php" break on pages that live in
+   a subfolder (legal/terms.php would look for legal/destinations.php). */
+$siteBase = rtrim(str_replace('\\', '/', substr(realpath(__DIR__ . '/..'), strlen(realpath($_SERVER['DOCUMENT_ROOT'])))), '/');
+
+/* The three legal pages, in legal/. One place to change them. */
+require_once __DIR__ . '/legal-config.php';   /* $legalEmail for the popup */
+$legalTerms      = $siteBase . '/legal/terms.php';
+$legalDisclosure = $siteBase . '/legal/disclosure.php';
+$legalPrivacy    = $siteBase . '/legal/privacy.php';
 ?>
 
 <?php
@@ -38,8 +50,8 @@ if (!function_exists('e_auth')) {
    modal already prints coordinates under its photograph, so the
    footer picking the habit up makes the two read as one site.
    =================================================================== */
-$footerSeal   = 'uploads/logo.png';
-$footerWord   = 'uploads/lakbai.png';
+$footerSeal   = $siteBase . '/uploads/logo.png';
+$footerWord   = $siteBase . '/uploads/lakbai.png';
 $footerPhone  = '';
 $footerHours  = 'Monday to Friday, 8:00 AM to 5:00 PM';
 $footerCoords = '14.11° N   122.95° E';
@@ -97,9 +109,9 @@ $footerCoords = '14.11° N   122.95° E';
       <div class="footer__col">
         <h4 class="footer__head">Explore</h4>
         <ul class="footer__list">
-          <li><a class="footer__link" href="destinations.php">Destinations</a></li>
-          <li><a class="footer__link" href="gallery.php">Gallery</a></li>
-          <li><a class="footer__link" href="homepage.php#quote">Stories</a></li>
+          <li><a class="footer__link" href="<?= $siteBase ?>/destinations.php">Destinations</a></li>
+          <li><a class="footer__link" href="<?= $siteBase ?>/gallery.php">Gallery</a></li>
+          <li><a class="footer__link" href="<?= $siteBase ?>/homepage.php#quote">Stories</a></li>
         </ul>
       </div>
 
@@ -107,7 +119,7 @@ $footerCoords = '14.11° N   122.95° E';
       <div class="footer__col">
         <h4 class="footer__head">About</h4>
         <ul class="footer__list">
-          <li><a class="footer__link" href="about.php">Our Province</a></li>
+          <li><a class="footer__link" href="<?= $siteBase ?>/about.php">Our Province</a></li>
           <li><a class="footer__link" href="#">Tourism Office</a></li>
         </ul>
       </div>
@@ -147,8 +159,9 @@ $footerCoords = '14.11° N   122.95° E';
       <span class="footer__copy">&copy; <?= date('Y') ?> Explore Camarines Norte. All rights reserved.</span>
 
       <nav class="footer__legal" aria-label="Legal">
-        <a href="#">Terms of Use</a>
-        <a href="#">Privacy Policy</a>
+        <a href="<?= e_auth($legalTerms) ?>" data-legal="terms">Terms of Use</a>
+        <a href="<?= e_auth($legalDisclosure) ?>" data-legal="disclosure">Disclosure</a>
+        <a href="<?= e_auth($legalPrivacy) ?>" data-legal="privacy">Privacy Policy</a>
         <a href="#">Accessibility</a>
       </nav>
 
@@ -190,7 +203,7 @@ $footerCoords = '14.11° N   122.95° E';
      id="authSignin"  id="authRegister"
 
    FIELD NAMES ARE UNCHANGED TOO — firstname, lastname, email,
-   password, remember, terms. auth/login_process.php and
+   password, terms. auth/login_process.php and
    auth/register_process.php need no edits.
    =================================================================== */
 
@@ -206,7 +219,7 @@ $footerCoords = '14.11° N   122.95° E';
    COORDINATES ARE REAL, and must stay that way. The caption's only
    value is that a visitor could check it against a map. */
 /* The project folder, detected: '/Tourism_System' on XAMPP, '' on Render. */
-$siteBase = rtrim(str_replace('\\', '/', substr(realpath(__DIR__ . '/..'), strlen(realpath($_SERVER['DOCUMENT_ROOT'])))), '/');
+/* $siteBase is now set at the top of this file. */
 $authPhotoDir = $siteBase . '/uploads/Homepage-Photo/';
 
 $authSlides = [
@@ -397,7 +410,7 @@ if ($authMode === 'reset' || $authCode === 'expired') {
     <div class="auth-panel">
 
       <div class="auth-logo">
-        <img src="uploads/lakbai.png" alt="LAKBAI">
+        <img src="<?= $siteBase ?>/uploads/lakbai.png" alt="LAKBAI">
       </div>
 
       <!-- ============ SIGN IN ============ -->
@@ -450,7 +463,7 @@ if ($authMode === 'reset' || $authCode === 'expired') {
           <div class="auth-field">
             <label class="auth-field__label auth-sr" for="signinEmail">Email address</label>
             <div class="auth-field__wrap">
-              <input type="email" id="signinEmail" name="email" autocomplete="email"
+              <input type="email" id="signinEmail" name="email" autocomplete="username"
                      placeholder="Email address" required data-auth-email>
             </div>
           </div>
@@ -472,9 +485,14 @@ if ($authMode === 'reset' || $authCode === 'expired') {
           </div>
 
           <div class="auth-form__row">
+            <!-- "Remember my email", not "Keep me signed in". It only
+                 pre-fills the address on this device next time (done in
+                 assets/js/auth-modal.js, saved in the browser, never the
+                 password). No name attribute: the server has nothing to
+                 do with it, so nothing is posted. -->
             <label class="auth-check">
-              <input type="checkbox" name="remember" value="1" data-remember>
-              <span>Keep me signed in</span>
+              <input type="checkbox" value="1" data-remember>
+              <span>Remember my email</span>
             </label>
 
             <!-- A button, not href="#". It opens the reset pane rather
@@ -502,9 +520,9 @@ if ($authMode === 'reset' || $authCode === 'expired') {
         </button>
 
         <p class="auth-terms">
-          <a href="#">Terms of Use</a>
-          <a href="#">Disclosure</a>
-          <a href="#">Privacy Policy</a>
+          <a href="<?= e_auth($legalTerms) ?>" data-legal="terms">Terms of Use</a>
+          <a href="<?= e_auth($legalDisclosure) ?>" data-legal="disclosure">Disclosure</a>
+          <a href="<?= e_auth($legalPrivacy) ?>" data-legal="privacy">Privacy Policy</a>
         </p>
       </div>
 
@@ -614,7 +632,7 @@ if ($authMode === 'reset' || $authCode === 'expired') {
 
           <label class="auth-check auth-check--terms">
             <input type="checkbox" name="terms" value="1" required data-terms>
-            <span>I agree to the <a href="#">Terms of Use</a> and <a href="#">Privacy Policy</a>.</span>
+            <span>I agree to the <a href="<?= e_auth($legalTerms) ?>" data-legal="terms">Terms of Use</a> and <a href="<?= e_auth($legalPrivacy) ?>" data-legal="privacy">Privacy Policy</a>.</span>
           </label>
 
           <button type="submit" class="btn btn--orange" data-auth-submit>
@@ -629,9 +647,9 @@ if ($authMode === 'reset' || $authCode === 'expired') {
         </p>
 
         <p class="auth-terms">
-          <a href="#">Terms of Use</a>
-          <a href="#">Disclosure</a>
-          <a href="#">Privacy Policy</a>
+          <a href="<?= e_auth($legalTerms) ?>" data-legal="terms">Terms of Use</a>
+          <a href="<?= e_auth($legalDisclosure) ?>" data-legal="disclosure">Disclosure</a>
+          <a href="<?= e_auth($legalPrivacy) ?>" data-legal="privacy">Privacy Policy</a>
         </p>
       </div>
 
@@ -702,6 +720,96 @@ if ($authMode === 'reset' || $authCode === 'expired') {
      mobile.css — those two are meant to have the last word.
      =================================================================== -->
 <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('assets/css/auth.css')) ?>">
+<link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('assets/css/legal-style.css')) ?>">
+
+<!-- ===================================================================
+     THE LEGAL POPUP
+
+     Terms of Use, Disclosure and Privacy Policy open here instead of
+     leaving the page. Every link with data-legal="..." opens it —
+     the footer bar, the sign-in and sign-up panes, and the "I agree"
+     checkbox — and because it sits above the sign-in modal, reading
+     the terms mid-signup no longer loses what was typed.
+
+     The text is not in here. assets/js/legal-modal.js fetches it from
+     legal/*.php?fragment=1, so each document still has one copy.
+     =================================================================== -->
+<div class="legal-modal" id="legalModal" role="dialog" aria-modal="true" aria-labelledby="legalModalTitle" hidden>
+  <div class="legal-modal__backdrop" data-legal-close></div>
+
+  <div class="legal-modal__panel">
+    <div class="legal-modal__progress" aria-hidden="true"><span></span></div>
+
+    <!-- top bar: who this is from, and the window controls -->
+    <header class="legal-modal__head">
+      <div class="legal-modal__brand">
+        <?php if (!empty($footerSeal)): ?>
+          <img class="legal-modal__seal" src="<?= e_auth($footerSeal) ?>" alt="" width="40" height="40">
+        <?php endif; ?>
+        <div class="legal-modal__brand-text">
+          <span class="legal-modal__eyebrow">Explore Camarines Norte</span>
+          <span class="legal-modal__center">Legal Center</span>
+        </div>
+      </div>
+      <div class="legal-modal__actions">
+        <button type="button" class="legal-modal__icon" data-legal-print aria-label="Print this document" title="Print">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>
+        </button>
+        <button type="button" class="legal-modal__icon legal-modal__close" data-legal-close aria-label="Close" title="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="legal-modal__main">
+      <!-- left: the three documents, and a table of contents built
+           from the open document's headings by legal-modal.js -->
+      <aside class="legal-modal__side">
+        <p class="legal-modal__side-label">Documents</p>
+        <div class="legal-modal__tabs" role="group" aria-label="Legal documents">
+          <button type="button" class="legal-modal__tab" aria-pressed="false" data-legal-key="terms" data-legal-title="Terms of Use" data-legal-url="<?= e_auth($legalTerms) ?>">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
+            <span>Terms of Use</span>
+          </button>
+          <button type="button" class="legal-modal__tab" aria-pressed="false" data-legal-key="disclosure" data-legal-title="Disclosure" data-legal-url="<?= e_auth($legalDisclosure) ?>">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>
+            <span>Disclosure</span>
+          </button>
+          <button type="button" class="legal-modal__tab" aria-pressed="false" data-legal-key="privacy" data-legal-title="Privacy Policy" data-legal-url="<?= e_auth($legalPrivacy) ?>">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6z"/><path d="m9 12 2 2 4-4"/></svg>
+            <span>Privacy Policy</span>
+          </button>
+        </div>
+        <p class="legal-modal__side-label legal-modal__side-label--toc">On this page</p>
+        <ol class="legal-modal__toc"></ol>
+      </aside>
+
+      <!-- right: the document itself -->
+      <div class="legal-modal__body" tabindex="-1">
+        <div class="legal-modal__doc">
+          <div class="legal-modal__doc-head">
+            <h2 class="font-display legal-modal__title" id="legalModalTitle">Terms of Use</h2>
+            <p class="legal-modal__meta">
+              <span class="legal-modal__meta-item" data-legal-updated></span>
+              <span class="legal-modal__meta-item" data-legal-read></span>
+            </p>
+          </div>
+          <div class="legal-modal__content"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- bottom: form-style actions -->
+    <footer class="legal-modal__foot">
+      <p class="legal-modal__foot-note">
+        Questions? <a href="mailto:<?= e_auth($legalEmail ?? 'leiiiandrewwwcamara@gmail.com') ?>"><?= e_auth($legalEmail ?? 'leiiiandrewwwcamara@gmail.com') ?></a>
+      </p>
+      <div class="legal-modal__foot-btns">
+        <button type="button" class="legal-btn legal-btn--primary" data-legal-accept>I understand</button>
+      </div>
+    </footer>
+  </div>
+</div>
 
 <?php
 /* FEEDBACK DIALOG. Renders nothing when signed out. Opened by the
@@ -749,6 +857,12 @@ require __DIR__ . '/feedback-widget.php';
 <script src="<?= htmlspecialchars(assetUrl('assets/js/homepage.js')) ?>" defer></script>
 
 <!-- the modal's own internals: tabs, password toggle, focus -->
+<!-- legal-modal.js WITHOUT defer, on purpose: its click handler is
+     registered before any deferred script's, so no other script can
+     swallow the popup's X and tabs. The real fix for that is the
+     .legal-modal exemption in auth-gate.js; this is the backup.
+     The popup's markup is above this line, so the script finds it. -->
+<script src="<?= htmlspecialchars(assetUrl('assets/js/legal-modal.js')) ?>"></script>
 <script src="<?= htmlspecialchars(assetUrl('assets/js/auth-modal.js')) ?>" defer></script>
 
 <!-- the sign-in gate: nav links stay open, content links ask for a

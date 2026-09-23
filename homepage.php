@@ -595,7 +595,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;Where the northern coast begins.&rdquo;</p>
           <p class="dest-spotlight__desc">A beach resort on the Basud shoreline, the first coastal stop heading north out of Daet.</p>
           <div class="chip-row"><span class="chip">Beachfront</span><span class="chip">Day trips</span><span class="chip">Contact for rates</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-taba-taba-beach-resort" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
         <article class="spot-item">
           <span class="pill pill--outline">Campsite</span>
@@ -604,7 +604,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;Pitch a tent, stay the night.&rdquo;</p>
           <p class="dest-spotlight__desc">A campsite and resort in Basud for visitors who would rather sleep outdoors than book a room.</p>
           <div class="chip-row"><span class="chip">Camping</span><span class="chip">Overnight stays</span><span class="chip">Contact for rates</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-la-maestra-campsite-and-resort" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
 
         <!-- ============ CAPALONGA ============ -->
@@ -615,7 +615,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;The town's oldest standing appointment.&rdquo;</p>
           <p class="dest-spotlight__desc">Capalonga's shrine draws pilgrims from across Bicol, and the town's calendar still turns around its feast.</p>
           <div class="chip-row"><span class="chip">Pilgrimage site</span><span class="chip">Feast celebrations</span><span class="chip">Town centre</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-shrine-of-the-black-nazarene" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
         <article class="spot-item">
           <span class="pill pill--outline">Island</span>
@@ -624,7 +624,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;A short crossing, and the mainland is gone.&rdquo;</p>
           <p class="dest-spotlight__desc">A small island off the Capalonga coast, reached by boat and quiet enough that most days you will have the shore to yourself.</p>
           <div class="chip-row"><span class="chip">Boat access</span><span class="chip">Swimming</span><span class="chip">Day trip</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-pulong-guijanlo" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
 
         <!-- ============ DAET ============ -->
@@ -635,7 +635,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;The north's longest ride.&rdquo;</p>
           <p class="dest-spotlight__desc">The surf capital of the north, with a steady break that holds nearly year-round and a boardwalk that fills once the heat drops.</p>
           <div class="chip-row"><span class="chip">Year-round swell</span><span class="chip">Board rentals</span><span class="chip">Sunset boardwalk</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-bagasbas-beach" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
         <article class="spot-item">
           <span class="pill pill--outline">Monument</span>
@@ -644,7 +644,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;Raised before the country had a name for itself.&rdquo;</p>
           <p class="dest-spotlight__desc">Built in 1898, the earliest monument to Jose Rizal anywhere, put up by local subscription within two years of his execution.</p>
           <div class="chip-row"><span class="chip">Built 1898</span><span class="chip">National landmark</span><span class="chip">Town centre</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-first-rizal-monument" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
 
         <!-- ============ JOSE PANGANIBAN ============ -->
@@ -655,7 +655,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;Climb once, see the whole bay.&rdquo;</p>
           <p class="dest-spotlight__desc">A view deck above Jose Panganiban, reached on foot and best timed for early morning.</p>
           <div class="chip-row"><span class="chip">Viewpoint</span><span class="chip">Short climb</span><span class="chip">Sunrise spot</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-turayog-view-deck" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
         <article class="spot-item">
           <span class="pill pill--outline">Island</span>
@@ -664,7 +664,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;The lighthouse island.&rdquo;</p>
           <p class="dest-spotlight__desc">A small island off the Jose Panganiban coast, reached by boat from the mainland.</p>
           <div class="chip-row"><span class="chip">Boat access</span><span class="chip">Island hopping</span><span class="chip">Lighthouse</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-parola-island" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
 
         <!-- ============ LABO ============ -->
@@ -675,7 +675,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;Cold water at the end of a warm walk.&rdquo;</p>
           <p class="dest-spotlight__desc">A falls in the Labo interior reached by a short trek, popular with locals escaping the worst of the afternoon.</p>
           <div class="chip-row"><span class="chip">Short trek</span><span class="chip">Natural pool</span><span class="chip">Picnic spot</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-malatap-falls" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
         <article class="spot-item">
           <span class="pill pill--outline">Peak</span>
@@ -684,7 +684,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;A morning, not an expedition.&rdquo;</p>
           <p class="dest-spotlight__desc">The summit of Mt. Bagacay, a manageable climb with wide views for anyone who would rather be back down by lunch.</p>
           <div class="chip-row"><span class="chip">Day hike</span><span class="chip">Viewpoint</span><span class="chip">Guided climb</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-tulis-peak-mt-bagacay" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
 
         <!-- ============ MERCEDES ============ -->
@@ -695,7 +695,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;The largest of the seven.&rdquo;</p>
           <p class="dest-spotlight__desc">The biggest of the Mercedes island group, known for its lighthouse and rock formations, and the usual first stop on an island-hopping run out of the fish port.</p>
           <div class="chip-row"><span class="chip">Island hopping</span><span class="chip">Lighthouse</span><span class="chip">Boat access</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-canimog-island" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
         <article class="spot-item">
           <span class="pill pill--outline">Beach</span>
@@ -704,7 +704,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;Stones instead of sand.&rdquo;</p>
           <p class="dest-spotlight__desc">A shoreline of smooth stones on the Mercedes coast, a change from the white sand the province is better known for.</p>
           <div class="chip-row"><span class="chip">Pebble shore</span><span class="chip">Swimming</span><span class="chip">Photo stop</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-pebble-beach" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
 
         <!-- ============ PARACALE ============ -->
@@ -715,7 +715,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;Off the gold coast, by boat.&rdquo;</p>
           <p class="dest-spotlight__desc">An island off Paracale, the town that has worked gold for three centuries, reached by boat and known for clear water and quiet shoreline.</p>
           <div class="chip-row"><span class="chip">Boat access</span><span class="chip">Snorkelling</span><span class="chip">Day trip</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-macolabo-island" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
         <article class="spot-item">
           <span class="pill pill--outline">Beach</span>
@@ -724,7 +724,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;Long, open, and quiet.&rdquo;</p>
           <p class="dest-spotlight__desc">A wide stretch of shoreline at Paracale, popular with locals and largely undeveloped.</p>
           <div class="chip-row"><span class="chip">Wide shoreline</span><span class="chip">Local favourite</span><span class="chip">Camping</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-gumaus-beach" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
 
         <!-- ============ SAN LORENZO RUIZ ============ -->
@@ -735,7 +735,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;Upland water, easy reach.&rdquo;</p>
           <p class="dest-spotlight__desc">A falls in the uplands of San Lorenzo Ruiz, a short trip inland from the highway and a standard stop on a day out of Daet.</p>
           <div class="chip-row"><span class="chip">Waterfall</span><span class="chip">Natural pool</span><span class="chip">Day trip</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-nacali-falls" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
         <article class="spot-item">
           <span class="pill pill--outline">River</span>
@@ -744,7 +744,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;Cold, clear, and running.&rdquo;</p>
           <p class="dest-spotlight__desc">A river in San Lorenzo Ruiz, a local spot for swimming and riverside afternoons.</p>
           <div class="chip-row"><span class="chip">River swimming</span><span class="chip">Shaded</span><span class="chip">Picnic spot</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-mampili-river" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
 
         <!-- ============ SAN VICENTE ============ -->
@@ -755,7 +755,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;Three drops into jade water.&rdquo;</p>
           <p class="dest-spotlight__desc">A short forest trail leads to a tiered falls, cool enough to cut the midday heat in half.</p>
           <div class="chip-row"><span class="chip">Forest trailhead</span><span class="chip">Natural pool</span><span class="chip">Cool year-round</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-mananap-falls" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
         <article class="spot-item">
           <span class="pill pill--outline">Adventure</span>
@@ -764,7 +764,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;The loud way in.&rdquo;</p>
           <p class="dest-spotlight__desc">Guided ATV rides on the trails around Mananap Falls, booked through local operators.</p>
           <div class="chip-row"><span class="chip">ATV rides</span><span class="chip">Guided</span><span class="chip">Book ahead</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-mananap-falls-atv-adventure" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
 
         <!-- ============ SANTA ELENA ============ -->
@@ -775,7 +775,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;The far edge of the province, and worth the drive.&rdquo;</p>
           <p class="dest-spotlight__desc">Santa Elena sits at the northern boundary, and Busay is the reason most visitors make the trip out.</p>
           <div class="chip-row"><span class="chip">Waterfall</span><span class="chip">Swimming</span><span class="chip">Day trip</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-busay-falls" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
         <article class="spot-item">
           <span class="pill pill--outline">Park</span>
@@ -784,7 +784,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;Shade, benches, and a slower hour.&rdquo;</p>
           <p class="dest-spotlight__desc">A public park in Santa Elena, an easy stop for anyone breaking the drive north.</p>
           <div class="chip-row"><span class="chip">Public park</span><span class="chip">Shaded</span><span class="chip">Family friendly</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-del-moro-park" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
 
         <!-- ============ TALISAY ============ -->
@@ -795,7 +795,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;Quiet you can actually hear.&rdquo;</p>
           <p class="dest-spotlight__desc">A boardwalk threads through Talisay's mangrove stands, home to herons, mudskippers, and very little noise.</p>
           <div class="chip-row"><span class="chip">Boardwalk trail</span><span class="chip">Bird watching</span><span class="chip">Community-run</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-mangrove-eco-tourism-park" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
         <article class="spot-item">
           <span class="pill pill--outline">Church</span>
@@ -804,7 +804,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;The centre of town, in every sense.&rdquo;</p>
           <p class="dest-spotlight__desc">Talisay's parish church, the anchor of the town centre and busiest on feast days.</p>
           <div class="chip-row"><span class="chip">Historic church</span><span class="chip">Town centre</span><span class="chip">Feast days</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-st-francis-of-assisi-parish-church" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
 
         <!-- ============ VINZONS ============ -->
@@ -815,7 +815,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;Where the tide writes the only footprints.&rdquo;</p>
           <p class="dest-spotlight__desc">Mahabang Buhangin's long white shore, reachable only by boat and still best seen with a tent.</p>
           <div class="chip-row"><span class="chip">Powder-white sand</span><span class="chip">Boat access only</span><span class="chip">Beach camping</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-calaguas-island" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
         <article class="spot-item">
           <span class="pill pill--outline">Mountain</span>
@@ -824,7 +824,7 @@ $spotPhotos = [
           <p class="dest-spotlight__quote">&ldquo;Low peak, wide view.&rdquo;</p>
           <p class="dest-spotlight__desc">A climb above Vinzons with views back across the coast and out toward the Calaguas group.</p>
           <div class="chip-row"><span class="chip">Day hike</span><span class="chip">Coastal views</span><span class="chip">Guided climb</span></div>
-          <a href="#contact" class="btn btn--outline" data-auth-gate>View Destination</a>
+          <a href="destinations.php#dest-mt-panit" class="btn btn--outline" data-auth-gate>View Destination</a>
         </article>
       </div>
 
@@ -1300,7 +1300,7 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
       </div>
 
       <p class="craft__cta">
-        <a href="destinations.php" class="btn-pill btn-pill--orange magnetic">Find places to eat</a>
+        <a href="food.php" class="btn-pill btn-pill--orange magnetic">What to eat</a>
       </p>
     </div>
   </div>
@@ -1460,4 +1460,4 @@ $voicesAvg = $voicesTotal ? $voicesSum / $voicesTotal : 0;
 <!-- Bud's one-time welcome after signing in -->
 <?php require __DIR__ . '/includes/welcome-popup.php'; ?>
 
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<?php require __DIR__ . '/includes/footer.php'; ?>  

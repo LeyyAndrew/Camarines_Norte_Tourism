@@ -18,6 +18,32 @@
 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
+/* ---------- CONTENT SECURITY POLICY ----------
+   A fresh random nonce on every page load. Every inline <script> on the
+   site carries nonce="<?= $cspNonce ?>", so the browser runs our own
+   scripts and refuses anything an attacker manages to inject.
+
+   Report-only for now: violations are logged in the console (F12) but
+   nothing is blocked. Once the console is clean on every page, change
+   "Content-Security-Policy-Report-Only" to "Content-Security-Policy". */
+if (!isset($cspNonce)) {
+    $cspNonce = base64_encode(random_bytes(16));
+    $csp = implode('; ', [
+        "default-src 'self'",
+        "script-src 'self' 'nonce-$cspNonce' https://cdnjs.cloudflare.com https://unpkg.com https://player.vimeo.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "img-src 'self' data: https://unpkg.com https://*.tile.openstreetmap.org",
+        "frame-src https://player.vimeo.com",
+        "connect-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'self'",
+    ]);
+    header('Content-Security-Policy-Report-Only: ' . $csp);
+}
+
 /* Pulled in for search_allowed(), which is the single switch governing
    whether search needs an account (SEARCH_REQUIRE_LOGIN in that file).
 

@@ -2408,6 +2408,19 @@ $showIntro = true;
     if (!slug) return;
     var card = document.getElementById('dest-' + slug);
 
+    /* NEAR-MISS FALLBACK. The homepage "View Destination" buttons build
+       their slug from the name typed on the homepage. If that name is
+       worded a little differently from the one in the database
+       ("Mt. Panit" vs "Mount Panit Trail"), try a partial match on the
+       card slugs before giving up. */
+    if (!card && !location.search) {
+      var all = document.querySelectorAll('.dest-card[data-slug]');
+      for (var i = 0; i < all.length && !card; i++) {
+        var s = all[i].getAttribute('data-slug');
+        if (s.indexOf(slug) !== -1 || slug.indexOf(s) !== -1) card = all[i];
+      }
+    }
+
     /* The card is not in the grid because a filter or search is active
        (?q= / ?cat= / ?town=). Reload the unfiltered page at that card. */
     if (!card) {
