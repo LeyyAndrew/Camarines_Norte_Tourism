@@ -1,0 +1,7 @@
+# Files that should never end up inside the web server
+.git
+.gitignore
+.env
+.env.*
+Dockerfile
+.dockerignore
