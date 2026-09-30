@@ -1778,6 +1778,11 @@ require __DIR__ . '/includes/header.php';
 
   var LINE = 16;   /* px per line, near enough for one wheel notch */
 
+  /* Tell smooth-scroll libraries to leave this box alone, and make sure
+     no global "scroll-behavior:smooth" makes the wheel feel laggy. */
+  track.setAttribute('data-lenis-prevent', '');
+  track.style.scrollBehavior = 'auto';
+
   window.addEventListener('wheel', function (e) {
     if (e.ctrlKey) return;
     if (!track.contains(e.target)) return;
@@ -1800,6 +1805,12 @@ require __DIR__ . '/includes/header.php';
     if (step > 0 && at >= max - 1) return;
 
     e.preventDefault();
+    /* Stop the event here so a smooth-scroll library (Lenis, Locomotive,
+       a base.js wrapper...) never sees it and never scrolls the page
+       down at the same time. Without this the page and the row both
+       move, or the page wins and the row looks stuck. */
+    e.stopPropagation();
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
     /* Assigned, not scrollBy with smooth behaviour: a wheel wants to
        track the fingers 1:1. Smoothing here feels like lag. */
     track.scrollLeft = at + step;

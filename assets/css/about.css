@@ -1328,7 +1328,7 @@
 
 /* The row can be dragged, so it says so. grab/grabbing is the one cursor
    pair every reader already knows means "this moves". */
-.best__track{ cursor:grab; }
+.best__track{ cursor:grab; overscroll-behavior-x:contain; scroll-behavior:auto; }
 
 .best__track.is-dragging{ cursor:grabbing; user-select:none; }
 
