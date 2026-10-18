@@ -176,6 +176,16 @@
       if (el) places = JSON.parse(el.textContent) || [];
     } catch (e) { places = []; }
 
+    /* Coordinates can arrive as strings ("13.95") depending on how the
+       destination data was written. A string failed the typeof test
+       below and silently dropped the place from the map AND from reply
+       matching, so convert first. */
+    places.forEach(function (p) {
+      var la = parseFloat(p.la), lo = parseFloat(p.lo);
+      p.la = isFinite(la) ? la : null;
+      p.lo = isFinite(lo) ? lo : null;
+    });
+
     /* Only places with coordinates can go on a map. A destination with
        no pin is left out of the map and stays in the chat, which is
        where its photograph and description already live. */
@@ -183,13 +193,111 @@
       return typeof p.la === 'number' && typeof p.lo === 'number';
     });
 
+    if (window.console && places.length !== pinned.length) {
+      console.warn('Bud.Ai map: no coordinates for',
+        places.filter(function (p) { return p.la === null; })
+              .map(function (p) { return p.n; }));
+    }
+
     if (!pinned.length) return;   // nothing to map; leave the widget alone
 
-    /* Longest first so 'Mananap Falls ATV Adventure' is matched before
-       'Mananap Falls' can claim the same words. */
-    var byLength = places.slice().sort(function (a, b) {
-      return b.n.length - a.n.length;
-    });
+    /* ------------------------------------------------------------------
+       ALIASES
+
+       Bud (the model) rarely repeats a destination's full database name.
+       It says "Bagasbas" for "Bagasbas Beach" and "Calaguas Islands" for
+       "Calaguas Island". Matching only the exact name meant those
+       replies found nothing, so the map never moved.
+
+       Every place therefore gets a list of names it answers to:
+         1. its full name,
+         2. a short form with the generic trailing word removed
+            ("Bagasbas Beach" -> "Bagasbas"), used ONLY when no other
+            place would also claim that short form,
+         3. a plural/singular variant, and
+         4. hand-written extras below, for names that are not a simple
+            trim ("Tulis Peak, Mt. Bagacay", "Mt. Panit").
+       ------------------------------------------------------------------ */
+    var EXTRA_ALIASES = {
+      'Calaguas Island':          ['Calaguas Islands', 'Calaguas'],
+      'Bagasbas Beach':           ['Bagasbas'],
+      'Tulis Peak, Mt. Bagacay':  ['Tulis Peak', 'Mt. Bagacay', 'Mt Bagacay', 'Mount Bagacay', 'Tulis'],
+      'Mt. Panit':                ['Mt Panit', 'Mount Panit', 'Panit'],
+      'Shrine of the Black Nazarene': ['Black Nazarene Shrine'],
+      'First Rizal Monument':     ['Rizal Monument'],
+      'Turayog View Deck':        ['Turayog'],
+      'Parola Island':            ['Parola'],
+      'Pulong Guijanlo':          ['Guijanlo'],
+      'Taba Taba Beach Resort':   ['Taba Taba', 'Taba-Taba'],
+      'La Maestra Campsite and Resort': ['La Maestra'],
+      'Mangrove Eco Tourism Park': ['Mangrove Park', 'Mangrove Eco Park'],
+      'St. Francis of Assisi Parish Church': ['St. Francis of Assisi Church', 'San Francisco de Asis']
+    };
+    var GENERIC_TAIL = /\s+(beach|islands?|falls|peak|park|resort|festival|feast|river|view deck|monument|church|campsite)$/i;
+
+    function aliasesFor(p, all) {
+      var list = [p.n];
+      (EXTRA_ALIASES[p.n] || []).forEach(function (a) { list.push(a); });
+      var short = p.n.replace(GENERIC_TAIL, '');
+      if (short !== p.n && short.length > 3) list.push(short);
+      if (/island$/i.test(p.n)) list.push(p.n + 's');
+      /* First word alone ("Calaguas Group of Islands" -> "Calaguas"),
+         for names that are not a simple trim. Skipped for titles and
+         filler words; ambiguous ones are dropped later anyway. */
+      var first = p.n.split(/[\s,]+/)[0];
+      if (first.length >= 5 && !/^(first|shrine|mount|mangrove|pulong|black|st\.?)$/i.test(first)) list.push(first);
+      return list;
+    }
+
+    var aliasList = [];            // { text, lower, place }
+    (function () {
+      var claims = {};             // alias(lower) -> number of places claiming it
+      var raw = places.map(function (p) {
+        /* De-duplicate within ONE place first. 'Bagasbas' is produced
+           three ways for Bagasbas Beach (extras, trimmed name, first
+           word); counting each as a separate claim made it look
+           ambiguous and threw it away. */
+        var seenHere = {}, l = [];
+        aliasesFor(p, places).forEach(function (a) {
+          var k = a.toLowerCase();
+          if (seenHere[k]) return;
+          seenHere[k] = true;
+          l.push(a);
+        });
+        l.forEach(function (a, i) {
+          if (i === 0) return;
+          var k = a.toLowerCase();
+          claims[k] = (claims[k] || 0) + 1;
+        });
+        return { p: p, l: l };
+      });
+      var fullNames = {};
+      places.forEach(function (p) { fullNames[p.n.toLowerCase()] = true; });
+      raw.forEach(function (r) {
+        r.l.forEach(function (a, i) {
+          var k = a.toLowerCase();
+          // An alias shared by two places is ambiguous; an alias equal to
+          // another place's full name belongs to that place.
+          if (i > 0 && (claims[k] > 1 || fullNames[k])) return;
+          aliasList.push({ text: a, lower: k, place: r.p });
+        });
+      });
+      // Longest first so 'Mananap Falls ATV Adventure' beats 'Mananap Falls'.
+      aliasList.sort(function (a, b) { return b.text.length - a.text.length; });
+    })();
+
+    /* Find 'needle' in 'hay' only as a whole word, so 'Panit' does not
+       match inside 'Panitikan'. */
+    function indexOfWord(hay, needle, from) {
+      var at = from;
+      while ((at = hay.indexOf(needle, at)) !== -1) {
+        var before = at === 0 ? '' : hay.charAt(at - 1);
+        var after  = hay.charAt(at + needle.length);
+        if (!/[a-z0-9]/.test(before) && !/[a-z0-9]/.test(after)) return at;
+        at += 1;
+      }
+      return -1;
+    }
 
     var saved = loadSaved();
 
@@ -349,6 +457,7 @@
     var activeGroup = 'all';
     var savedOnly = false;
     var pending = null;      // a place asked for before the map existed
+    var queued = null;       // places a reply named before the map existed
     var home = null;         // the all-24 view, to return to
     /* False until the map has been aimed at something on purpose —
        by a reply, by a click, or by the visitor dragging it. Until
@@ -499,6 +608,7 @@
       /* Somebody clicked a place name while Leaflet was still
          downloading. Their click is honoured now rather than dropped. */
       if (pending) { var p = pending; pending = null; focusPlace(p); }
+      else if (queued) { var q = queued; queued = null; highlight(q); fitTo(q); }
     }
 
     function addPin(p) {
@@ -810,28 +920,31 @@
 
       linkNames(msg, found);
 
-      if (!map) return;                       // map not opened yet; nothing to move
       var names = found.map(function (p) { return p.n; });
+      if (!map) { queued = names; return; }   // aim the map at these once it exists
+      queued = null;
       highlight(names);
       fitTo(names);
     }
 
     function findPlaces(text, limit) {
       var hay = text.toLowerCase();
-      var hits = [], taken = [];
+      var hits = [], taken = [], seen = {};
 
-      for (var i = 0; i < byLength.length && hits.length < limit; i++) {
-        var name = byLength[i].n.toLowerCase();
-        var at = hay.indexOf(name);
+      for (var i = 0; i < aliasList.length && hits.length < limit; i++) {
+        var al = aliasList[i];
+        if (seen[al.place.n]) continue;
+        var at = indexOfWord(hay, al.lower, 0);
         if (at === -1) continue;
 
         var overlaps = taken.some(function (r) {
-          return at < r[1] && (at + name.length) > r[0];
+          return at < r[1] && (at + al.lower.length) > r[0];
         });
         if (overlaps) continue;
 
-        taken.push([at, at + name.length]);
-        if (markers[byLength[i].n] || byLength[i].la != null) hits.push(byLength[i]);
+        taken.push([at, at + al.lower.length]);
+        seen[al.place.n] = true;
+        if (typeof al.place.la === 'number' && typeof al.place.lo === 'number') hits.push(al.place);
       }
       return hits;
     }
@@ -840,8 +953,9 @@
        the map. Walks text nodes and rebuilds them out of createElement
        and textContent — the reply is still never treated as markup. */
     function linkNames(msg, found) {
-      var names = found.map(function (p) { return p.n; })
-                       .sort(function (a, b) { return b.length - a.length; });
+      var wanted = {};
+      found.forEach(function (p) { wanted[p.n] = true; });
+      var names = aliasList.filter(function (al) { return wanted[al.place.n]; });
 
       var walker = document.createTreeWalker(msg, NodeFilter.SHOW_TEXT, null);
       var targets = [];
@@ -856,14 +970,15 @@
         var lower = value.toLowerCase();
 
         var cuts = [];
-        names.forEach(function (n) {
+        names.forEach(function (al) {
           var from = 0, at;
-          while ((at = lower.indexOf(n.toLowerCase(), from)) !== -1) {
+          while ((at = indexOfWord(lower, al.lower, from)) !== -1) {
+            var end = at + al.lower.length;
             var clash = cuts.some(function (c) {
-              return at < c.end && (at + n.length) > c.start;
+              return at < c.end && end > c.start;
             });
-            if (!clash) cuts.push({ start: at, end: at + n.length, name: n });
-            from = at + n.length;
+            if (!clash) cuts.push({ start: at, end: end, name: al.place.n });
+            from = end;
           }
         });
 

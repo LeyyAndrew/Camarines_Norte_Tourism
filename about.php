@@ -625,6 +625,7 @@ require __DIR__ . '/includes/header.php';
            the clip fails, so it is worth exporting a frame from the clip
            itself rather than using a different photograph.
            ================================================================ -->
+      <div class="town-film-slot" id="townFilmSlot">
       <figure class="town-film" id="townFilm">
         <div class="town-film__frame">
           <div class="gradient-fill"></div>
@@ -648,6 +649,11 @@ require __DIR__ . '/includes/header.php';
               <svg class="town-film__icon--play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
             </button>
           </div>
+
+          <!-- Phones only: shown when the film is docked in the corner. -->
+          <button type="button" class="town-film__close" id="townFilmClose" aria-label="Close mini player" title="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
         </div>
 
         <figcaption class="map-figure__cap" id="mapReadout" aria-live="polite">
@@ -655,6 +661,7 @@ require __DIR__ . '/includes/header.php';
           <span class="map-readout__note">Point at a town on the map or in the list. Daet, the capital, is the one in amber.</span>
         </figcaption>
       </figure>
+      </div>
 
     <div class="province__map">
       <!-- ================================================================
@@ -1082,6 +1089,7 @@ require __DIR__ . '/includes/header.php';
         pausedOffscreen = true;
       }
     }
+    if (window.requestAnimationFrame) requestAnimationFrame(function () { if (window.updateFilmDock) window.updateFilmDock(); });
   }
 
   if (video) {
@@ -1191,6 +1199,77 @@ require __DIR__ . '/includes/header.php';
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) suspendFilm();
       else if (filmVisible()) resumeFilm();
+    });
+  }
+
+  /* ---- phone mini-player ----------------------------------------------
+     Below 1000px the film sits above the map and the list, so once you
+     scroll down to read a town's panel it is long gone. Instead of
+     pinning a big box over the text, the SAME figure (no second video,
+     no second download) is docked into a small corner player while a
+     town is playing and the reader is somewhere inside this section.
+
+       - appears only when the film has scrolled mostly off the top
+       - disappears when the reader leaves the section or comes back
+       - tap the player to jump back up to the full film
+       - X closes it; it stays closed until the full film is seen again
+     Same behaviour on phone and desktop; only the size differs (CSS).
+     -------------------------------------------------------------------- */
+  var slot = document.getElementById('townFilmSlot');
+  var stage = document.querySelector('.province__stage');
+  var closeBtn = document.getElementById('townFilmClose');
+  var dockDismissed = false;
+  var docked = false;
+
+  function setDock(on) {
+    if (on === docked || !film || !slot) return;
+    if (on) {
+      /* hold the film's place in the page so nothing jumps */
+      slot.style.height = film.getBoundingClientRect().height + 'px';
+      film.classList.add('is-docked');
+    } else {
+      film.classList.remove('is-docked');
+      slot.style.height = '';
+    }
+    docked = on;
+  }
+
+  function updateFilmDock() {
+    if (!film || !slot || !stage) return;
+    if (!film.classList.contains('is-playing')) { setDock(false); return; }
+    var tall = window.innerHeight || document.documentElement.clientHeight;
+    var s = slot.getBoundingClientRect();
+    var st = stage.getBoundingClientRect();
+    var h = docked ? s.height : film.getBoundingClientRect().height;
+    /* the full film is back in view: forget a previous close */
+    if (s.bottom > h * 0.6) dockDismissed = false;
+    var passed = s.bottom < h * 0.5;          /* scrolled mostly off the top */
+    var inSection = st.bottom > tall * 0.3;   /* still reading this section */
+    setDock(passed && inSection && !dockDismissed);
+  }
+  window.updateFilmDock = updateFilmDock;
+
+  var dockTick = false;
+  function queueDock() {
+    if (dockTick) return;
+    dockTick = true;
+    requestAnimationFrame(function () { dockTick = false; updateFilmDock(); });
+  }
+  window.addEventListener('scroll', queueDock, { passive: true });
+  window.addEventListener('resize', queueDock, { passive: true });
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      dockDismissed = true;
+      setDock(false);
+    });
+  }
+  if (film) {
+    film.addEventListener('click', function (e) {
+      if (!docked) return;
+      if (e.target.closest('button')) return;   /* play/pause and close keep their jobs */
+      slot.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
   }
 

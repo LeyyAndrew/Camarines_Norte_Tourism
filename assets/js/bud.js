@@ -598,6 +598,55 @@ document.addEventListener('DOMContentLoaded', function () {
                .join(' - ');
   }
 
+  /* A markdown table, however it arrived, becomes a tidy list.
+
+     The model sometimes sends a whole table on ONE line
+     ("| A | B | C | |---|---|---| | x | y | z | ..."), so rows cannot be
+     found by splitting on newlines. Instead every real cell is gathered
+     in order and cut into rows of N, where N is the number of divider
+     cells (---). Each body row then reads:
+
+         Bantayog Festival
+         Where: Daet  \u00b7  When: March\u2013May
+
+     No stylesheet change is needed: it is a normal bud__list. */
+  function tableToList(cells, dividers, firstLineCount, into) {
+    var n = dividers || firstLineCount || 3;
+    if (n < 1) n = 1;
+    var rows = [];
+    for (var i = 0; i < cells.length; i += n) rows.push(cells.slice(i, i + n));
+    if (!rows.length) return;
+
+    var head = rows.shift();
+    if (!rows.length) {                 // header only: show it as plain text
+      var p = document.createElement('p');
+      p.textContent = plain(head.join(', '));
+      into.appendChild(p);
+      return;
+    }
+
+    var ul = document.createElement('ul');
+    ul.className = 'bud__list';
+    rows.forEach(function (r) {
+      var li = document.createElement('li');
+      var strong = document.createElement('strong');
+      strong.textContent = plain(r[0]);
+      li.appendChild(strong);
+
+      var rest = [];
+      for (var c = 1; c < r.length; c++) {
+        var label = head[c] ? plain(head[c]) + ': ' : '';
+        rest.push(label + plain(r[c]));
+      }
+      if (rest.length) {
+        li.appendChild(document.createElement('br'));
+        li.appendChild(document.createTextNode(rest.join('  \u00b7  ')));
+      }
+      ul.appendChild(li);
+    });
+    into.appendChild(ul);
+  }
+
   function renderRich(text, into) {
     var lines = String(text).split('\n');
     var prose = [];
@@ -615,18 +664,34 @@ document.addEventListener('DOMContentLoaded', function () {
       list = null;   // the <ul> is already in the DOM; just stop adding
     }
 
+    /* Table cells collected from consecutive pipe lines. */
+    var tCells = [], tDividers = 0, tFirst = 0;
+    function flushTable() {
+      if (!tCells.length) { tDividers = 0; tFirst = 0; return; }
+      flushProse(); flushList();
+      tableToList(tCells, tDividers, tFirst, into);
+      tCells = []; tDividers = 0; tFirst = 0;
+    }
+
     lines.forEach(function (raw) {
       var line = String(raw);
 
-      if (isTableDivider(line)) return;          // drop it silently
-
       if (line.indexOf('|') !== -1) {
-        line = flattenRow(line);
-        if (line === '') return;
+        var parts = line.split('|').map(function (c) { return c.trim(); });
+        var real = [];
+        parts.forEach(function (c) {
+          if (c === '') return;
+          if (/^:?-{2,}:?$/.test(c)) { tDividers++; return; }
+          real.push(c);
+        });
+        if (!tFirst) tFirst = real.length;
+        tCells = tCells.concat(real);
+        return;
       }
+      flushTable();
 
       if (line.trim() === '') {
-        flushProse(); flushList();
+        flushProse(); flushList(); flushTable();
         return;
       }
 
@@ -658,6 +723,7 @@ document.addEventListener('DOMContentLoaded', function () {
       prose.push(plain(line));
     });
 
+    flushTable();
     flushProse();
 
     if (!into.childNodes.length) {
