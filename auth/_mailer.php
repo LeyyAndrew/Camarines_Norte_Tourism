@@ -69,9 +69,9 @@ define('MAIL_USER', auth_env('MAIL_USER'));
 define('MAIL_PASS', str_replace(' ', '', auth_env('MAIL_PASS')));   // spaces removed for you
 define('MAIL_NAME', auth_env('MAIL_NAME', 'Explore Camarines Norte'));
 
-require_once __DIR__ . '/PHPMailer/src/Exception.php';
-require_once __DIR__ . '/PHPMailer/src/PHPMailer.php';
-require_once __DIR__ . '/PHPMailer/src/SMTP.php';
+require_once __DIR__ . '/mailer_lib/src/Exception.php';
+require_once __DIR__ . '/mailer_lib/src/PHPMailer.php';
+require_once __DIR__ . '/mailer_lib/src/SMTP.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 
