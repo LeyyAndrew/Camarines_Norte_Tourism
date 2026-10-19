@@ -184,7 +184,7 @@ function gallery_fallback(): array
                 ['filename' => 'Museum.jpg',   'place' => 'Goldsmith shops',              'town' => 'Paracale',  'alt' => 'Goldsmith shops in Paracale',                'ratio' => 'ratio-4x3'],
                 ['filename' => 'Monument.jpg', 'place' => 'First Rizal Monument',         'town' => 'Daet',      'alt' => 'The first Rizal Monument, Daet',             'ratio' => 'ratio-3x4'],
                 ['filename' => 'Church.jpg',   'place' => 'Shrine of the Black Nazarene', 'town' => 'Capalonga', 'alt' => 'The Shrine of the Black Nazarene, Capalonga','ratio' => 'ratio-1x1'],
-                ['filename' => 'FishPort.JPG', 'place' => 'Fishing port',                 'town' => 'Mercedes',  'alt' => 'The fishing port at Mercedes',               'ratio' => 'ratio-4x5'],
+                ['filename' => 'fish.JPG', 'place' => 'Fishing port',                 'town' => 'Mercedes',  'alt' => 'The fishing port at Mercedes',               'ratio' => 'ratio-4x5'],
             ],
         ],
     ];
