@@ -11,19 +11,22 @@
    1. Download PHPMailer: https://github.com/PHPMailer/PHPMailer
       (Code > Download ZIP). Copy its "src" folder to:
           auth/PHPMailer/src/
-   2. Put MAIL_USER and MAIL_PASS in Tourism_System/.env
-      (see .env.example). Nothing to edit in this file.
+      (the folder name must be exactly "PHPMailer" - Linux/Render
+      cares about capital letters)
+   2. LOCAL (XAMPP): put MAIL_USER and MAIL_PASS in Tourism_System/.env
+      ON RENDER: add MAIL_USER, MAIL_PASS (and optionally MAIL_NAME)
+      in the Render dashboard > your service > Environment.
    3. MAIL_PASS is a Gmail APP PASSWORD, not your normal password.
       Google account > Security > 2-Step Verification (turn on),
-      then search "App passwords", create one, paste the 16 letters
-      into .env.
+      then search "App passwords", create one, paste the 16 letters.
 
    Never commit .env to GitHub.
    =================================================================== */
 
-/* ---------- read the secrets from Tourism_System/.env ----------
-   The password lives in .env, never in this file, so this file is
-   safe to commit. .env must be listed in .gitignore. */
+/* ---------- read the secrets ----------
+   1) from Tourism_System/.env  (local / XAMPP)
+   2) otherwise from the server's environment variables (Render)
+   The password never lives in this file, so it is safe to commit. */
 function auth_env($key, $default = '') {
     static $vars = null;
 
@@ -42,7 +45,24 @@ function auth_env($key, $default = '') {
         }
     }
 
-    return $vars[$key] ?? $default;
+    // 1) .env file
+    if (isset($vars[$key]) && $vars[$key] !== '') {
+        return $vars[$key];
+    }
+
+    // 2) real environment variables (Render)
+    $env = getenv($key);
+    if ($env !== false && $env !== '') {
+        return $env;
+    }
+    if (isset($_ENV[$key]) && $_ENV[$key] !== '') {
+        return $_ENV[$key];
+    }
+    if (isset($_SERVER[$key]) && $_SERVER[$key] !== '') {
+        return $_SERVER[$key];
+    }
+
+    return $default;
 }
 
 define('MAIL_USER', auth_env('MAIL_USER'));
@@ -56,7 +76,8 @@ require_once __DIR__ . '/PHPMailer/src/SMTP.php';
 use PHPMailer\PHPMailer\PHPMailer;
 
 /* Returns true if Gmail accepted the message, false otherwise.
-   The reason for a failure goes to the Apache error log. */
+   The reason for a failure goes to the error log
+   (Apache log locally, the Logs tab on Render). */
 function auth_send_mail($to, $subject, $body) {
     $mail = new PHPMailer(true);
 
@@ -69,6 +90,7 @@ function auth_send_mail($to, $subject, $body) {
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
         $mail->CharSet    = 'UTF-8';
+        $mail->Timeout    = 15;   // give up after 15s instead of hanging if the port is blocked
 
         /* Gmail only sends "From" the account you logged in with. */
         $mail->setFrom(MAIL_USER, MAIL_NAME);
@@ -80,7 +102,7 @@ function auth_send_mail($to, $subject, $body) {
         $mail->send();
         return true;
     } catch (Throwable $e) {
-        error_log('mailer: ' . $mail->ErrorInfo);
+        error_log('mailer: ' . $mail->ErrorInfo . ' | ' . $e->getMessage());
         return false;
     }
 }
