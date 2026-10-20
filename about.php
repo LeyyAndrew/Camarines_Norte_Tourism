@@ -1530,8 +1530,6 @@ require __DIR__ . '/includes/header.php';
       </dl>
 
       <p class="note">Names and towns are confirmed, but <strong>dates move year to year</strong> — Pinyasan generally falls in June and Bantayog in April, and neither is fixed. Get the current programme from the Provincial Tourism Office before publishing, and put a "last checked" date on the page. Worth a festivals.php of its own once you have the calendar.</p>
-
-      <a href="destinations.php" class="btn btn--orange crack-copy__cta">Plan around a fiesta</a>
     </div>
 
   </div>
