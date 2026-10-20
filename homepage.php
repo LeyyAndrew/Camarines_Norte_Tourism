@@ -519,11 +519,11 @@ $spotPhotos = [
   ['Mercedes-Canimog.jpg',           'Canimog Island'],
   ['Mercedes-Pebble.jpg',            'Pebble Beach'],
   /* ---- Paracale ---- */
-  ['Paracale-Macolabo-island.jpg',   'Macolabo Island'],
+  ['Paracale-Macolabo-Island.jpg',   'Macolabo Island'],
   ['paracale-gumaus.jpg',            'Gumaus Beach'],
   /* ---- San Lorenzo Ruiz ---- */
   ['SlRuiz-NacaliFalls.jpg',         'Nacali Falls'],
-  ['slruiz-mampili.jpg',             'Mampili River'],
+  ['slruiz-Mampili.jpg',             'Mampili River'],
   /* ---- San Vicente ---- */
   ['SanVicente-Mananap.jpg',         'Mananap Falls'],
   ['SanVicente-Mananap-Atv.jpg',     'Mananap Falls ATV Adventure'],
