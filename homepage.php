@@ -520,16 +520,16 @@ $spotPhotos = [
   ['Mercedes-Pebble.jpg',            'Pebble Beach'],
   /* ---- Paracale ---- */
   ['Paracale-Macolabo-Island.jpg',   'Macolabo Island'],
-  ['paracale-gumaus.jpg',            'Gumaus Beach'],
+  ['Paracale-Gumaus.jpg',            'Gumaus Beach'],
   /* ---- San Lorenzo Ruiz ---- */
   ['SlRuiz-NacaliFalls.jpg',         'Nacali Falls'],
-  ['slruiz-Mampili.jpg',             'Mampili River'],
+  ['SlRuiz-Mampili.jpg',             'Mampili River'],
   /* ---- San Vicente ---- */
   ['SanVicente-Mananap.jpg',         'Mananap Falls'],
   ['SanVicente-Mananap-Atv.jpg',     'Mananap Falls ATV Adventure'],
   /* ---- Santa Elena ---- */
   ['StaElena-BusayFalls.jpg',        'Busay Falls'],
-  ['StaElena-delmoro.jpg',           'Del Moro Park'],
+  ['StaElena-Delmoro.jpg',           'Del Moro Park'],
   /* ---- Talisay ---- */
   ['Talisay-Mangroves.jpg',          'Mangrove Eco Tourism Park'],
   ['Talisay-Church.jpg',             'St. Francis of Assisi Parish Church'],
