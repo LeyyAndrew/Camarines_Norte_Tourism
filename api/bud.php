@@ -73,7 +73,7 @@ const BUD_TIMEOUT_SECONDS   = 60;   // a long itinerary takes longer than a chat
    on every hit needs a ceiling, or one bored visitor with a loop can
    run up a bill overnight. This is a floor, not a fortress — see the
    note at the bottom about doing it per IP. */
-const BUD_MAX_PER_WINDOW    = 25;
+const BUD_MAX_PER_WINDOW    = 40;   // a plan is several calls (chat turns, build, edits)
 
 /* The longest trip Bud will plan. Beyond this the plan is not
    realistic, so it is refused rather than shortened. */
@@ -447,7 +447,7 @@ function bud_read_date(string $text, DateTimeImmutable $today, DateTimeZone $tz)
  * real, and anything unreadable is left out. Returns '' when there is
  * nothing usable, and the chat then behaves exactly as before.
  */
-function bud_plan_block($p, DateTimeZone $tz): string
+function bud_plan_block($p, DateTimeZone $tz, bool $forEdit = false): string
 {
     if (!is_array($p)) {
         return '';
@@ -519,6 +519,14 @@ function bud_plan_block($p, DateTimeZone $tz): string
         $head[] = 'budget level: ' . $b['budget'];
     }
 
+    if ($forEdit) {
+        /* The planning chat only needs to SEE the trip, with its day numbers,
+           to work out which days a change touches. */
+        return "THE TRIP ON SCREEN (the visitor can see it; its days are numbered as below):\n"
+             . ($head ? implode(', ', $head) . "\n" : '')
+             . implode("\n", $lines);
+    }
+
     return "THE TRIP YOU JUST BUILT FOR THIS VISITOR. They can see it on screen as a card, and it was saved to "
          . "their account.\n"
          . ($head ? implode(', ', $head) . "\n" : '')
@@ -561,6 +569,106 @@ function bud_day_window($start, $end): array {
         return [null, null];
     }
     return [$s, $e];
+}
+
+/** Spread a day's stops evenly across the visitor's hours (a 15 minute gap
+    between stops), keeping the stops and their order. Used when only the
+    daily hours changed, so the stops stay and just the times move. */
+function bud_retime_day(array $items, string $ds, string $de): array {
+    $n = count($items);
+    if ($n === 0) { return $items; }
+    $s    = bud_time_min($ds);
+    $e    = bud_time_min($de);
+    $gap  = $n > 1 ? 15 : 0;
+    $slot = max(20, (int) floor(($e - $s - $gap * ($n - 1)) / $n));
+    foreach ($items as $i => $it) {
+        $a = $s + $i * ($slot + $gap);
+        $b = min($e, $a + $slot);
+        $items[$i]['time'] = sprintf('%02d:%02d', intdiv($a, 60), $a % 60);
+        $items[$i]['end']  = sprintf('%02d:%02d', intdiv($b, 60), $b % 60);
+    }
+    return $items;
+}
+
+/** Which days does "remove day 2" / "delete the last day" / "drop days 1 and 3"
+    mean? Read from the visitor's own words so it does not depend on the
+    model filling in the edit correctly. Returns day numbers (1-based). */
+function bud_removed_days(string $msg, int $count): array {
+    $words = ['first' => 1, 'second' => 2, 'third' => 3, 'fourth' => 4, 'fifth' => 5,
+              'sixth' => 6, 'seventh' => 7, 'eighth' => 8, 'ninth' => 9, 'tenth' => 10];
+    $m = strtolower($msg);
+    $verb = '(?:remove|delete|drop|cut|skip|cancel|take\s+out|get\s+rid\s+of)';
+    $skip = '(?:\s+(?:the|my|whole|entire|all|of))*';
+    $out = [];
+    if (preg_match('/\b' . $verb . $skip . '\s+days?\s*#?\s*((?:\d{1,2}(?:\s*(?:,|and|&)\s*)?)+)/', $m, $x)) {
+        preg_match_all('/\d{1,2}/', $x[1], $nums);
+        foreach ($nums[0] as $n) { $out[(int) $n] = true; }
+    }
+    if (preg_match('/\b' . $verb . $skip . '\s+(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|last)\s+day\b/', $m, $x)) {
+        $out[$x[1] === 'last' ? $count : $words[$x[1]]] = true;
+    }
+    $res = [];
+    foreach (array_keys($out) as $n) { if ($n >= 1 && $n <= $count) { $res[] = $n; } }
+    sort($res);
+    return $res;
+}
+
+/** Which days does "keep day 1, completely change day 2" mean? Read from the
+    visitor's own words so a change to one day does not depend on the model
+    filling in the edit correctly. Returns ['change' => [...], 'keep' => [...]]
+    as 1-based day numbers; a day named in both is kept. */
+function bud_edit_days(string $msg, int $count): array {
+    $m     = strtolower($msg);
+    $keepV = '(?:preserve|keep|leave|retain|maintain|don.?t\s+(?:touch|change)|do\s+not\s+(?:touch|change))';
+    $chgV  = '(?:change|replace|redo|rework|refresh|revamp|redesign|regenerate|swap|update|modify|different|new)';
+    $fill  = '(?:\s+(?:the|my|whole|entire|same|completely|totally|all))*';
+    $keep  = [];
+    $chg   = [];
+    if (preg_match_all('/\b' . $keepV . $fill . '\s+days?\s*#?\s*(\d{1,2})\b/', $m, $x)) {
+        foreach ($x[1] as $n) { $keep[(int) $n] = true; }
+    }
+    if (preg_match_all('/\b' . $chgV . $fill . '\s+days?\s*#?\s*(\d{1,2})\b/', $m, $x)) {
+        foreach ($x[1] as $n) { $chg[(int) $n] = true; }
+    }
+    if (preg_match_all('/\bdays?\s*#?\s*(\d{1,2})\b(?:(?!\bdays?\b)[^.,;]){0,40}\b(?:different|new|changed|replaced|redone|refreshed)\b/', $m, $x)) {
+        foreach ($x[1] as $n) { $chg[(int) $n] = true; }
+    }
+    $k = [];
+    $c = [];
+    foreach (array_keys($keep) as $n) { if ($n >= 1 && $n <= $count) { $k[] = $n; } }
+    foreach (array_keys($chg) as $n) {
+        if ($n >= 1 && $n <= $count && !isset($keep[$n])) { $c[] = $n; }
+    }
+    sort($k);
+    sort($c);
+    return ['change' => $c, 'keep' => $k];
+}
+
+/** Does the visitor want the named day replaced outright, rather than tweaked?
+    Then none of the day's old stops may come back. */
+function bud_wants_fresh_day(string $msg): bool {
+    $m = strtolower($msg);
+    return preg_match('/\b(?:completely|totally|entirely|whole|brand\s+new|all\s+new|from\s+scratch|fresh|different|redo|rework|revamp|redesign|regenerate)\b/', $m) === 1
+        || preg_match('/\b(?:change|replace|refresh)\s+(?:the\s+|my\s+)?days?\s*#?\d/', $m) === 1;
+}
+
+/** Do a day's stops all sit inside the visitor's hours, each with a start and
+    an end, in order and without overlapping? Used to decide whether a day
+    needs its times redone. */
+function bud_day_fits(array $items, string $ds, string $de): bool {
+    $s = bud_time_min($ds);
+    $e = bud_time_min($de);
+    $prevEnd = $s;
+    foreach ($items as $it) {
+        $t  = bud_parse_time($it['time'] ?? null);
+        $en = bud_parse_time($it['end'] ?? null);
+        if ($t === null || $en === null) { return false; }
+        $a = bud_time_min($t);
+        $b = bud_time_min($en);
+        if ($a < $prevEnd || $b <= $a || $b > $e) { return false; }
+        $prevEnd = $b;
+    }
+    return true;
 }
 
 /** "Friday, 13 November 2026" */
@@ -615,6 +723,65 @@ function bud_fail(int $status, string $message, string $logLine = ''): void {
     bud_out($status, ['error' => $message]);
 }
 
+/* ---- saved chat, kept on the visitor's ACCOUNT ----
+   GET ?session=1                         -> { user, session }
+   POST { mode:'session', session:{...} } -> saves   (401 if not signed in)
+   POST { mode:'session', clear:true }    -> deletes
+   Handled before the AI rate limit and before any model call: it costs
+   nothing. The user id comes from the PHP session, never from the browser,
+   so one account cannot read or overwrite another's chat.
+   ASSUMES login sets $_SESSION['user_id'] and config/database.php gives $pdo. */
+$budReqMethod = $_SERVER['REQUEST_METHOD'] ?? '';
+$budSessBody  = null;
+if ($budReqMethod === 'POST') {
+    $budPeek = json_decode((string) file_get_contents('php://input'), true);
+    if (is_array($budPeek) && ($budPeek['mode'] ?? '') === 'session') { $budSessBody = $budPeek; }
+}
+if (($budReqMethod === 'GET' && isset($_GET['session'])) || $budSessBody !== null) {
+    if (session_status() === PHP_SESSION_NONE) { session_start(); }
+    $budUid = (int) ($_SESSION['user_id'] ?? 0);
+    session_write_close();
+
+    if ($budUid <= 0) {
+        if ($budReqMethod === 'GET') { bud_out(200, ['user' => 0, 'session' => null]); }
+        bud_out(401, ['error' => 'Sign in to keep this chat on your account.']);
+    }
+    try {
+        require_once __DIR__ . '/../config/database.php';
+        if (!isset($pdo) || !($pdo instanceof PDO)) { throw new RuntimeException('no PDO'); }
+        $pdo->exec('CREATE TABLE IF NOT EXISTS bud_chat_sessions (
+            user_id    INT UNSIGNED NOT NULL PRIMARY KEY,
+            data       MEDIUMTEXT   NOT NULL,
+            updated_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) DEFAULT CHARSET=utf8mb4');
+
+        if ($budReqMethod === 'GET') {
+            $st = $pdo->prepare('SELECT data FROM bud_chat_sessions WHERE user_id = ?');
+            $st->execute([$budUid]);
+            $row = $st->fetchColumn();
+            $sv  = $row ? json_decode((string) $row, true) : null;
+            bud_out(200, ['user' => $budUid, 'session' => is_array($sv) ? $sv : null]);
+        }
+        if (!empty($budSessBody['clear'])) {
+            $pdo->prepare('DELETE FROM bud_chat_sessions WHERE user_id = ?')->execute([$budUid]);
+            bud_out(200, ['ok' => true]);
+        }
+        $sv = $budSessBody['session'] ?? null;
+        if (!is_array($sv) || ($sv['v'] ?? null) !== 1 || !is_array($sv['t'] ?? null)) {
+            bud_fail(400, 'Not a chat session.');
+        }
+        $sv['t'] = array_slice($sv['t'], -80);
+        $enc = json_encode($sv, JSON_UNESCAPED_UNICODE);
+        if ($enc === false || strlen($enc) > 600000) { bud_fail(413, 'Chat too large to save.'); }
+        $pdo->prepare('INSERT INTO bud_chat_sessions (user_id, data) VALUES (?, ?)
+                       ON DUPLICATE KEY UPDATE data = VALUES(data)')->execute([$budUid, $enc]);
+        bud_out(200, ['ok' => true]);
+    } catch (Throwable $e) {
+        error_log('[bud.php] chat store: ' . $e->getMessage());
+        bud_fail(500, 'Could not reach the chat store.');
+    }
+}
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     bud_fail(405, 'Send this endpoint a POST request.');
 }
@@ -658,6 +825,8 @@ if (!is_array($body)) {
    limit, the grounding and the error handling above rather than
    duplicating all four in a second file; only the prompt and the
    shape of the answer differ. */
+$skipModel = false;   // true only for an edit that needs no model call
+$prevDays = []; $regenAll = false;
 $modeIn = $body['mode'] ?? 'chat';
 $mode   = $modeIn === 'itinerary' ? 'itinerary'
         : ($modeIn === 'plan_chat' ? 'plan_chat' : 'chat');
@@ -966,6 +1135,13 @@ Return ONLY a JSON object. No markdown fence, no text outside it.
     "name": null,
     "dayStart": null,
     "dayEnd": null
+  },
+  "edit": {
+    "scope": "",
+    "days": [],
+    "removeDays": [],
+    "removePlaces": [],
+    "note": ""
   }
 }
 
@@ -988,9 +1164,22 @@ NEVER SAY WHAT YOU ASSUMED FOR THESE FOUR. There is nothing to assume. If any of
 Everything below is optional. Use what they tell you and never interrogate. Anything they leave out gets a sensible default, and you say in your reply what you assumed.
 - interests: any of beaches, waterfalls, islands, hiking, heritage, food, relaxed, adventure (surfing or diving is adventure, "chill" is relaxed, "history" or "old church" is heritage). If they say nothing, a balanced mix is used.
 - places: places they ask you to include, copied EXACTLY from the PLACE NOTES below.
-- perDay: places per day, 1 to 3. Slow is 1, normal is 2, packed is 3. Never ask about it; work it out from how they talk. Default 2.
+- perDay: places per day, 1 to 3. Slow is 1, normal is 2, packed is 3. Never ask about it; work it out from how they talk. Default 2. "just 3 stops", "only 2 stops" or "3 places" means that many PER DAY unless they say total or overall; always set perDay to that number, and say "per day" in your reply so they can correct you.
 - name: only if they give the trip a name, in their exact words. Otherwise null, and Bud names it. Never ask for one.
 - dayStart and dayEnd: the daily hours they want to be out and about, as 24-hour HH:MM. "8am to 5pm", "8-5" and "from 8 to 5" are "08:00" and "17:00"; "9 until 4 in the afternoon" is "09:00" and "16:00". Hours are NEVER trip dates: a pair of small numbers like "8-5" or "8 to 5", especially beside words such as itinerary, day, daily, hours or per day, is a time window and must not go into startDate or endDate. A date always names a month or is a day-month pair like "5 August" or "8/5/2027" with a year. If it could honestly be either, ask which they mean. Never ask for hours; take them only when volunteered, and keep them until the visitor changes them. Default null.
+
+EDITING A TRIP THAT WAS ALREADY BUILT
+Only when the text THIS TRIP WAS ALREADY BUILT appears below. Fill in "edit" so the program changes ONLY what the visitor asked about and keeps every other day exactly as it is. In every other situation leave edit empty: scope "", days [], removeDays [], removePlaces [], note "".
+- scope "days": the change touches particular days. List their numbers in "days", numbered as on the trip on screen. "swap the beach on day 2 for a waterfall" is scope days, days [2]. "add Malatap Falls" with no day named is scope days, days [] (the program puts it on the day it fits best). "add a day" or "make it 4 days" is scope days, days [], and nights goes up to match: the new day is written and the existing days stay.
+- scope "all": the change really affects every day, such as a new budget, a new interest, or a different number of stops a day ("make it cheaper", "more relaxed").
+- scope "dates": only the dates or the daily hours move ("start a day later", "hours 8 to 5"). Nothing is rewritten; the days are re-dated or re-timed.
+- removeDays: days to take out. "remove day 2" is removeDays [2] and nights goes down by one. With no day named, the last day is the one dropped.
+- scope "new": they want a completely different trip, not a change to this one.
+- note: their request in a short sentence, in your own words ("swap the beach for a waterfall").
+- Never list a day the visitor did not ask to change. When unsure, choose the smaller change.
+- Change the length through nights. Only set endDate if the visitor gave an end date themselves.
+- removePlaces: places the visitor takes out or swaps away, copied EXACTLY from the PLACE NOTES. "swap Bagasbas Beach for the shrine" is removePlaces ["Bagasbas Beach"], and the shrine goes into brief.places. The program finds which day the removed place is on, so leave days [] unless the visitor named a day. NEVER guess a day number for a place swap.
+- If the visitor takes a place out or swaps it for another, also remove the old one from brief.places so it is not put back.
 
 HOW TO TALK
 - This is a conversation, not a form. There is no list of questions to get through and no fixed order. Read what they said, answer it the way a person would, and let that decide what comes next.
@@ -1127,6 +1316,13 @@ TXT;
         $knOut['dayEnd']   = $knDe;
     }
 
+    /* The length is carried by nights. A stale end date left over from the
+       trip being edited would override a new length ("add a day" would do
+       nothing), so it is not shown to the model. */
+    if (($body['rebuild'] ?? false) === true && isset($knOut['nights'])) {
+        unset($knOut['endDate']);
+    }
+
     if ($knOut) {
         $instructions .= "\n\nALREADY WORKED OUT EARLIER IN THIS CHAT (keep all of it in brief on every turn "
             . "unless the visitor changes it): " . json_encode($knOut, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -1143,6 +1339,16 @@ TXT;
                 . "date that did not come from the visitor, and treat hours like 8-5 as dayStart and dayEnd. "
                 . "A new budget replaces the old one: put an exact amount in "
                 . "budgetAmount with its budgetBasis. Do not ask whether there is anything else to add.";
+
+        /* Show it the trip itself, so it can say WHICH days a change touches. */
+        try {
+            $pcPb = bud_plan_block($body['plan'] ?? null, $budTz, true);
+            if ($pcPb !== '') {
+                $instructions .= "\n\n" . $pcPb;
+            }
+        } catch (Throwable $e) {
+            error_log('[bud.php] trip on screen unavailable to the planning chat: ' . $e->getMessage());
+        }
         }
     }
 
@@ -1284,6 +1490,222 @@ if ($mode === 'itinerary') {
         }
     }
     $bMust = array_slice(array_values($bMust), 0, max(1, ($bNights + 1) * $bPerDay));
+
+    /* ---- AN EDIT TO A TRIP THE VISITOR ALREADY HAS ----
+       Until now every change rebuilt the whole trip, so asking to swap
+       Day 2 also reshuffled Days 1 and 3. Now the browser sends back the
+       trip on screen ('previous') and what the change touches ('edit'),
+       and this decides, day by day, what is rewritten:
+
+         - a day the change does not touch is copied across untouched
+           (re-dated if the start moved, re-timed if the hours moved);
+         - only the days that need it are written by the model;
+         - a longer trip gets new days at the end, a shorter one loses
+           its last days (or the day they named).
+
+       The model is told which days to write, and the code below puts
+       back anything it was not asked to change, so a stray rewrite of
+       Day 1 cannot get through. Nothing from the browser is trusted:
+       every stop is checked against the destination list. */
+    $prevIn  = is_array($body['previous'] ?? null) ? $body['previous'] : null;
+    $edIn    = is_array($body['edit'] ?? null) ? $body['edit'] : [];
+    $edScope = in_array($edIn['scope'] ?? '', ['days', 'all', 'dates', 'new'], true) ? $edIn['scope'] : '';
+    $total   = $bNights + 1;
+
+    $prevDays = []; $base = []; $regen = []; $regenAll = false;
+    $swapped = 0; $banned = []; $avoid = []; $mustTodo = $bMust; $editNote = ''; $prevName = ''; $prevSummary = ''; $windowChanged = false;
+
+    if ($prevIn !== null && $edScope !== 'new') {
+        foreach (array_slice(array_values((array) ($prevIn['days'] ?? [])), 0, BUD_MAX_NIGHTS + 1) as $pd) {
+            $its = [];
+            $pdItems = is_array($pd) ? (array) ($pd['items'] ?? []) : [];
+            foreach (array_slice(array_values($pdItems), 0, 6) as $it) {
+                if (!is_array($it)) { continue; }
+                $slug = trim((string) ($it['destId'] ?? ''));
+                if ($slug === '' || !isset($bMustPool[$slug])) { continue; }
+                $its[] = [
+                    'destId' => $slug,
+                    'time'   => bud_parse_time($it['time'] ?? null) ?? '',
+                    'end'    => bud_parse_time($it['end'] ?? null) ?? '',
+                    'note'   => bud_cut(trim((string) ($it['note'] ?? '')), 200),
+                ];
+            }
+            $prevDays[] = $its;
+        }
+        if (!array_filter($prevDays)) { $prevDays = []; }
+    }
+
+    if ($prevDays) {
+        $prevName    = bud_cut(trim((string) ($prevIn['name'] ?? '')), 160);
+        $prevSummary = bud_cut(trim((string) preg_replace('/\s*Heads up:.*$/s', '', (string) ($prevIn['summary'] ?? ''))), 400);
+        $editNote    = bud_cut(trim((string) preg_replace('/[\x00-\x1f]+/', ' ', (string) ($edIn['note'] ?? ''))), 240);
+
+        /* Days the visitor asked to take out ("remove day 2"). */
+        $removed = [];
+        foreach (array_slice((array) ($edIn['removeDays'] ?? []), 0, 10) as $x) {
+            if (is_numeric($x) && (int) $x >= 1 && (int) $x <= count($prevDays)) { $removed[(int) $x] = true; }
+        }
+        $src = [];
+        foreach ($prevDays as $i => $its) {
+            if (!isset($removed[$i + 1])) { $src[] = $its; }
+        }
+        if (!$src) { $src = $prevDays; }   // never take out every day
+
+        /* One entry per day of the NEW trip: the stops it already had, or
+           null when it is a new day at the end. */
+        for ($i = 0; $i < $total; $i++) {
+            $base[$i] = isset($src[$i]) ? $src[$i] : null;
+        }
+
+        /* The days the change touches, numbered as in the NEW trip. */
+        $edDays = [];
+        foreach (array_slice((array) ($edIn['days'] ?? []), 0, 12) as $x) {
+            if (is_numeric($x) && (int) $x >= 1 && (int) $x <= $total) { $edDays[(int) $x] = true; }
+        }
+        $edDays = array_keys($edDays);
+
+        /* Places the visitor took out or swapped away. They are matched by
+           name to the destination list, banned from every day the model
+           writes, and any day that currently holds one is rewritten, so
+           the swap lands on the right day even when the model named the
+           wrong day or none. */
+        foreach (array_slice((array) ($edIn['removePlaces'] ?? []), 0, 6) as $x) {
+            $k = preg_replace('/[^a-z0-9]+/', '', strtolower((string) $x));
+            if ($k === '') { continue; }
+            foreach ($budSlugs as $slug => $d) {
+                if (preg_replace('/[^a-z0-9]+/', '', strtolower((string) $d['name'])) === $k) {
+                    $banned[$slug] = true;
+                    break;
+                }
+            }
+        }
+        if ($banned) {
+            $bMust = array_values(array_diff($bMust, array_keys($banned)));
+        }
+
+        /* A direct one-for-one swap (the Swap button): the new place takes
+           the old one's exact time slot and nothing else on the trip
+           moves. No model is involved, so the times cannot be shuffled. */
+        $swIn = is_array($edIn['swap'] ?? null) ? $edIn['swap'] : [];
+        if ($swIn) {
+            $fromK = preg_replace('/[^a-z0-9]+/', '', strtolower((string) ($swIn['from'] ?? '')));
+            $toK   = preg_replace('/[^a-z0-9]+/', '', strtolower((string) ($swIn['to'] ?? '')));
+            $fromSlug = null; $toSlug = null;
+            foreach ($budSlugs as $slug => $d) {
+                $nk = preg_replace('/[^a-z0-9]+/', '', strtolower((string) $d['name']));
+                if ($nk === $fromK) { $fromSlug = $slug; }
+                if ($nk === $toK)   { $toSlug   = $slug; }
+            }
+            if ($fromSlug !== null && $toSlug !== null && $fromSlug !== $toSlug) {
+                $already = false;
+                foreach ($base as $its) {
+                    foreach ((array) $its as $b) { if ($b['destId'] === $toSlug) { $already = true; } }
+                }
+                if (!$already) {
+                    foreach ($base as $i => $its) {
+                        if (!is_array($its)) { continue; }
+                        foreach ($its as $k => $b) {
+                            if ($b['destId'] === $fromSlug) {
+                                $base[$i][$k]['destId'] = $toSlug;
+                                $base[$i][$k]['note']   = bud_cut((string) ($budSlugs[$toSlug]['desc'] ?? ''), 200);
+                                $swapped = $i + 1;
+                                break 2;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        $pb = is_array($prevIn['brief'] ?? null) ? $prevIn['brief'] : [];
+        [$pDs, $pDe]   = bud_day_window($pb['dayStart'] ?? null, $pb['dayEnd'] ?? null);
+        $windowChanged = ($pDs !== $bDayStart) || ($pDe !== $bDayEnd);
+
+        $prevStart    = bud_parse_date($prevIn['startDate'] ?? '', $budTz);
+        $datesChanged = $prevStart !== null && $prevStart->format('Y-m-d') !== $bStart->format('Y-m-d');
+
+        /* Only consulted when the browser did not say what the change
+           touches: did the brief itself move (interests, pace, budget)? */
+        $pbInterests = [];
+        foreach ((array) ($pb['interests'] ?? []) as $x) {
+            if (in_array($x, $allowedInterests, true)) { $pbInterests[$x] = true; }
+        }
+        $pbInterests  = array_keys($pbInterests);
+        sort($pbInterests);
+        $nowInterests = array_values(array_unique($bInterests));
+        sort($nowInterests);
+        $pbAmount = max(0, bud_parse_amount($pb['budgetAmount'] ?? 0));
+        $budgetChanged = ($bAmount > 0 || $pbAmount > 0)
+            ? ($pbAmount !== $bAmount || ($bAmount > 0 && ($pb['budgetBasis'] ?? 'total') !== $bBasis))
+            : (isset($pb['budget']) && $pb['budget'] !== $bBudget);
+        $briefChanged = ($pbInterests && $pbInterests !== $nowInterests)
+                     || (isset($pb['perDay']) && (int) $pb['perDay'] !== $bPerDay)
+                     || $budgetChanged;
+
+        $basePresent = [];
+        foreach ($base as $its) {
+            foreach ((array) $its as $b) { $basePresent[$b['destId']] = true; }
+        }
+        $mustNew = [];
+        foreach ($bMust as $s) {
+            if (!isset($basePresent[$s])) { $mustNew[] = $s; }
+        }
+
+        $regenAll = $edScope === 'all' || ($edScope === '' && $briefChanged);
+        if (!$regenAll) {
+            foreach ($base as $i => $its) {
+                if ($its === null) { $regen[$i] = true; }          // a new day at the end
+            }
+            foreach ($edDays as $dn) { $regen[$dn - 1] = true; }   // a day they named
+            foreach ($base as $i => $its) {                        // a day holding a removed place
+                foreach ((array) $its as $b) {
+                    if (isset($banned[$b['destId']])) { $regen[$i] = true; break; }
+                }
+            }
+
+            /* The model said "some days" but named none, nothing was added
+               or removed, no place was asked for and no dates or hours moved:
+               the change cannot be pinned to a day, so redo the trip rather
+               than silently do nothing. */
+            if (!$regen && !$swapped && $edScope === 'days' && !$mustNew && !$windowChanged
+                && !$datesChanged && !$removed && $total >= count($prevDays)) {
+                $regenAll = true;
+                error_log('[bud.php] edit named no day and changed nothing else; rebuilding every day.');
+            }
+        }
+        if ($regenAll) {
+            for ($i = 0; $i < $total; $i++) { $regen[$i] = true; }
+        }
+        ksort($regen);
+
+        /* "Completely change day 2": none of the places that day held may come
+           back, otherwise the model hands the same stops back and nothing
+           changes. Places the visitor named are exempt. */
+        if (($edIn['fresh'] ?? false) === true && !$regenAll) {
+            foreach (array_keys($regen) as $i) {
+                foreach ((array) ($base[$i] ?? []) as $b) { $avoid[$b['destId']] = true; }
+            }
+            foreach ($bMust as $s) { unset($avoid[$s]); }
+        }
+
+        /* Places already sitting on a day that stays do not need asking for again. */
+        $lockedSlugs = [];
+        foreach ($base as $i => $its) {
+            if (!isset($regen[$i])) {
+                foreach ((array) $its as $b) { $lockedSlugs[$b['destId']] = true; }
+            }
+        }
+        $mustTodo = [];
+        foreach ($bMust as $s) {
+            if (!isset($lockedSlugs[$s])) { $mustTodo[] = $s; }
+        }
+    } else {
+        for ($i = 0; $i < $total; $i++) { $regen[$i] = true; }   // a new trip: every day is written
+    }
+
+    /* Nothing left for the model to write (only dates, hours or the
+       length changed): skip the model call entirely. Instant and free. */
+    $skipModel = (bool) ($prevDays && !$regen);
 
     /* At the lowest budget, boat-only places and resorts are taken off
        the list altogether. Telling the model to avoid them is not
@@ -1439,6 +1861,65 @@ if ($mode === 'itinerary') {
     $instructions .= "\n\nVALID DESTINATIONS - slug on the left, use it exactly:\n"
                    . implode("\n", $lines);
 
+    if ($prevDays) {
+        $descDay = function (array $its) use ($bMustPool): string {
+            $p = [];
+            foreach ($its as $b) {
+                $p[] = $bMustPool[$b['destId']]['name'] . ' (' . $bMustPool[$b['destId']]['town'] . ')';
+            }
+            return $p ? implode('; ', $p) : 'no stops';
+        };
+        $ask = $editNote !== ''
+            ? json_encode($editNote, JSON_UNESCAPED_UNICODE)
+            : '"(no detail given: improve it within the trip details above)"';
+
+        if ($regenAll) {
+            $cur = [];
+            foreach ($base as $i => $its) {
+                if ($its) { $cur[] = 'Day ' . ($i + 1) . ': ' . $descDay($its); }
+            }
+            $instructions .= "\n\nEDIT OF AN EXISTING TRIP. The visitor already has this trip:\n" . implode("\n", $cur)
+                . "\nThey want it changed: {$ask}\n"
+                . "Write all {$days} days again, but KEEP every stop that still suits the request and replace only "
+                . "what does not. Every day object must include its number, like { \"day\": 1, \"items\": [...] }. "
+                . "Also return an updated one or two sentence summary of the whole trip.";
+        } else {
+            $writeNums = [];
+            foreach (array_keys($regen) as $i) { $writeNums[] = $i + 1; }
+            $keepLines = [];
+            foreach ($base as $i => $its) {
+                if (!isset($regen[$i]) && $its) { $keepLines[] = 'Day ' . ($i + 1) . ': ' . $descDay($its); }
+            }
+            $editRule = "- THIS IS AN EDIT TO A TRIP THE VISITOR ALREADY HAS (the trip is {$days} days long). Write ONLY "
+                      . "these days: Day " . implode(', Day ', $writeNums) . ". The program keeps every other day exactly "
+                      . "as it is, so do not output them. Each day you write is { \"day\": <its number>, \"items\": [...] }.";
+            $instructions = str_replace("- Exactly {$days} days.", $editRule, $instructions);
+            $instructions .= "\n\nEDIT OF AN EXISTING TRIP. What the visitor asked for: {$ask}\n"
+                . ($keepLines
+                    ? "DAYS THAT STAY AS THEY ARE (do not use any of these places in the days you write):\n"
+                      . implode("\n", $keepLines) . "\n"
+                    : '')
+                . "Every rule above still applies to the days you write. Also return an updated one or two sentence "
+                . "summary of the WHOLE trip, including the days that stay.";
+        }
+
+        if ($banned) {
+            $banNames = [];
+            foreach (array_keys($banned) as $bs) { $banNames[] = $budSlugs[$bs]['name'] . ' (' . $bs . ')'; }
+            $instructions .= "\n\nTHE VISITOR TOOK THESE PLACES OUT. Do not use them anywhere in the days you write: "
+                . implode('; ', $banNames) . ". On a day that held one of them, keep that day's other stops and "
+                . "replace only the removed place with what the visitor asked for.";
+        }
+    }
+
+    if ($avoid) {
+        $avoidNames = [];
+        foreach (array_keys($avoid) as $as) { $avoidNames[] = $bMustPool[$as]['name'] . ' (' . $as . ')'; }
+        $instructions .= "\n\nTHE VISITOR WANTS THE DAYS YOU WRITE COMPLETELY CHANGED. These are the places those days "
+            . "held before, so do NOT use any of them: " . implode('; ', $avoidNames) . ". Choose different places "
+            . "from the list.";
+    }
+
     if ($bBudget === 'budget' && $bCostlyCut > 0) {
         $instructions .= "\n\nBUDGET RULE: this is a tight budget, so islands and resorts (which need a "
             . "hired boat or cost far more) have been left off the list. Plan free or low-cost places "
@@ -1458,9 +1939,9 @@ if ($mode === 'itinerary') {
             . "so only the cheapest ones are listed. Say in ONE short sentence in the summary that the budget is tight.";
     }
 
-    if ($bMust) {
+    if ($mustTodo) {
         $mustNames = [];
-        foreach ($bMust as $slug) {
+        foreach ($mustTodo as $slug) {
             $mustNames[] = $slug . ' (' . $budSlugs[$slug]['name'] . ')';
         }
         $instructions .= "\n\nMUST INCLUDE: the visitor asked for these by name: " . implode(', ', $mustNames)
@@ -1557,7 +2038,7 @@ if ($apiKey === '') {
     }
 }
 
-if ($apiKey === '') {
+if ($apiKey === '' && !$skipModel) {
     bud_fail(
         500,
         'Bud is not configured yet.',
@@ -1597,7 +2078,7 @@ if ($mode === 'plan_chat') {
        the model writes it before anything else, so a cut-off still has it. */
     $genConfig['responseSchema'] = [
         'type' => 'OBJECT',
-        'propertyOrdering' => ['reply', 'valid', 'ready', 'cancel', 'lengthStated', 'travellersStated', 'budgetStated', 'brief'],
+        'propertyOrdering' => ['reply', 'valid', 'ready', 'cancel', 'lengthStated', 'travellersStated', 'budgetStated', 'brief', 'edit'],
         'properties' => [
             'reply'        => ['type' => 'STRING'],
             'valid'        => ['type' => 'BOOLEAN'],
@@ -1625,6 +2106,16 @@ if ($mode === 'plan_chat') {
                     'name'         => ['type' => 'STRING',  'nullable' => true],
                     'dayStart'     => ['type' => 'STRING',  'nullable' => true],
                     'dayEnd'       => ['type' => 'STRING',  'nullable' => true],
+                ],
+            ],
+            'edit'         => [
+                'type' => 'OBJECT',
+                'properties' => [
+                    'scope'      => ['type' => 'STRING', 'nullable' => true],
+                    'days'       => ['type' => 'ARRAY', 'items' => ['type' => 'INTEGER']],
+                    'removeDays' => ['type' => 'ARRAY', 'items' => ['type' => 'INTEGER']],
+                    'removePlaces' => ['type' => 'ARRAY', 'items' => ['type' => 'STRING']],
+                    'note'       => ['type' => 'STRING', 'nullable' => true],
                 ],
             ],
         ],
@@ -1710,6 +2201,8 @@ function bud_gemini_call(array $payload, string $apiKey): array {
     return [$response, $status, $curlErr];
 }
 
+/* An edit that only moves dates, hours or the length has nothing to ask the model. */
+if (!$skipModel) {
 $budT0 = microtime(true);
 [$response, $status, $curlErr] = bud_gemini_call($payload, $apiKey);
 
@@ -1807,6 +2300,11 @@ if ($reply === '') {
 if ($finish === 'MAX_TOKENS') {
     error_log('[bud.php] Reply truncated at maxOutputTokens ('
         . BUD_MAX_OUTPUT_TOKENS . '). Raise it if this recurs.');
+}
+} else {
+    $reply  = '{}';
+    $finish = 'STOP';
+    $budT0  = microtime(true);
 }
 
 /* ===================================================================
@@ -2231,6 +2729,35 @@ if ($mode === 'plan_chat') {
         }
     }
 
+    /* ---- REMOVING A DAY ----
+       "Remove day 2" used to depend on the model setting both removeDays
+       and a smaller nights, and it often set neither: Bud said the day was
+       gone and the trip came back unchanged. Now the visitor's own words
+       decide, the length follows, and a trip shorter than two days (the
+       smallest Bud plans) is refused honestly instead of faked. */
+    $pcRemoveDays = [];
+    if (($body['rebuild'] ?? false) === true && is_array($body['plan']['days'] ?? null)) {
+        $onScreen = count($body['plan']['days']);
+        $eIn0 = is_array($out['edit'] ?? null) ? $out['edit'] : [];
+        foreach (array_slice((array) ($eIn0['removeDays'] ?? []), 0, 12) as $x) {
+            if (is_numeric($x) && (int) $x >= 1 && (int) $x <= $onScreen) { $pcRemoveDays[(int) $x] = (int) $x; }
+        }
+        $pcRemoveDays = array_values($pcRemoveDays);
+        if (!$pcRemoveDays) { $pcRemoveDays = bud_removed_days($message, $onScreen); }
+
+        if ($pcRemoveDays) {
+            $left = $onScreen - count($pcRemoveDays);
+            if ($left < 2) {
+                $pcRemoveDays = [];
+                $ready = false;
+                $say = 'I can\'t take out ' . ($onScreen === 2 ? 'a day' : 'that') . ' because the shortest trip I plan is 2 days. '
+                     . 'I can move the stops from one day into the other, or build you a fresh plan. Which would you like?';
+            } else {
+                $pcNights = $left - 1;
+            }
+        }
+    }
+
     $pcNightsKnown = $pcNights;     // before the clamp below invents a minimum of 1
     $pcNights = max(1, min(BUD_MAX_NIGHTS, $pcNights));
     $pcEnd    = $pcHasDate ? $pcStart->modify('+' . $pcNights . ' days') : null;
@@ -2241,10 +2768,63 @@ if ($mode === 'plan_chat') {
         $pcBudget = bud_budget_calc($pcAmount, $pcBasis, $pcTravellers, $pcNights + 1)['tier'];
     }
 
+    /* Which days the visitor's change touches, so the builder rewrites only
+       those. Only sent for an edit that is about to be built. */
+    $pcEdit = null;
+    if ($ready && ($body['rebuild'] ?? false) === true) {
+        $eIn   = is_array($out['edit'] ?? null) ? $out['edit'] : [];
+        $eMax  = BUD_MAX_NIGHTS + 1;
+        $eDays = [];
+        $eRem  = [];
+        foreach (array_slice((array) ($eIn['days'] ?? []), 0, 12) as $x) {
+            if (is_numeric($x) && (int) $x >= 1 && (int) $x <= $eMax) { $eDays[(int) $x] = (int) $x; }
+        }
+        foreach (array_slice((array) ($eIn['removeDays'] ?? []), 0, 12) as $x) {
+            if (is_numeric($x) && (int) $x >= 1 && (int) $x <= $eMax) { $eRem[(int) $x] = (int) $x; }
+        }
+        $eRemP = [];
+        foreach (array_slice((array) ($eIn['removePlaces'] ?? []), 0, 6) as $x) {
+            if (is_string($x) && trim($x) !== '') { $eRemP[] = bud_cut(trim($x), 80); }
+        }
+        if ($pcRemoveDays) { $eRem = array_combine($pcRemoveDays, $pcRemoveDays); }
+        $pcScope = in_array($eIn['scope'] ?? '', ['days', 'all', 'dates', 'new'], true) ? $eIn['scope'] : '';
+        if ($pcRemoveDays && ($pcScope === '' || $pcScope === 'dates')) { $pcScope = 'days'; }
+
+        /* The visitor's own words decide which days change. The model often
+           answers "keep day 1, change day 2" with scope "all", which rewrites
+           every day and keeps the same stops. */
+        $pcFresh = false;
+        $scrDays = is_array($body['plan']['days'] ?? null) ? count($body['plan']['days']) : 0;
+        if ($scrDays >= 1 && !$pcRemoveDays && $pcScope !== 'new' && $pcScope !== 'dates'
+            && $pcNights + 1 === $scrDays) {
+            $named = bud_edit_days($message, $scrDays);
+            if ($named['change']) {
+                $pcScope = 'days';
+                $eDays   = array_combine($named['change'], $named['change']);
+                $pcFresh = bud_wants_fresh_day($message);
+            } elseif ($named['keep'] && ($pcScope === 'all' || $pcScope === '')) {
+                $rest = array_values(array_diff(range(1, $scrDays), $named['keep']));
+                if ($rest) {
+                    $pcScope = 'days';
+                    $eDays   = array_combine($rest, $rest);
+                }
+            }
+        }
+        $pcEdit = [
+            'removePlaces' => $eRemP,
+            'scope'      => $pcScope,
+            'fresh'      => $pcFresh,
+            'days'       => $pcRemoveDays ? [] : array_values($eDays),
+            'removeDays' => array_values($eRem),
+            'note'       => bud_cut(trim((string) preg_replace('/[\x00-\x1f]+/', ' ', (string) ($eIn['note'] ?? ''))), 240),
+        ];
+    }
+
     bud_out(200, [
         'reply'  => $say,
         'ready'  => $ready,
         'cancel' => false,
+        'edit'   => $pcEdit,
         'brief'  => [
             'startDate'  => $pcHasDate ? $pcStart->format('Y-m-d') : '',
             'endDate'    => $pcEnd ? $pcEnd->format('Y-m-d') : '',
@@ -2295,48 +2875,84 @@ if ($mode === 'plan_chat') {
    =================================================================== */
 if ($mode === 'itinerary') {
 
-    /* Strip a ```json fence if there is one, then take from the first
-       brace to the last. Cheaper than failing over something this
-       predictable. */
-    $json = trim($reply);
-    if (strpos($json, '```') !== false) {
-        $json = preg_replace('/^```[a-z]*\s*|\s*```$/i', '', $json);
-    }
-    $open  = strpos($json, '{');
-    $close = strrpos($json, '}');
-    if ($open !== false && $close !== false && $close > $open) {
-        $json = substr($json, $open, $close - $open + 1);
-    }
-
-    $plan = json_decode($json, true);
-
-    if (!is_array($plan) || !isset($plan['days']) || !is_array($plan['days'])) {
-        /* Truncation and refusal look the same from here — both give
-           unparseable text — but they need different advice, and
-           finishReason tells them apart. */
-        if ($finish === 'MAX_TOKENS') {
-            bud_fail(502,
-                'That trip was too long for me to plan in one go. Tell me a shorter length '
-                . 'or fewer places a day and I will redo it.',
-                'Itinerary hit MAX_TOKENS at ' . strlen($reply) . ' chars; JSON incomplete.');
+    /* The reply is only read when the model was asked to write something. */
+    if (!$skipModel) {
+        /* Strip a ```json fence if there is one, then take from the first
+           brace to the last. Cheaper than failing over something this
+           predictable. */
+        $json = trim($reply);
+        if (strpos($json, '```') !== false) {
+            $json = preg_replace('/^```[a-z]*\s*|\s*```$/i', '', $json);
+        }
+        $open  = strpos($json, '{');
+        $close = strrpos($json, '}');
+        if ($open !== false && $close !== false && $close > $open) {
+            $json = substr($json, $open, $close - $open + 1);
         }
 
-        bud_fail(502, 'I could not put a plan together just then. Try again?',
-            'Itinerary JSON unparseable (finish=' . $finish . '). First 400 chars: '
-            . substr($reply, 0, 400));
+        $plan = json_decode($json, true);
+
+        if (!is_array($plan) || !isset($plan['days']) || !is_array($plan['days'])) {
+            /* Truncation and refusal look the same from here — both give
+               unparseable text — but they need different advice, and
+               finishReason tells them apart. */
+            if ($finish === 'MAX_TOKENS') {
+                bud_fail(502,
+                    'That trip was too long for me to plan in one go. Tell me a shorter length '
+                    . 'or fewer places a day and I will redo it.',
+                    'Itinerary hit MAX_TOKENS at ' . strlen($reply) . ' chars; JSON incomplete.');
+            }
+
+            bud_fail(502, 'I could not put a plan together just then. Try again?',
+                'Itinerary JSON unparseable (finish=' . $finish . '). First 400 chars: '
+                . substr($reply, 0, 400));
+        }
+    } else {
+        $plan = ['name' => '', 'summary' => '', 'days' => []];
     }
 
-    $planDays = [];
-    $kept     = 0;
-    $dropped  = 0;
+    $dropped = 0;
+    $dupes   = 0;
 
-    foreach (array_slice($plan['days'], 0, $bNights + 1) as $day) {
+    /* One stop, in the shape the browser gets. Names, towns and coordinates
+       always come from the destination list, never from the model or from
+       the copy of the trip the browser sent back. */
+    $mkItem = function (string $slug, string $time, string $end, string $note) use ($bMustPool): array {
+        $d = $bMustPool[$slug];
+        return [
+            'time'   => $time,
+            'end'    => $end,
+            'destId' => $slug,
+            'note'   => $note,
+            /* For display only. save-itinerary.php resolves the slug
+               itself and ignores these. */
+            'name'   => $d['name'],
+            'town'   => $d['town'],
+            /* So the map can pin every stop of the plan. */
+            'tag'    => $d['tag'],
+            'lat'    => is_numeric($d['lat'] ?? null) ? (float) $d['lat'] : null,
+            'lng'    => is_numeric($d['lng'] ?? null) ? (float) $d['lng'] : null,
+        ];
+    };
+
+    /* ---- what the model wrote, by day number ----
+       In an edit it writes only some days and labels each with "day". With
+       no label, the days come back in the order they were asked for. */
+    $regenNums = [];
+    foreach (array_keys($regen) as $i) { $regenNums[] = $i + 1; }
+    sort($regenNums);
+
+    $gen = [];
+    foreach (array_slice(array_values($plan['days']), 0, $total) as $pos => $day) {
+        if (!is_array($day)) { continue; }
+        $dn = (isset($day['day']) && is_numeric($day['day']))
+            ? (int) $day['day']
+            : ($regenNums[$pos] ?? $pos + 1);
+        if ($dn < 1 || $dn > $total || isset($gen[$dn])) { continue; }
+
         $items = [];
-
         foreach (array_slice((array) ($day['items'] ?? []), 0, 6) as $item) {
-            if (!is_array($item)) {
-                continue;
-            }
+            if (!is_array($item)) { continue; }
 
             $slug = trim((string) ($item['destId'] ?? ''));
 
@@ -2345,52 +2961,42 @@ if ($mode === 'itinerary') {
                options in the prompt makes the right answer easy; this
                makes the wrong one impossible. */
             if ($slug === '' || !isset($budSlugs[$slug])) {
-                if ($slug !== '') {
-                    $dropped++;
-                }
+                if ($slug !== '') { $dropped++; }
                 continue;
             }
+            if (isset($banned[$slug])) { continue; }   // the visitor took this one out
+            if (isset($avoid[$slug])) { continue; }    // the visitor wants this day completely changed
 
             $time = trim((string) ($item['time'] ?? ''));
+            $endT = trim((string) ($item['end'] ?? ''));
 
             /* Hold every stop inside the visitor's daily hours. The prompt
                asks for it; this guarantees it. */
             if ($bDayStart !== null) {
-                $item['end'] = trim((string) ($item['end'] ?? ''));
                 $tm = bud_parse_time($time);
                 if ($tm !== null) {
                     $latest = bud_time_min($bDayEnd) - 60;
                     $mins   = max(bud_time_min($bDayStart), min(bud_time_min($tm), $latest));
                     $time   = sprintf('%02d:%02d', intdiv($mins, 60), $mins % 60);
                 }
-                $te = bud_parse_time($item['end']);
+                $te = bud_parse_time($endT);
                 if ($te !== null && bud_time_min($te) > bud_time_min($bDayEnd)) {
-                    $item['end'] = $bDayEnd;
+                    $endT = $bDayEnd;
                 }
             }
 
-            $items[] = [
-                'time'   => preg_match('/^\d{1,2}:\d{2}$/', $time)
-                            ? substr('0' . $time, -5) : '',
-                /* The end of the visit, only kept if it is a real time
-                   after the start. The browser works one out if not. */
-                'end'    => (preg_match('/^\d{1,2}:\d{2}$/', $time)
-                             && preg_match('/^\d{1,2}:\d{2}$/', trim((string) ($item['end'] ?? '')))
-                             && substr('0' . trim((string) $item['end']), -5) > substr('0' . $time, -5))
-                            ? substr('0' . trim((string) $item['end']), -5) : '',
-                'destId' => $slug,
-                'note'   => bud_cut(trim((string) ($item['note'] ?? '')), 200),
-                /* For display only. save-itinerary.php resolves the
-                   slug itself and ignores these. */
-                'name'   => $budSlugs[$slug]['name'],
-                'town'   => $budSlugs[$slug]['town'],
-                /* So the map can pin every stop of the plan, whether or
-                   not its name matches the map's own list. */
-                'tag'    => $budSlugs[$slug]['tag'],
-                'lat'    => is_numeric($budSlugs[$slug]['lat'] ?? null) ? (float) $budSlugs[$slug]['lat'] : null,
-                'lng'    => is_numeric($budSlugs[$slug]['lng'] ?? null) ? (float) $budSlugs[$slug]['lng'] : null,
-            ];
-            $kept++;
+            $okTime = preg_match('/^\d{1,2}:\d{2}$/', $time) === 1;
+            /* The end of the visit, only kept if it is a real time after
+               the start. The browser works one out if not. */
+            $okEnd  = $okTime && preg_match('/^\d{1,2}:\d{2}$/', $endT) === 1
+                      && substr('0' . $endT, -5) > substr('0' . $time, -5);
+
+            $items[] = $mkItem(
+                $slug,
+                $okTime ? substr('0' . $time, -5) : '',
+                $okEnd ? substr('0' . $endT, -5) : '',
+                bud_cut(trim((string) ($item['note'] ?? '')), 200)
+            );
         }
 
         /* The day begins when the visitor said it does. The model tends to
@@ -2405,16 +3011,80 @@ if ($mode === 'itinerary') {
             }
         }
 
-        /* Day 1 is the start date, day 2 the next, and so on. */
+        $gen[$dn] = $items;
+    }
+
+    /* ---- put the trip together ----
+       1. Days that are not being rewritten are copied across as they were.
+       2. Days the model wrote go in after them, so a place that stayed on
+          a kept day is never also given to a rewritten one.
+       A place appears once in the whole trip. */
+    $claimed = [];
+    $slots   = array_fill(0, $total, []);
+    $changed = [];
+    $stayed  = [];
+    $failed  = [];
+
+    for ($i = 0; $i < $total; $i++) {
+        if (isset($regen[$i])) { continue; }
+        $its = [];
+        foreach ((array) ($base[$i] ?? []) as $b) {
+            if (isset($claimed[$b['destId']])) { continue; }
+            $claimed[$b['destId']] = true;
+            $its[] = $mkItem($b['destId'], $b['time'], $b['end'], $b['note']);
+        }
+        /* The visitor changed their daily hours: same stops, new times. */
+        if ($its && $bDayStart !== null && $windowChanged) {
+            $its = bud_retime_day($its, $bDayStart, $bDayEnd);
+        }
+        $slots[$i] = $its;
+        $stayed[]  = $i + 1;
+    }
+
+    for ($i = 0; $i < $total; $i++) {
+        if (!isset($regen[$i])) { continue; }
+        $its = [];
+        foreach ((array) ($gen[$i + 1] ?? []) as $it) {
+            if (isset($claimed[$it['destId']])) { $dupes++; continue; }
+            $claimed[$it['destId']] = true;
+            $its[] = $it;
+        }
+        if (!$its && !empty($base[$i])) {
+            /* The model gave nothing usable for a day that already had
+               stops. Keep what it had rather than leave a hole, and say so. */
+            foreach ($base[$i] as $b) {
+                if (isset($claimed[$b['destId']]) || isset($banned[$b['destId']])) { continue; }
+                $claimed[$b['destId']] = true;
+                $its[] = $mkItem($b['destId'], $b['time'], $b['end'], $b['note']);
+            }
+            if ($its) { $failed[] = $i + 1; }
+        } else {
+            $changed[] = $i + 1;
+        }
+        $slots[$i] = $its;
+    }
+
+    /* Day 1 is the start date, day 2 the next, and so on. */
+    $planDays = [];
+    foreach ($slots as $i => $its) {
         $planDays[] = [
-            'date'  => $bStart->modify('+' . count($planDays) . ' days')->format('Y-m-d'),
-            'items' => $items,
+            'date'  => $bStart->modify('+' . $i . ' days')->format('Y-m-d'),
+            'items' => $its,
         ];
+    }
+
+    $kept = 0;
+    foreach ($planDays as $pd) { $kept += count($pd['items']); }
+
+    if ($dupes > 0) {
+        error_log('[bud.php] ' . $dupes . ' repeated stop(s) removed from the plan.');
     }
 
     /* A place they named is guaranteed here, not left to the model. If it
        left one out, it goes on the day where it fits best: a day whose
-       stops are all within 20km of it, or failing that the emptiest day. */
+       stops are all within 20km of it, or failing that the emptiest day.
+       A day that stays as it was is a last choice, not ruled out: they
+       asked for this place by name. */
     if ($bMust) {
         $present = [];
         foreach ($planDays as $pd) {
@@ -2431,10 +3101,7 @@ if ($mode === 'itinerary') {
             $bestDay   = null;
             $bestScore = null;
             foreach ($planDays as $i => $pd) {
-                $n = count($pd['items']);
-                if ($n >= $bPerDay + 1) {
-                    continue;
-                }
+                $n    = count($pd['items']);
                 $fits = true;
                 foreach ($pd['items'] as $it) {
                     if (!in_array($it['destId'], $near[$slug] ?? [], true)) {
@@ -2442,7 +3109,10 @@ if ($mode === 'itinerary') {
                         break;
                     }
                 }
-                $score = ($fits ? 0 : 100) + $n;
+                $score = ($fits ? 0 : 100)
+                       + ($n >= $bPerDay + 1 ? 200 : 0)
+                       + (in_array($i + 1, $stayed, true) ? 30 : 0)
+                       + $n;
                 if ($bestScore === null || $score < $bestScore) {
                     $bestScore = $score;
                     $bestDay   = $i;
@@ -2465,21 +3135,72 @@ if ($mode === 'itinerary') {
                 }
             }
 
-            $planDays[$bestDay]['items'][] = [
-                'time'   => $time,
-                'destId' => $slug,
-                'note'   => 'Added because you asked for it.',
-                'name'   => $budSlugs[$slug]['name'],
-                'town'   => $budSlugs[$slug]['town'],
-                'tag'    => $budSlugs[$slug]['tag'],
-                'lat'    => is_numeric($budSlugs[$slug]['lat'] ?? null) ? (float) $budSlugs[$slug]['lat'] : null,
-                'lng'    => is_numeric($budSlugs[$slug]['lng'] ?? null) ? (float) $budSlugs[$slug]['lng'] : null,
-            ];
+            $addNote = bud_cut((string) ($budSlugs[$slug]['desc'] ?? ''), 200);
+            $planDays[$bestDay]['items'][] = $mkItem($slug, $time, '', $addNote !== '' ? $addNote : 'Added because you asked for it.');
             $present[$slug] = true;
             $kept++;
+
+            $dayNo  = $bestDay + 1;
+            $stayed = array_values(array_diff($stayed, [$dayNo]));
+            if (!in_array($dayNo, $changed, true)) { $changed[] = $dayNo; }
             error_log('[bud.php] named place was missing from the plan, added in code: ' . $slug);
         }
     }
+    /* A direct swap changed this day even though no model rewrote it. */
+    if ($swapped) {
+        if (!in_array($swapped, $changed, true)) { $changed[] = $swapped; }
+        $stayed = array_values(array_diff($stayed, [$swapped]));
+    }
+
+    /* STOPS PER DAY IS A PROMISE TOO. The model is told how many stops a day
+       the visitor wants, but nothing made it obey: "just 3 stops" came back
+       with four on Day 2. Any day that was written or added to this turn and
+       holds more than the limit is cut back. Places the visitor named are
+       kept first; the rest keep their order. A day that stayed exactly as
+       it was is never touched. */
+    foreach ($planDays as $i => $pd) {
+        if (!in_array($i + 1, $changed, true) && !isset($regen[$i])) { continue; }
+        if (count($pd['items']) <= $bPerDay) { continue; }
+
+        $keep = [];
+        foreach ($pd['items'] as $k => $it) {
+            if (in_array($it['destId'], $bMust, true)) { $keep[$k] = true; }
+        }
+        foreach ($pd['items'] as $k => $it) {
+            if (count($keep) >= $bPerDay) { break; }
+            $keep[$k] = true;
+        }
+        $trimmed = [];
+        foreach ($pd['items'] as $k => $it) {
+            if (isset($keep[$k])) { $trimmed[] = $it; }
+        }
+        /* If they named more places than fit in one day, the named ones win. */
+        $planDays[$i]['items'] = $trimmed;
+        if ($bDayStart !== null) {
+            $planDays[$i]['items'] = bud_retime_day($planDays[$i]['items'], $bDayStart, $bDayEnd);
+        }
+        if (!in_array($i + 1, $changed, true)) { $changed[] = $i + 1; }
+        $stayed = array_values(array_diff($stayed, [$i + 1]));
+        error_log('[bud.php] day ' . ($i + 1) . ' had ' . count($pd['items']) . ' stops; cut to ' . count($trimmed) . '.');
+    }
+    $kept = 0;
+    foreach ($planDays as $pd) { $kept += count($pd['items']); }
+
+    /* The visitor's daily hours are a promise, not a hint. Any day whose
+       stops spill past the end, start before the beginning, overlap, or
+       lack an end time (which the browser pads by three hours, giving
+       6:30pm finishes) has its times spread evenly across the window.
+       Stops and their order are untouched. */
+    if ($bDayStart !== null) {
+        foreach ($planDays as $i => $pd) {
+            if ($pd['items'] && !bud_day_fits($pd['items'], $bDayStart, $bDayEnd)) {
+                $planDays[$i]['items'] = bud_retime_day($pd['items'], $bDayStart, $bDayEnd);
+            }
+        }
+    }
+
+    sort($changed);
+    sort($stayed);
 
     /* One stop is not a plan. Better to say so than to save something
        useless to somebody's account. */
@@ -2516,14 +3237,24 @@ if ($mode === 'itinerary') {
         }
     }
 
+    /* The visitor's name wins. They typed it; the model only guessed. On an
+       edit the trip keeps the name it already had unless every day was
+       rewritten. */
+    $modelName    = trim((string) ($plan['name'] ?? ''));
+    $modelSummary = trim((string) ($plan['summary'] ?? ''));
+    if ($bName !== '') {
+        $outName = $bName;
+    } elseif ($prevDays && $prevName !== '' && !$regenAll) {
+        $outName = $prevName;
+    } else {
+        $outName = bud_cut($modelName !== '' ? $modelName : ($prevName !== '' ? $prevName : 'Camarines Norte trip'), 160);
+    }
+    $outSummary = bud_cut($modelSummary !== '' ? $modelSummary : ($prevDays ? $prevSummary : ''), 400);
+
     bud_out(200, [
         'plan' => [
-            /* The visitor's name wins. They typed it; the model only
-               guessed. */
-            'name'      => $bName !== ''
-                           ? $bName
-                           : bud_cut(trim((string) ($plan['name'] ?? 'Camarines Norte trip')), 160),
-            'summary'   => bud_cut(trim((string) ($plan['summary'] ?? '')), 400) . $bBudgetNote,
+            'name'      => $outName,
+            'summary'   => $outSummary . $bBudgetNote,
             'travelers' => $bTravellers,
             'source'    => 'bud',
             'startDate' => $bStart->format('Y-m-d'),
@@ -2549,6 +3280,14 @@ if ($mode === 'itinerary') {
         ],
         'stops'   => $kept,
         'dropped' => $dropped,
+        /* What an edit did, so the chat can say "Day 2 changed, the rest
+           is as you had it". Null for a brand new trip. */
+        'edit'    => $prevDays ? [
+            'changed' => $changed,
+            'kept'    => $stayed,
+            'failed'  => $failed,
+            'scope'   => $regenAll ? 'all' : ($skipModel ? 'dates' : 'days'),
+        ] : null,
     ]);
 }
 

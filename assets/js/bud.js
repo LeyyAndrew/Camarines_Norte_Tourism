@@ -72,7 +72,13 @@ document.addEventListener('DOMContentLoaded', function () {
         'vertical-align:-.06em;background:#F2A93B;' +
         '-webkit-mask:url("data:image/svg+xml,' + pin + '") center/contain no-repeat;' +
         'mask:url("data:image/svg+xml,' + pin + '") center/contain no-repeat}' +
+      /* Place links hold plain text only. Anything another script or
+         stylesheet injects into one (a category icon, a badge) is hidden
+         so it cannot push the link onto its own line mid-sentence. */
+      '.bud__pl>*{display:none!important}' +
+      '.bud__pl{vertical-align:baseline;max-width:100%;overflow-wrap:anywhere;-webkit-tap-highlight-color:transparent}' +
       '.bud__pl:hover,.bud__pl:focus-visible{color:#F2A93B;outline:none}' +
+      '.bud__pl:focus-visible{border-bottom-width:2px}' +
       '.bud__msg strong{font-weight:700}' +
       '.bud__msg em{font-style:italic}' +
       '.bud__msg code{font-size:.92em;padding:.05em .35em;border-radius:5px;background:rgba(255,255,255,.1)}' +
@@ -80,6 +86,22 @@ document.addEventListener('DOMContentLoaded', function () {
       '.bud__n{opacity:.65;margin-right:.4em;font-variant-numeric:tabular-nums}' +
       '.bud__qr{display:flex;flex-wrap:wrap;gap:.45rem;margin:.15rem 0 .5rem 2.5rem}' +
       '.bud__typing-label{margin-left:.65rem;font-size:.82em;opacity:.7;align-self:center}' +
+      '.bud-old{opacity:.55}' +
+      '.bud-old .bud__swap{display:none}' +
+      '.bud__swap{display:block;margin-top:.3rem}' +
+      '.bud__swap-btn{font:inherit;font-size:.78em;font-weight:600;color:#F2A93B;background:none;' +
+        'border:1px solid rgba(242,169,59,.55);border-radius:99px;padding:.1em .7em;cursor:pointer}' +
+      '.bud__swap-btn:hover,.bud__swap-btn:focus-visible{background:rgba(242,169,59,.16);outline:none}' +
+      '.bud__swap-sel{font:inherit;font-size:.85em;margin-left:.5rem;max-width:100%;padding:.2em .4em;border-radius:8px;' +
+        'color:inherit;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25)}' +
+      '.bud__swap-sel option{color:#111;background:#fff}' +
+      '.bud__old-note{font-size:.78em;opacity:.85;margin:0 0 .4rem}' +
+      '.bud__tag{display:inline-block;margin-left:.5em;padding:.05em .55em;border-radius:99px;font-size:.72em;' +
+        'font-weight:600;background:#F2A93B;color:#1b1b1b;vertical-align:.12em}' +
+      '.bud__new{background:none;border:0;color:inherit;opacity:.8;cursor:pointer;padding:.35rem;margin:0 .2rem;' +
+        'border-radius:8px;line-height:0}' +
+      '.bud__new:hover,.bud__new:focus-visible{opacity:1;background:rgba(255,255,255,.14);outline:none}' +
+      '.bud__new svg{width:18px;height:18px}' +
       '.bud-reveal>*{animation:budRise .38s cubic-bezier(.2,.7,.2,1) both}' +
       '.bud-still.bud-reveal>*{animation:none}' +
       '@keyframes budRise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}' +
@@ -124,6 +146,19 @@ document.addEventListener('DOMContentLoaded', function () {
      too — never trust the browser to have kept it short. */
   var history = [];
   var HISTORY_MAX = 16;   // 8 exchanges
+
+  /* Kept across page loads (this tab only) so the chat is not wiped by
+     clicking to another page. See saveSession() / restoreSession(). */
+  var SESSION_KEY         = 'bud.session.v1.0';   // becomes bud.session.v1.<userId> once the server says who is signed in
+  var USER_ID             = 0;                    // 0 = guest. Set from the SERVER, never from the page.
+  var identityReady       = false;                // nothing is saved until we know whose chat this is
+  var serverTimer         = null;
+  var SESSION_MAX_ENTRIES = 80;
+  var transcript   = [];     // what is on screen, as data: messages and trip cards
+  var restoring    = false;  // true while the saved chat is being drawn again
+  var lastSavedId  = null;   // the saved-trip id from save-itinerary.php, if it sent one
+  var lastPlanRow  = null;   // the newest trip card, so an older one can be marked as replaced
+  var initialNodes = Array.prototype.slice.call(log.children);   // the page's own opening, kept on New chat
 
   /* ---------- open / close ---------- */
 
@@ -969,7 +1004,7 @@ document.addEventListener('DOMContentLoaded', function () {
     into.appendChild(strip);
   }
 
-  function addMessage(text, who) {
+  function addMessage(text, who, still) {
     var wrap = document.createElement('div');
     wrap.className = 'bud__msg bud__msg--' + (who === 'user' ? 'user' : 'bot');
 
@@ -992,7 +1027,9 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
 
+    if (still) wrap.classList.add('bud-still');
     var node = who === 'user' ? (log.appendChild(wrap), wrap) : mountBot(wrap);
+    if (!restoring) record({ k: 'm', w: who === 'user' ? 'user' : 'bot', x: text });
     scrollLog();
     return node;
   }
@@ -1268,7 +1305,7 @@ document.addEventListener('DOMContentLoaded', function () {
   /* A failed plan must not lose the trip. Re-open the planning chat with the
      brief as its first turn, so "2 nights instead" is read as a change to
      THIS trip rather than a fresh question. */
-  function reopenPlanning(brief) {
+  function reopenPlanning(brief, asEdit) {
     if (!brief) return;
     var bits = [];
     if (brief.startDate) bits.push('start date ' + brief.startDate);
@@ -1289,6 +1326,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (typeof brief.name === 'string') bits.push(brief.name ? 'trip name "' + brief.name + '"' : 'trip name: skip');
     setPlanning(true);
     planKnown = brief;   // so a long chat after a failed plan still knows the trip
+    planRebuild = !!asEdit;   // a failed EDIT is retried as an edit of the trip still on screen
     planHistory = [
       { role: 'user', content: 'My trip so far: ' + bits.join('; ') + '.' },
       { role: 'assistant', content: 'I have your trip details, but the plan did not come out. What would you like to change before I build it again?' }
@@ -1453,19 +1491,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     planHistory.push({ role: 'user', content: text });
     var typing = addTyping();
+    var wasRebuild = planRebuild && !!currentPlan;   // changing the trip on screen
 
-    fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({
-        mode: 'plan_chat',
-        message: text,
-        history: planHistory.slice(0, -1),  // everything before this turn
-        known: planKnown,                   // what has already been worked out
-        rebuild: planRebuild                // changing a trip that already exists
-      })
-    })
+    postJSON(endpoint, {
+      mode: 'plan_chat',
+      message: text,
+      history: planHistory.slice(0, -1),  // everything before this turn
+      known: planKnown,                   // what has already been worked out
+      rebuild: planRebuild,               // changing a trip that already exists
+      plan: wasRebuild ? compactPlan(currentPlan) : null   // so Bud can see which day is which
+    }, 100000)
     .then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (d) {
         if (!res.ok || !d.reply) {
@@ -1490,10 +1525,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
       if (d.cancel) {
         setPlanning(false);
+      } else if (d.ready && d.brief && wasRebuild && currentPlan && swapFromPlanner(text, d.brief)) {
+        /* The model got a swap sentence. Do it as a direct one-for-one swap
+           anyway: the model tends to add the new place without removing the old. */
+        setPlanning(false);
+        var sw = swapFromPlanner(text, d.brief);
+        var b2 = {}, src2 = currentPlan.brief || {};
+        Object.keys(src2).forEach(function (k) { b2[k] = src2[k]; });
+        b2.places = (b2.places || []).filter(function (n) { return String(n).toLowerCase() !== sw.from.toLowerCase(); });
+        b2.places.push(sw.to);
+        planRebuild = true;
+        generatePlan(b2, {
+          scope: 'days', days: [], removeDays: [], removePlaces: [sw.from],
+          swap: { from: sw.from, to: sw.to, day: sw.day },
+          note: 'swap ' + sw.from + ' for ' + sw.to
+        });
       } else if (d.ready && d.brief) {
         setPlanning(false);
-        generatePlan(d.brief);
+        /* For an edit, say which days the change touches so every other
+           day is kept exactly as it is. */
+        generatePlan(d.brief, wasRebuild ? (d.edit || { scope: '' }) : null);
       }
+      saveSession();
     })
     .catch(function (err) {
       typing.remove();
@@ -1516,25 +1569,261 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  /* ==================================================================
+     SESSION MEMORY, NEW CHAT, TIMEOUTS, AND READING AN EDIT
+
+     A real chat does not forget when the page changes. The conversation,
+     the trip on screen and what the planner has worked out are kept in
+     sessionStorage (this tab only, gone when it closes) and put back when
+     the next page loads, so "make day 2 cheaper" still works after the
+     visitor clicked through to another page.
+     ================================================================== */
+
+  /* fetch with a time limit, so a stalled connection ends in an error
+     message and a Try again button instead of dots that never stop. */
+  function postJSON(url, body, ms) {
+    var ctl   = ('AbortController' in window) ? new AbortController() : null;
+    var timer = ctl ? setTimeout(function () { ctl.abort(); }, ms || 90000) : null;
+    var opts  = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(body)
+    };
+    if (ctl) opts.signal = ctl.signal;
+    return fetch(url, opts).then(
+      function (res) { if (timer) clearTimeout(timer); return res; },
+      function (err) { if (timer) clearTimeout(timer); throw err; }
+    );
+  }
+
+  function record(entry) {
+    transcript.push(entry);
+    if (transcript.length > SESSION_MAX_ENTRIES) {
+      transcript = transcript.slice(-SESSION_MAX_ENTRIES);
+    }
+    saveSession();
+  }
+
+  function buildSession() {
+    /* Only the two newest trip cards are kept in full; older ones would
+       eat the storage quota for no benefit. */
+    var plans = 0, out = [];
+    for (var i = transcript.length - 1; i >= 0; i--) {
+      var e = transcript[i];
+      if (e.k === 'p' && ++plans > 2) {
+        out.unshift({ k: 'm', w: 'bot', x: '(An earlier version of the trip was shown here.)' });
+      } else {
+        out.unshift(e);
+      }
+    }
+    return {
+      v: 1, t: out,
+      history: history, planHistory: planHistory, planKnown: planKnown,
+      planning: planning, planRebuild: planRebuild,
+      currentPlan: currentPlan, lastSavedId: lastSavedId, lastOffer: lastOffer
+    };
+  }
+
+  function saveSession(now) {
+    if (restoring || !identityReady) return;
+    var data;
+    try {
+      data = buildSession();
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(data));
+    } catch (e) { /* storage full or blocked: the chat still works */ }
+
+    /* Signed in: also keep it on the account. Debounced so a burst of
+       updates is one request; on page unload it is sent at once. */
+    if (USER_ID > 0 && data && !previewMode) {
+      clearTimeout(serverTimer);
+      var send = function () {
+        var body = JSON.stringify({ mode: 'session', session: data });
+        if (now && navigator.sendBeacon) {
+          try { navigator.sendBeacon(endpoint, new Blob([body], { type: 'application/json' })); return; } catch (e) {}
+        }
+        postJSON(endpoint, { mode: 'session', session: data }, 20000).catch(function () {});
+      };
+      if (now) send(); else serverTimer = setTimeout(send, 800);
+    }
+  }
+
+  function applySession(s) {
+    if (!s || s.v !== 1 || !Array.isArray(s.t)) return;
+
+    restoring = true;
+    try {
+      var t = s.t.slice(), pending = '';
+
+      /* The page changed while a question was in flight. Put the question
+         back in the box rather than leave it sitting with no answer. */
+      if (t.length && t[t.length - 1].k === 'm' && t[t.length - 1].w === 'user') {
+        pending = String(t.pop().x || '');
+      }
+
+      t.forEach(function (e) {
+        if (e.k === 'm' && typeof e.x === 'string') {
+          addMessage(e.x, e.w === 'user' ? 'user' : 'bot', true);
+        } else if (e.k === 'p' && e.plan && Array.isArray(e.plan.days)) {
+          renderPlan(e.plan, e.changed, true);
+        }
+      });
+      transcript = t;
+
+      function dropTrailingUser(a) {
+        a = Array.isArray(a) ? a.slice() : [];
+        if (a.length && a[a.length - 1].role === 'user') a.pop();
+        return a;
+      }
+      history      = dropTrailingUser(s.history);
+      planHistory  = dropTrailingUser(s.planHistory);
+      planKnown    = s.planKnown && typeof s.planKnown === 'object' ? s.planKnown : null;
+      planRebuild  = !!s.planRebuild;
+      currentPlan  = s.currentPlan && Array.isArray(s.currentPlan.days) ? s.currentPlan : null;
+      lastSavedId  = s.lastSavedId || null;
+      lastOffer    = !!s.lastOffer;
+      if (s.planning) input.setAttribute('placeholder', 'Tell Bud about your trip\u2026');
+      planning = !!s.planning;
+
+      if (pending) input.value = pending;
+    } finally {
+      restoring = false;
+    }
+    saveSession();
+  }
+
+  /* Back to a blank conversation. The static opening (if the page has
+     one) stays; everything added since goes. */
+  function resetChat() {
+    if (busy) return;
+    clearQuickReplies();
+    hideSuggestions();
+    Array.prototype.slice.call(log.children).forEach(function (n) {
+      if (initialNodes.indexOf(n) === -1) n.remove();
+    });
+    transcript = []; history = []; planHistory = []; planKnown = null;
+    planRebuild = false; currentPlan = null; lastSavedId = null;
+    lastOffer = false; lastPlanRow = null;
+    setPlanning(false);
+    try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
+    clearTimeout(serverTimer);
+    if (USER_ID > 0) postJSON(endpoint, { mode: 'session', clear: true }, 15000).catch(function () {});
+    try { document.dispatchEvent(new CustomEvent('bud:plan-clear')); } catch (e) {}
+    if (!log.children.length) {
+      addMessage('Fresh start. What would you like to know about Camarines Norte?', 'bot');
+    }
+    input.value = '';
+    scrollLog();
+  }
+
+  /* A small "new chat" button beside the close button in the panel
+     header. If the header markup is not what is expected nothing is
+     added, and typing /new does the same job. */
+  (function addNewChatButton() {
+    var closeBtn = panel.querySelector('button[data-bud-close]');
+    if (!closeBtn || !closeBtn.parentNode || panel.querySelector('.bud__new')) return;
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'bud__new';
+    b.title = 'New chat';
+    b.setAttribute('aria-label', 'Start a new chat');
+    b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+                  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+                  '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>';
+    b.addEventListener('click', resetChat);
+    closeBtn.parentNode.insertBefore(b, closeBtn);
+  }());
+
+  /* ---------- editing a trip that is already on screen ---------- */
+
+  /* The trip as the server needs it back: only what identifies each stop.
+     Names, towns and coordinates are looked up again there. */
+  function previousPayload(plan) {
+    return {
+      name: plan.name, summary: plan.summary,
+      startDate: plan.startDate, endDate: plan.endDate,
+      nights: plan.nights, brief: plan.brief,
+      days: (plan.days || []).map(function (d) {
+        return { date: d.date, items: (d.items || []).map(function (it) {
+          return { destId: it.destId, time: it.time, end: it.end, note: it.note };
+        }) };
+      })
+    };
+  }
+
+  /* [2] -> "Day 2", [1,3] -> "Days 1 and 3", [1,2,4] -> "Days 1, 2 and 4" */
+  function dayWord(list) {
+    return (list.length === 1 ? 'Day ' : 'Days ') +
+           list.join(', ').replace(/, (\d+)$/, ' and $1');
+  }
+
+  /* What an edit actually did, in a sentence or two. The server reports
+     which days it rewrote and which it left alone. */
+  function editSummary(info) {
+    var out = [], c = info.changed || [], k = info.kept || [], f = info.failed || [];
+
+    if (info.scope === 'all') {
+      out.push('I reworked the whole trip to fit.');
+    } else if (c.length) {
+      out.push('Updated ' + dayWord(c) + (info.scope === 'days' && k.length ? '.' : ' to fit.'));
+    } else if (info.scope === 'dates') {
+      out.push('Done. The stops are the same; only the dates or times moved.');
+    } else {
+      out.push('Done.');
+    }
+    if (f.length) {
+      out.push('I could not change ' + dayWord(f) + ', so ' +
+               (f.length === 1 ? 'it is' : 'they are') + ' as before.');
+    }
+    if (info.scope === 'days' && k.length) {
+      out.push(dayWord(k) + (k.length === 1 ? ' is' : ' are') + ' exactly as you had ' +
+               (k.length === 1 ? 'it.' : 'them.'));
+    }
+    return out.join(' ');
+  }
+
+  /* The old card stays in the chat but is dimmed and labelled, so the
+     visitor can tell which one is current. */
+  function retirePlanRow(row) {
+    if (!row || row.classList.contains('bud-old')) return;
+    row.classList.add('bud-old');
+    var msg = row.querySelector('.bud__msg');
+    if (msg) {
+      var n = document.createElement('p');
+      n.className = 'bud__old-note';
+      n.textContent = 'Earlier version';
+      msg.insertBefore(n, msg.firstChild);
+    }
+  }
+
+  /* save-itinerary.php may answer with the id it stored the trip under;
+     remembering it lets the next edit say which saved trip it replaces. */
+  function savedIdOf(d) {
+    if (!d || typeof d !== 'object') return null;
+    return d.id || d.planId || d.itineraryId || d.tripId || null;
+  }
+
   /* ---------- generate, then save ---------- */
 
-  function generatePlan(brief) {
+  function generatePlan(brief, edit) {
     if (previewMode) {
       addMessage('I need to be connected to the assistant before I can build a plan. '
                + 'This is a design preview.', 'bot');
       return;
     }
 
+    /* An edit sends the trip on screen back, plus what the change touches.
+       The server keeps every day that is not touched and writes only the
+       rest. Without that, any change reshuffled the whole trip. */
+    var previous = (edit && currentPlan) ? previousPayload(currentPlan) : null;
+    var body = { mode: 'itinerary', brief: brief };
+    if (previous) { body.previous = previous; body.edit = edit; }
+
     busy = true;
     send.disabled = true;
-    var typing = addTyping('Building your itinerary\u2026');
+    var typing = addTyping(previous ? 'Updating your itinerary\u2026' : 'Building your itinerary\u2026');
 
-    fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ mode: 'itinerary', brief: brief })
-    })
+    postJSON(endpoint, body, 100000)
     .then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (d) {
         if (!res.ok || !d.plan) {
@@ -1542,20 +1831,24 @@ document.addEventListener('DOMContentLoaded', function () {
           if (d && d.error) err.budMessage = d.error;
           throw err;
         }
-        return d.plan;
+        return d;
       });
     })
-    .then(function (plan) {
+    .then(function (d) {
+      var plan = d.plan;
+      var info = previous ? d.edit : null;
       typing.remove();
       currentPlan = plan;
-      renderPlan(plan);
-      savePlan(plan);
+      if (info) addMessage(editSummary(info), 'bot');
+      renderPlan(plan, info ? info.changed : null);
+      savePlan(plan, !!info);   // a trip the server treated as brand new replaces nothing
+      saveSession();
     })
     .catch(function (err) {
       typing.remove();
       addMessage((err && err.budMessage) || pickLine('planfail', PLAN_FAIL_LINES), 'bot');
       console.error('Bud.Ai itinerary failed:', err);
-      reopenPlanning(brief);
+      reopenPlanning(brief, !!previous);
     })
     .then(function () {
       busy = false;
@@ -1593,7 +1886,7 @@ document.addEventListener('DOMContentLoaded', function () {
      (an older plan, or a stop added by code), it is worked out: up to
      half an hour before the next stop, or three hours for the last one
      of the day, never later than 20:00. */
-  function visitEnd(it, next) {
+  function visitEnd(it, next, cap) {
     var start = toMin(it.time);
     if (start === null) return '';
     var given = toMin(it.end);
@@ -1604,12 +1897,173 @@ document.addEventListener('DOMContentLoaded', function () {
     if (nxt !== null && nxt > start) {
       end = nxt - start >= 90 ? nxt - 30 : nxt;
     } else {
-      end = Math.min(start + 180, 20 * 60);
+      /* Never run past the visitor's own end of day when they gave one. */
+      end = Math.min(start + 180, (cap !== null && cap !== undefined && cap > start) ? cap : 20 * 60);
     }
     return end > start ? fromMin(end) : '';
   }
 
-  function renderPlan(plan) {
+  /* ---------- swap one stop directly ----------
+     A "Swap" button beside each stop. Pick another destination and the
+     trip is rebuilt with only that day touched. It does not go through
+     the chat model, so it cannot misread which day or place is meant. */
+  function swapStop(row, dayNo, oldName, newName, said) {
+    if (busy || !currentPlan || (row && row.classList.contains('bud-old'))) return;
+    var b = {};
+    var src = currentPlan.brief || {};
+    Object.keys(src).forEach(function (k) { b[k] = src[k]; });
+    var places = (b.places || []).filter(function (n) {
+      return String(n).toLowerCase() !== oldName.toLowerCase();
+    });
+    places.push(newName);
+    b.places = places;
+    addMessage(said || ('Swap ' + oldName + ' for ' + newName), 'user');
+    planRebuild = true;
+    generatePlan(b, {
+      scope: 'days', days: [], removeDays: [], removePlaces: [oldName],
+      swap: { from: oldName, to: newName, day: dayNo },
+      note: 'swap ' + oldName + ' for ' + newName
+    });
+  }
+
+  /* ---------- swap by typing ----------
+     "replace Bagasbas with the Capalonga shrine" does the same direct swap
+     as the button: same time slot, nothing else moves. Only taken when
+     BOTH places are recognised unambiguously and the message is nothing
+     but the swap; anything else goes to the chat as before. */
+  var SW_STOP = { the: 1, of: 1, a: 1, an: 1, at: 1, in: 1 };
+  function swTokens(x) {
+    return String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ')
+      .filter(function (w) { return w && !SW_STOP[w]; });
+  }
+  function swHas(hay, w) {
+    for (var i = 0; i < hay.length; i++) {
+      if (hay[i] === w) return true;
+      if (w.length >= 4 && hay[i].length >= 4 && (hay[i].indexOf(w) === 0 || w.indexOf(hay[i]) === 0)) return true;
+    }
+    return false;
+  }
+  function swResolve(query, list) {
+    var q = swTokens(query);
+    if (!q.length) return null;
+    var qKey = q.join(' ');
+    var best = [], bestExtra = 1e9;
+    list.forEach(function (c) {
+      var nameT = swTokens(c.n), hay = nameT.concat(swTokens(c.t));
+      var ok = q.every(function (w) { return swHas(hay, w); });
+      if (!ok) return;
+      /* An exact name always wins over a longer name that merely contains it. */
+      var extra = (nameT.join(' ') === qKey) ? -1 : nameT.length - q.length;
+      if (extra < bestExtra) { bestExtra = extra; best = [c]; }
+      else if (extra === bestExtra) best.push(c);
+    });
+    /* Same place listed twice (same name) is not ambiguous. */
+    if (best.length > 1) {
+      var first = swTokens(best[0].n).join(' ');
+      if (best.every(function (c) { return swTokens(c.n).join(' ') === first; })) best = [best[0]];
+    }
+    return best.length === 1 ? best[0] : null;
+  }
+
+  var SWAP_RE = /^\s*(?:(?:can|could|would|will)\s+you\s+|please\s+|pls\s+)*(?:swap|replace|change|switch|substitute)\s+(?:out\s+)?(?:the\s+)?(.+?)\s+(?:with|to|for|into|by)\s+(?:the\s+)?(.+?)[\s.!?]*$/i;
+
+  function parseTypedSwap(text) {
+    if (!currentPlan || !currentPlan.days || !budPlaces.length || previewMode) return null;
+    if (/[,;]|\b(?:then|also|and\s+(?:then|i|start|make))\b/i.test(text)) return null;
+    var m = SWAP_RE.exec(text);
+    if (!m) return null;
+
+    var inPlan = [], used = {};
+    currentPlan.days.forEach(function (d, di) {
+      (d.items || []).forEach(function (it) {
+        if (!it.name) return;
+        used[it.name.toLowerCase()] = true;
+        inPlan.push({ n: it.name, t: it.town || '', day: di + 1 });
+      });
+    });
+    var from = swResolve(m[1], inPlan);
+    var to = swResolve(m[2], budPlaces.filter(function (p) { return p.n && !used[p.n.toLowerCase()]; }));
+    if (!(from && to)) {
+      try { console.debug('Bud typed swap not taken:', { from: m[1], to: m[2], fromFound: from && from.n, toFound: to && to.n }); } catch (e) {}
+    }
+    return (from && to) ? { from: from.n, to: to.n, day: from.day } : null;
+  }
+
+  /* Fallback for a swap sentence that reached the planner: find the old stop
+     on the trip, and take the new one from what the model asked for
+     (brief.places) or from the destination list. */
+  function swapFromPlanner(text, brief) {
+    if (!currentPlan || !currentPlan.days) return null;
+    var m = SWAP_RE.exec(text);
+    if (!m || /[,;]/.test(text)) return null;
+    var inPlan = [], inPlanNames = {};
+    currentPlan.days.forEach(function (d, di) {
+      (d.items || []).forEach(function (it) {
+        if (!it.name) return;
+        inPlanNames[it.name.toLowerCase()] = true;
+        inPlan.push({ n: it.name, t: it.town || '', day: di + 1 });
+      });
+    });
+    var from = swResolve(m[1], inPlan);
+    if (!from) return null;
+    var cand = budPlaces.filter(function (p) { return p.n && !inPlanNames[p.n.toLowerCase()]; });
+    var to = swResolve(m[2], cand);
+    if (!to && brief && brief.places) {
+      var fresh = brief.places.filter(function (n) { return !inPlanNames[String(n).toLowerCase()]; });
+      var hit = swResolve(m[2], fresh.map(function (n) { return { n: String(n), t: '' }; }));
+      if (hit) to = budPlaces.filter(function (p) { return p.n && p.n.toLowerCase() === hit.n.toLowerCase(); })[0] || null;
+    }
+    return to ? { from: from.n, to: to.n, day: from.day } : null;
+  }
+
+  function swapControl(plan, dayNo, oldName) {
+    var wrap = document.createElement('span');
+    wrap.className = 'bud__swap';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'bud__swap-btn';
+    btn.textContent = 'Swap';
+    btn.title = 'Replace ' + oldName + ' with another destination';
+    btn.addEventListener('click', function () {
+      var open = wrap.querySelector('select');
+      if (open) { open.remove(); return; }
+
+      var used = {};
+      plan.days.forEach(function (d) {
+        (d.items || []).forEach(function (x) { used[String(x.name || '').toLowerCase()] = true; });
+      });
+
+      var sel = document.createElement('select');
+      sel.className = 'bud__swap-sel';
+      sel.setAttribute('aria-label', 'Swap ' + oldName + ' for');
+      var ph = document.createElement('option');
+      ph.value = ''; ph.textContent = 'Swap for\u2026';
+      sel.appendChild(ph);
+      budPlaces.slice().sort(function (a, c) { return a.n.localeCompare(c.n); }).forEach(function (pl) {
+        if (!pl.n || used[pl.n.toLowerCase()]) return;
+        var o = document.createElement('option');
+        o.value = pl.n;
+        o.textContent = pl.n + (pl.t ? ' \u00B7 ' + pl.t : '');
+        sel.appendChild(o);
+      });
+      sel.addEventListener('change', function () {
+        if (!sel.value) return;
+        var row = wrap.closest ? wrap.closest('.bud__row') : null;
+        var chosen = sel.value;
+        sel.remove();
+        swapStop(row, dayNo, oldName, chosen);
+      });
+      wrap.appendChild(sel);
+      sel.focus();
+    });
+    wrap.appendChild(btn);
+    return wrap;
+  }
+
+  function renderPlan(plan, changed, still) {
+    /* A newer trip replaces the one above it. */
+    if (lastPlanRow) retirePlanRow(lastPlanRow);
+
     var wrap = document.createElement('div');
     wrap.className = 'bud__msg bud__msg--bot bud__msg--wide';
 
@@ -1640,11 +2094,19 @@ document.addEventListener('DOMContentLoaded', function () {
       wrap.appendChild(p);
     }
 
+    var dayCap = (plan.brief && plan.brief.dayEnd) ? toMin(plan.brief.dayEnd) : null;
+
     plan.days.forEach(function (day, i) {
       var dh = document.createElement('div');
       dh.className = 'bud__h';
       dh.textContent = 'Day ' + (i + 1)
         + (day.date ? ' \u00B7 ' + fmtDate(day.date, true, false) : '');
+      if (changed && changed.indexOf(i + 1) !== -1) {
+        var tg = document.createElement('span');
+        tg.className = 'bud__tag';
+        tg.textContent = 'updated';
+        dh.appendChild(tg);
+      }
       wrap.appendChild(dh);
 
       var ul = document.createElement('ul');
@@ -1657,7 +2119,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (it.time) {
           var t = document.createElement('span');
           t.className = 'bud__plan-time';
-          var endAt = visitEnd(it, day.items[ii + 1]);
+          var endAt = visitEnd(it, day.items[ii + 1], dayCap);
           t.textContent = endAt ? it.time + ' \u2013 ' + endAt : it.time;
           li.appendChild(t);
         }
@@ -1684,14 +2146,22 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         li.appendChild(body);
+        if (budPlaces.length && !previewMode && it.name) {
+          body.appendChild(swapControl(plan, i + 1, it.name));
+        }
         ul.appendChild(li);
       });
 
       wrap.appendChild(ul);
     });
 
-    mountBot(wrap);
+    var row = mountBot(wrap);
+    lastPlanRow = row;
+    if (!restoring) record({ k: 'p', plan: plan, changed: changed || null });
     scrollLog();
+
+    /* A trip drawn again after a page change does not re-send itself to the map. */
+    if (still) return row;
 
     /* Hand the map EVERY stop of the plan, with its coordinates. The
        map used to find places by spotting their names in the reply
@@ -1709,19 +2179,22 @@ document.addEventListener('DOMContentLoaded', function () {
         document.dispatchEvent(new CustomEvent('bud:plan', { detail: { stops: stops } }));
       } catch (e) { /* the map is a bonus; never break the chat over it */ }
     }, 0);
+    return row;
   }
 
   /* Saving is separate from generating on purpose. A visitor who is
      not signed in still gets to SEE their plan; only keeping it needs
      an account. Losing the plan at the sign-in prompt would be the
      rudest possible moment to ask. */
-  function savePlan(plan) {
-    fetch('save-itinerary.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify(plan)
-    })
+  function savePlan(plan, isEdit) {
+    /* An edit says which saved trip it replaces, when the server told us,
+       so changing a trip does not leave the old version saved beside it. */
+    var payload = {};
+    Object.keys(plan).forEach(function (k) { payload[k] = plan[k]; });
+    if (isEdit && lastSavedId) payload.replaceId = lastSavedId;
+    lastSavedId = null;
+
+    postJSON('save-itinerary.php', payload, 30000)
     .then(function (res) {
       return res.json().catch(function () { return {}; })
         .then(function (d) { return { status: res.status, data: d }; });
@@ -1753,6 +2226,8 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
+      lastSavedId = savedIdOf(r.data);
+      saveSession();
       addSaveNotice(pickLine('saved', SAVED_LINES), false, 'plan-trip.php');
     })
     .catch(function (e) {
@@ -1877,7 +2352,10 @@ document.addEventListener('DOMContentLoaded', function () {
     /\b(?:swap|replace|palitan|remove|delete|drop|alisin|tanggalin|take out|cancel)\b.*\b(?:day|stop|place|activity|falls|beach|island|church|park|monument|first|second|third|last|morning|afternoon)\b/,
     /\b(?:one more|another|an extra|extra|extend)\b.*\b(?:day|night)s?\b/,
     /\b(?:start|begin|move|push)\b.*\b(?:later|earlier|a day|next)\b/,
-    /\bmake it fit\b|\b(?:fit|within|under)\b.*\bbudget\b/
+    /\bmake it fit\b|\b(?:fit|within|under)\b.*\bbudget\b/,
+    /* a day named by number: "change day 2", "day 3 is too packed", "skip day 1" */
+    /\b(?:change|edit|update|replace|swap|redo|rework|remove|delete|drop|skip|palitan|alisin|tanggalin)\b.*\bday\s*\d/,
+    /\bday\s*\d.*\b(?:change|replace|swap|instead|different|remove|skip|too\s+\w+|palitan|alisin|tanggalin)\b/
   ];
 
   /* A request to build or change the trip, as opposed to asking about it. */
@@ -1932,6 +2410,21 @@ document.addEventListener('DOMContentLoaded', function () {
   function submit() {
     var text = input.value.trim();
     if (!text || busy) return;
+
+    /* "/new", "/clear", "new chat": start over with a blank conversation. */
+    if (/^(?:\/(?:new|clear|reset)|(?:new|clear|reset)\s+chat)$/i.test(text)) {
+      resetChat();
+      return;
+    }
+
+    var typedSwap = parseTypedSwap(text);
+    if (typedSwap) {
+      input.value = '';
+      hideSuggestions();
+      clearQuickReplies();
+      swapStop(lastPlanRow, typedSwap.day, typedSwap.from, typedSwap.to, text);
+      return;
+    }
 
     hideSuggestions();
     clearQuickReplies();
@@ -2028,6 +2521,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         lastOffer = offeredPlan(reply);
+        saveSession();
       })
       .catch(function (err) {
         typing.remove();
@@ -2074,6 +2568,56 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
+  /* Pick the conversation up where it was left, and keep it saved. */
+  /* Ask the SERVER who is signed in, then load that person's chat.
+     Signed in: the chat comes from their account. Guest: from this tab.
+     Chats saved in this tab under any OTHER user id are deleted, so
+     signing out and into another account never shows the old one. */
+  function readLocal() {
+    try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null'); } catch (e) { return null; }
+  }
+
+  function bootSession() {
+    if (previewMode) { USER_ID = 0; SESSION_KEY = 'bud.session.v1.0'; identityReady = true; applySession(readLocal()); return; }
+    function finish(serverSession) {
+      SESSION_KEY = 'bud.session.v1.' + USER_ID;
+      try {
+        Object.keys(sessionStorage).forEach(function (k) {
+          if (k.indexOf('bud.session.v1') === 0 && k !== SESSION_KEY) sessionStorage.removeItem(k);
+        });
+      } catch (e) {}
+
+      var saved = serverSession;
+      if (!saved) {
+        try { saved = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null'); } catch (e) { saved = null; }
+      }
+      identityReady = true;
+      applySession(saved);
+    }
+
+    postJSONGet(endpoint + (endpoint.indexOf('?') < 0 ? '?' : '&') + 'session=1', 10000).then(function (d) {
+      USER_ID = (d && d.user > 0) ? parseInt(d.user, 10) : 0;
+      finish(USER_ID > 0 ? d.session : null);
+    }, function () {
+      USER_ID = 0;      // server unreachable: behave as a guest
+      finish(null);
+    });
+  }
+
+  function postJSONGet(url, ms) {
+    var ctl = ('AbortController' in window) ? new AbortController() : null;
+    var timer = ctl ? setTimeout(function () { ctl.abort(); }, ms) : null;
+    var opts = { method: 'GET', credentials: 'same-origin', cache: 'no-store' };
+    if (ctl) opts.signal = ctl.signal;
+    return fetch(url, opts).then(function (r) {
+      if (timer) clearTimeout(timer);
+      return r.json();
+    }, function (e) { if (timer) clearTimeout(timer); throw e; });
+  }
+
+  bootSession();
+  window.addEventListener('pagehide', function () { saveSession(true); });
+
   /* ==================================================================
      askBud(message) — talks to api/bud.php, which talks to OpenAI.
 
@@ -2108,20 +2652,11 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
 
-    return fetch(endpoint, {
-      method : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-
-      /* Same-origin, so the session cookie the rate limiter counts
-         against rides along automatically. */
-      credentials: 'same-origin',
-
-      body: JSON.stringify({
-        message: message,
-        history: history.slice(0, -1),  // drop the turn just pushed
-        plan: compactPlan(currentPlan)  // the trip on screen, if there is one
-      })
-    })
+    return postJSON(endpoint, {
+      message: message,
+      history: history.slice(0, -1),  // drop the turn just pushed
+      plan: compactPlan(currentPlan)  // the trip on screen, if there is one
+    }, 90000)
     .then(function (res) {
       return res.json()
         .catch(function () { return {}; })   // HTML error page, not JSON
