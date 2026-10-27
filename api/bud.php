@@ -342,6 +342,19 @@ define('BUD_MAX_AMOUNT', 10000000);
    KIND of place, not about pesos. */
 define('BUD_COSTLY_RE', '/island|islet|calaguas|pulong|resort/i');
 
+/* ---- ISLAND RULE ----
+   An island is only worth the boat if the visitor has the time and the
+   money for it. Islands go into a plan only when BOTH hold:
+     - the island stop gets at least BUD_ISLAND_MIN_MINUTES (5 hours), and
+       the visitor's daily hours, if they gave any, leave room for that;
+     - the budget is at least BUD_ISLAND_MIN_BUDGET pesos PER PERSON FOR
+       THE WHOLE TRIP (an amount in pesos is converted; a tier counts only
+       if it is 'comfortable').
+   Otherwise the plan is built from beaches, waterfalls and the rest. */
+define('BUD_ISLAND_RE', '/island|islet|calaguas|pulong|\bisla\b/i');
+define('BUD_ISLAND_MIN_MINUTES', 300);
+define('BUD_ISLAND_MIN_BUDGET', 3000);
+
 /* Reads an amount the model passed through: 100000, "100,000", "P100k",
    "1.5m". Returns pesos as an int, or -1 for a negative value, 0 for none. */
 function bud_parse_amount($raw): int {
@@ -671,6 +684,88 @@ function bud_day_fits(array $items, string $ds, string $de): bool {
     return true;
 }
 
+/** Is this destination (name/tag) an island? */
+function bud_is_island(array $d): bool {
+    return preg_match(BUD_ISLAND_RE, ($d['tag'] ?? '') . ' ' . ($d['name'] ?? '')) === 1;
+}
+
+/** Lay out a day that holds an island so the island gets at least five
+    hours. One island a day; the other stops keep their order and are placed
+    before and after it, shortened (not below an hour) or, if still too much,
+    dropped (stops the visitor named last). Every stop ends up with a start
+    and an end, in order, inside the visitor's hours when they gave any.
+    $protect = slugs that should be dropped last. */
+function bud_fit_island_day(array $items, callable $isIsland, ?string $ds, ?string $de, array $protect = []): array {
+    $min = BUD_ISLAND_MIN_MINUTES;
+    $islandAt = null;
+    foreach ($items as $k => $it) {
+        if ($isIsland((string) $it['destId'])) { $islandAt = $k; break; }
+    }
+    if ($islandAt === null) { return $items; }
+
+    $keep = [];
+    foreach ($items as $k => $it) {
+        if ($k === $islandAt || !$isIsland((string) $it['destId'])) { $keep[] = $it; }
+    }
+    $items = $keep;
+    foreach ($items as $k => $it) {
+        if ($isIsland((string) $it['destId'])) { $islandAt = $k; break; }
+    }
+
+    if ($ds !== null && $de !== null) {
+        $b0 = bud_time_min($ds);
+        $b1 = bud_time_min($de);
+    } else {
+        $first = bud_parse_time($items[0]['time'] ?? null);
+        $b0 = $first !== null ? bud_time_min($first) : 7 * 60;
+        $b1 = 20 * 60;
+        if ($b1 - $b0 < $min) { $b0 = max(5 * 60, $b1 - $min); }
+    }
+    $span = $b1 - $b0;
+
+    $dur = [];
+    foreach ($items as $k => $it) {
+        $t = bud_parse_time($it['time'] ?? null);
+        $e = bud_parse_time($it['end'] ?? null);
+        $d = ($t !== null && $e !== null && bud_time_min($e) > bud_time_min($t))
+           ? bud_time_min($e) - bud_time_min($t) : 120;
+        $dur[$k] = $k === $islandAt ? min(max($min, $d), $span) : max(60, min(180, $d));
+    }
+
+    $total = function () use (&$items, &$dur) {
+        return array_sum($dur) + 15 * max(0, count($items) - 1);
+    };
+    while ($total() > $span && count($items) > 1) {
+        $big = null;
+        foreach ($dur as $k => $d) {
+            if ($k !== $islandAt && $d > 60 && ($big === null || $d > $dur[$big])) { $big = $k; }
+        }
+        if ($big !== null) { $dur[$big] = max(60, $dur[$big] - 30); continue; }
+
+        $drop = null;
+        foreach (array_reverse(array_keys($items)) as $k) {
+            if ($k === $islandAt) { continue; }
+            if (!in_array($items[$k]['destId'], $protect, true)) { $drop = $k; break; }
+            if ($drop === null) { $drop = $k; }
+        }
+        if ($drop === null) { break; }
+        unset($items[$drop], $dur[$drop]);
+        $items = array_values($items);
+        $dur   = array_values($dur);
+        $islandAt = $drop < $islandAt ? $islandAt - 1 : $islandAt;
+    }
+
+    $t = $b0;
+    foreach ($items as $k => $it) {
+        $a = $t;
+        $b = $a + $dur[$k];
+        $items[$k]['time'] = sprintf('%02d:%02d', intdiv($a, 60), $a % 60);
+        $items[$k]['end']  = sprintf('%02d:%02d', intdiv($b, 60), $b % 60);
+        $t = $b + 15;
+    }
+    return $items;
+}
+
 /** "Friday, 13 November 2026" */
 function bud_label(DateTimeImmutable $d): string {
     return $d->format('l, j F Y');
@@ -906,6 +1001,28 @@ if ($mode === 'itinerary') {
         $bInterests = ['beaches'];
     }
 
+    /* ---- ISLAND RULE: are islands allowed in this plan? ----
+       Needs a daily window of 5+ hours (when the visitor gave one) AND
+       P3,000+ per person for the whole trip. A tier alone only counts as enough for
+       'comfortable'. Decided once here; the pool, the prompt and the
+       final check all read these. */
+    if (isset($bCalc)) {
+        $bIslandBudgetOk = (int) $bCalc['perPersonDay'] * ($bNights + 1) >= BUD_ISLAND_MIN_BUDGET;
+    } else {
+        $bIslandBudgetOk = ($bBudget === 'comfortable');
+    }
+    $bIslandHoursOk = $bDayStart === null
+        || (bud_time_min($bDayEnd) - bud_time_min($bDayStart)) >= BUD_ISLAND_MIN_MINUTES;
+    $bIslandsOk   = $bIslandBudgetOk && $bIslandHoursOk;
+    $bIslandAsked = false;   // set when the visitor wanted an island that was not allowed
+    $bInterestsShown = $bInterests;   // what the model is told; $bInterests itself stays as the visitor gave it
+    if (!$bIslandsOk && in_array('islands', $bInterests, true)) {
+        $bIslandAsked = true;
+        $bInterestsShown = array_values(array_unique(array_merge(
+            array_diff($bInterests, ['islands']), ['beaches', 'waterfalls']
+        )));
+    }
+
     /* ---- DATES ----
        The start date is required and must not be in the past. This is
        checked HERE, not only in the chat, because a POST is a POST:
@@ -1078,7 +1195,7 @@ THE TRIP
 - budget: {$bBudgetLine}
 - wants about {$bPerDay} place(s) per day
 - daily hours: {$bWindowLine}
-- interested in: " . implode(', ', $bInterests) . "
+- interested in: " . implode(', ', $bInterestsShown) . "
 
 Lean the choices toward those interests, but a good plan can include
 one thing outside them.
@@ -1225,6 +1342,7 @@ TXT;
        Malatap Falls" is matched exactly. */
     $pcPlaceNames = [];
     $pcPlaceNotes = [];
+    $pcIslandNames = [];
     try {
         $pcDestFile = __DIR__ . '/../includes/destinations-data.php';
         if (is_file($pcDestFile)) {
@@ -1234,6 +1352,9 @@ TXT;
                     continue;
                 }
                 $pcPlaceNames[preg_replace('/[^a-z0-9]+/', '', strtolower($n))] = $n;
+                if (bud_is_island($d)) {
+                    $pcIslandNames[] = $n;
+                }
 
                 $town = trim((string) ($d['town'] ?? ''));
                 $tag  = trim((string) ($d['tag'] ?? ''));
@@ -1596,6 +1717,10 @@ if ($mode === 'itinerary') {
                 if ($nk === $fromK) { $fromSlug = $slug; }
                 if ($nk === $toK)   { $toSlug   = $slug; }
             }
+            if ($toSlug !== null && !$bIslandsOk && bud_is_island($budSlugs[$toSlug])) {
+                $bIslandAsked = true;   // an island swap is refused: not enough time or budget for it
+                $toSlug = null;
+            }
             if ($fromSlug !== null && $toSlug !== null && $fromSlug !== $toSlug) {
                 $already = false;
                 foreach ($base as $its) {
@@ -1792,6 +1917,21 @@ if ($mode === 'itinerary') {
         }
     }
 
+    /* ISLAND RULE: when islands are not allowed they are removed from the
+       list the model may choose from, and from the places the visitor named,
+       so the "put back" step below cannot bring them back. */
+    if (!$bIslandsOk) {
+        foreach ($budSlugs as $slug => $d) {
+            if (bud_is_island($d)) { unset($budSlugs[$slug]); }
+        }
+        $notIsland = function ($slug) use ($bMustPool) {
+            return !(isset($bMustPool[$slug]) && bud_is_island($bMustPool[$slug]));
+        };
+        if (count(array_filter($bMust, $notIsland)) !== count($bMust)) { $bIslandAsked = true; }
+        $bMust    = array_values(array_filter($bMust, $notIsland));
+        $mustTodo = array_values(array_filter((array) $mustTodo, $notIsland));
+    }
+
     /* Put back anything they named that a budget cut removed. */
     foreach ($bMust as $slug) {
         if (!isset($budSlugs[$slug])) {
@@ -1932,6 +2072,21 @@ if ($mode === 'itinerary') {
     } elseif ($bBudget === 'mid') {
         $instructions .= "\n\nBUDGET RULE: include at most ONE island or resort in the whole trip, because "
             . "boat hire and resorts cost much more than the other places.";
+    }
+
+    if (!$bIslandsOk) {
+        $instructions .= "\n\nISLAND RULE: islands are not on the list for this trip (an island needs at least 5 hours "
+            . "and a budget of P" . number_format(BUD_ISLAND_MIN_BUDGET) . " or more per person for the whole trip, and this trip does not "
+            . "have that). Build the plan from beaches, waterfalls and the other places on the list.";
+        if ($bIslandAsked) {
+            $instructions .= " The visitor wanted islands: do not mention any island by name; say in ONE short sentence in "
+                . "the summary that island trips need more time and budget than this trip has, because boats are often "
+                . "priced per boat rather than per person and food and fees add up.";
+        }
+    } else {
+        $instructions .= "\n\nISLAND RULE: an island stop needs at least 5 hours, so give an island at least a 5 hour "
+            . "visit and at most ONE island a day. Keep that day to the island, or add one short stop beside it only if "
+            . "the day's hours leave room.";
     }
 
     if ($bTooLow) {
@@ -2820,6 +2975,50 @@ if ($mode === 'plan_chat') {
         ];
     }
 
+    /* ---- ISLAND RULE, chat side ----
+       The planner already leaves islands out when the time or budget is
+       too small, but this chat step used to announce the island anyway
+       ("featuring Parola Island") and show its photo card. Same test as
+       the planner: P3,000+ per person for the whole trip and a 5 hour window. When
+       it fails, island names are taken out of the places list and the
+       reply says why instead of promising the island. */
+    if ($ready && $pcIslandNames) {
+        $pcPerDayAmt = $pcAmount > 0
+            ? (int) bud_budget_calc($pcAmount, $pcBasis, max(1, $pcTravellers), $pcNights + 1)['perPersonDay']
+            : null;
+        $pcIslandBudgetOk = $pcPerDayAmt !== null
+            ? $pcPerDayAmt * ($pcNights + 1) >= BUD_ISLAND_MIN_BUDGET
+            : ($pcBudget === 'comfortable');
+        $pcIslandHoursOk = $pcDayStart === null
+            || (bud_time_min($pcDayEnd) - bud_time_min($pcDayStart)) >= BUD_ISLAND_MIN_MINUTES;
+
+        if (!($pcIslandBudgetOk && $pcIslandHoursOk)) {
+            $pcHadIsland = false;
+            $pcPlaces = array_values(array_filter($pcPlaces, function ($n) use ($pcIslandNames, &$pcHadIsland) {
+                if (in_array($n, $pcIslandNames, true)) { $pcHadIsland = true; return false; }
+                return true;
+            }));
+            foreach ($pcIslandNames as $in) {
+                if (stripos($say, $in) !== false) { $pcHadIsland = true; }
+            }
+            if (!$pcHadIsland && in_array('islands', $pcInterests, true)) { $pcHadIsland = true; }
+
+            if ($pcHadIsland && ($body['rebuild'] ?? false) !== true) {
+                $pcWho   = $pcTravellers === 1 ? 'a solo trip' : 'your trip for ' . $pcTravellers;
+                $pcMoney = $pcAmount > 0 ? ' with a P' . number_format($pcAmount) . ' budget' : '';
+                $pcGap   = $pcPerDayAmt !== null
+                         ? ' That works out to about P' . number_format($pcPerDayAmt * ($pcNights + 1)) . ' per person for the whole trip, and'
+                         : '';
+                $say = 'All set for ' . $pcWho . ' starting ' . bud_label($pcStart) . $pcMoney . '.'
+                     . ($pcGap !== '' ? $pcGap . ' island trips' : ' Island trips') . ' usually need P'
+                     . number_format(BUD_ISLAND_MIN_BUDGET)
+                     . ' or more per person for the whole trip, because boats are often priced per boat rather than per person'
+                     . ' and food, water and island fees come on top. They also need at least 5 hours on the day.'
+                     . ' So I am building this around beaches and waterfalls instead. I am putting your plan together now.';
+            }
+        }
+    }
+
     bud_out(200, [
         'reply'  => $say,
         'ready'  => $ready,
@@ -3199,6 +3398,58 @@ if ($mode === 'itinerary') {
         }
     }
 
+    /* ---- ISLAND RULE, enforced ----
+       Whatever the model wrote, a kept day or a swap brought in: with
+       islands NOT allowed, an island stop is replaced by the nearest place
+       that is not an island; with islands allowed, the island's day is laid
+       out so it gets at least 5 hours. Runs last so nothing re-times it. */
+    $bIsIsland = function ($slug) use ($bMustPool) {
+        return isset($bMustPool[$slug]) && bud_is_island($bMustPool[$slug]);
+    };
+    $inPlan = [];
+    foreach ($planDays as $pd) {
+        foreach ($pd['items'] as $it) { $inPlan[$it['destId']] = true; }
+    }
+    foreach ($planDays as $i => $pd) {
+        $has = false;
+        foreach ($pd['items'] as $it) {
+            if ($bIsIsland($it['destId'])) { $has = true; break; }
+        }
+        if (!$has) { continue; }
+        $before = json_encode($pd['items']);
+
+        if (!$bIslandsOk) {
+            $bIslandAsked = true;
+            $out = [];
+            foreach ($pd['items'] as $it) {
+                if (!$bIsIsland($it['destId'])) { $out[] = $it; continue; }
+                $bestSlug = null; $bestMiss = null;
+                foreach ($budSlugs as $cand => $cd) {
+                    if (isset($inPlan[$cand]) || isset($banned[$cand]) || isset($avoid[$cand]) || bud_is_island($cd)) { continue; }
+                    $miss = 0;
+                    foreach ($pd['items'] as $o) {
+                        if ($o['destId'] !== $it['destId'] && !in_array($o['destId'], $near[$cand] ?? [], true)) { $miss++; }
+                    }
+                    if ($bestMiss === null || $miss < $bestMiss) { $bestMiss = $miss; $bestSlug = $cand; }
+                }
+                if ($bestSlug !== null) {
+                    $inPlan[$bestSlug] = true;
+                    $out[] = $mkItem($bestSlug, $it['time'], $it['end'], bud_cut((string) ($budSlugs[$bestSlug]['desc'] ?? ''), 200));
+                }
+            }
+            $planDays[$i]['items'] = $out;
+        } else {
+            $planDays[$i]['items'] = bud_fit_island_day($pd['items'], $bIsIsland, $bDayStart, $bDayEnd, $bMust);
+        }
+
+        if (json_encode($planDays[$i]['items']) !== $before) {
+            if (!in_array($i + 1, $changed, true)) { $changed[] = $i + 1; }
+            $stayed = array_values(array_diff($stayed, [$i + 1]));
+        }
+    }
+    $kept = 0;
+    foreach ($planDays as $pd) { $kept += count($pd['items']); }
+
     sort($changed);
     sort($stayed);
 
@@ -3237,6 +3488,21 @@ if ($mode === 'itinerary') {
         }
     }
 
+    $bIslandNote = '';
+    if (!$bIslandsOk && $bIslandAsked) {
+        $bIslandGap = '';
+        if (isset($bCalc)) {
+            $bIslandGap = ' Your budget works out to about P' . number_format((int) $bCalc['perPersonDay'] * ($bNights + 1))
+                        . ' per person for the whole trip.';
+        }
+        $bIslandNote = ' Heads up: island trips usually need a budget of P'
+                     . number_format(BUD_ISLAND_MIN_BUDGET) . ' or more per person for the whole trip, because boats are'
+                     . ' often priced per boat rather than per person, and food, water and island fees come on top.'
+                     . $bIslandGap
+                     . ' They also need at least 5 hours on the day. This plan uses beaches, waterfalls and other'
+                     . ' places instead. To fit an island, raise the budget, share the boat with others, or add days.';
+    }
+
     /* The visitor's name wins. They typed it; the model only guessed. On an
        edit the trip keeps the name it already had unless every day was
        rewritten. */
@@ -3254,7 +3520,7 @@ if ($mode === 'itinerary') {
     bud_out(200, [
         'plan' => [
             'name'      => $outName,
-            'summary'   => $outSummary . $bBudgetNote,
+            'summary'   => $outSummary . $bBudgetNote . $bIslandNote,
             'travelers' => $bTravellers,
             'source'    => 'bud',
             'startDate' => $bStart->format('Y-m-d'),
