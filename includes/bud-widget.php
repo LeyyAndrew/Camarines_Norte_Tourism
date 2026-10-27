@@ -45,7 +45,7 @@ define('BUD_WIDGET_RENDERED', true);
  * <root>/includes/, so the root is one level up, and the difference
  * between that and the current page's directory is the prefix needed.
  */
-$budAsset = function (string $path): string {
+$budAssetRaw = function (string $path): string {
     $root = str_replace('\\', '/', realpath(__DIR__ . '/..'));
     $here = str_replace('\\', '/', dirname($_SERVER['SCRIPT_FILENAME'] ?? $root));
 
@@ -58,7 +58,15 @@ $budAsset = function (string $path): string {
         }
     }
 
-    return htmlspecialchars($prefix . ltrim($path, '/'), ENT_QUOTES);
+    return $prefix . ltrim($path, '/');
+};
+
+/* The same path, escaped for use inside an HTML attribute. The raw one
+   above is for the JSON block further down: there the browser does NOT
+   decode entities, so an escaped path ("a &amp; b.jpg") reached
+   img.src as written and the photo broke. */
+$budAsset = function (string $path) use ($budAssetRaw): string {
+    return htmlspecialchars($budAssetRaw($path), ENT_QUOTES);
 };
 
 /**
@@ -155,7 +163,7 @@ try {
         }
         $budPlaces[] = [
             'n'   => $r['name'],
-            'img' => $r['image'] !== '' ? $budAsset($r['image']) : '',
+            'img' => $r['image'] !== '' ? $budAssetRaw($r['image']) : '',
             't'   => $r['town'] ?? '',
             /* The tag, so the map can group a pin and draw the
                right glyph on it. Four to twelve characters —

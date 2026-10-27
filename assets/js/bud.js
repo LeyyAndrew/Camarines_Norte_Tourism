@@ -44,6 +44,49 @@ document.addEventListener('DOMContentLoaded', function () {
 
   if (!toggle || !panel || !log || !input || !send) return;
 
+  /* The bar of pre-written questions above the text box (Plan my trip,
+     How do I get to Calaguas?, ...). Off. Set to true to bring it back.
+     The follow-up buttons under Bud's replies (Check the prices, Make it
+     cheaper, ...) have been removed. Only "Try again" after an error is
+     left. */
+  var SHOW_SUGGESTIONS   = false;
+
+  /* The server refuses anything over 1000 characters with a 413. Stop
+     the box at the same number instead of failing after the send. */
+  if (!(input.maxLength > 0)) input.maxLength = 1000;
+
+  /* Styles for the pieces added below (inline place links, quick-reply
+     chips, the reveal animation). Injected from here so this file does
+     not depend on a matching edit in bud.css. Existing classes such as
+     .bud__chip are reused, not redefined. */
+  (function () {
+    if (document.getElementById('budPolishCss')) return;
+    var pin = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 22s8-6.4 8-12a8 8 0 1 0-16 0c0 5.6 8 12 8 12Z"/></svg>');
+    var st = document.createElement('style');
+    st.id = 'budPolishCss';
+    st.textContent =
+      '.bud__pl{display:inline;font:inherit;font-weight:600;color:inherit;background:none;border:0;' +
+        'border-bottom:1.5px solid #F2A93B;border-radius:0;padding:0 0 1px;margin:0;cursor:pointer;' +
+        'text-align:left;white-space:normal;line-height:inherit}' +
+      '.bud__pl::before{content:"";display:inline-block;width:.78em;height:.78em;margin-right:.26em;' +
+        'vertical-align:-.06em;background:#F2A93B;' +
+        '-webkit-mask:url("data:image/svg+xml,' + pin + '") center/contain no-repeat;' +
+        'mask:url("data:image/svg+xml,' + pin + '") center/contain no-repeat}' +
+      '.bud__pl:hover,.bud__pl:focus-visible{color:#F2A93B;outline:none}' +
+      '.bud__msg strong{font-weight:700}' +
+      '.bud__msg em{font-style:italic}' +
+      '.bud__msg code{font-size:.92em;padding:.05em .35em;border-radius:5px;background:rgba(255,255,255,.1)}' +
+      '.bud__plan-time{white-space:nowrap}' +
+      '.bud__n{opacity:.65;margin-right:.4em;font-variant-numeric:tabular-nums}' +
+      '.bud__qr{display:flex;flex-wrap:wrap;gap:.45rem;margin:.15rem 0 .5rem 2.5rem}' +
+      '.bud__typing-label{margin-left:.65rem;font-size:.82em;opacity:.7;align-self:center}' +
+      '.bud-reveal>*{animation:budRise .38s cubic-bezier(.2,.7,.2,1) both}' +
+      '.bud-still.bud-reveal>*{animation:none}' +
+      '@keyframes budRise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}' +
+      '@media (prefers-reduced-motion:reduce){.bud-reveal>*{animation:none}}';
+    document.head.appendChild(st);
+  })();
+
   /* The logo used beside Bud's messages. Taken from the header image,
      whose path bud-widget.php has already resolved for this page. */
   var headAvatar = panel.querySelector('.bud__head-avatar');
@@ -568,9 +611,85 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* "A. How to get there" or "1. Getting there" — a heading, not prose. */
   function headingText(line) {
-    var m = /^\s*([A-Z]|\d{1,2})[.)]\s+(.{2,60})$/.exec(line);
-    return m ? m[2].trim() : null;
+    var m = /^\s*[A-Z][.)]\s+(.{2,60})$/.exec(line);
+    if (m) return m[1].trim();
+    m = /^\s*#{1,4}\s+(.{2,60})$/.exec(line);            // ### Heading
+    if (m) return m[1].trim();
+    m = /^\s*\*\*([^*]{2,50})\*\*:?\s*$/.exec(line);      // a line that is only **bold**
+    return m ? m[1].trim() : null;
   }
+
+  /* "1. Take a jeep to Labo" is a list item, not a heading. It used to
+     be caught by headingText and rendered as a heading. */
+  function numberedText(line) {
+    var m = /^\s*(\d{1,2})[.)]\s+(.+)$/.exec(line);
+    return m ? { n: m[1], text: m[2].trim() } : null;
+  }
+
+  /* ---------- inline formatting ----------
+     **bold**, *italic* and `code` become real elements, and a known
+     destination name becomes a tappable link that asks Bud about it.
+     Still no innerHTML: every node is built with createElement and
+     createTextNode, so model output cannot inject markup. */
+  function escRe(x) { return x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+  var placeRe = null;
+  function placeRegex() {
+    if (placeRe !== null) return placeRe;
+    var names = budPlaces.map(function (p) { return p.n; }).filter(Boolean);
+    placeRe = names.length ? new RegExp('(' + names.map(escRe).join('|') + ')', 'i') : false;
+    return placeRe;
+  }
+
+  function placeChip(text) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'bud__pl';
+    b.textContent = text;
+    b.setAttribute('data-place', text);
+    b.title = 'Ask Bud about ' + text;
+    return b;
+  }
+
+  function addText(parent, str, seen) {
+    var re = placeRegex();
+    while (str) {
+      var m = re ? re.exec(str) : null;
+      if (!m) { parent.appendChild(document.createTextNode(str)); return; }
+      if (m.index) parent.appendChild(document.createTextNode(str.slice(0, m.index)));
+      var key = m[1].toLowerCase();
+      if (seen[key]) {
+        parent.appendChild(document.createTextNode(m[1]));   // only the first mention is a link
+      } else {
+        seen[key] = 1;
+        parent.appendChild(placeChip(m[1]));
+      }
+      str = str.slice(m.index + m[1].length);
+    }
+  }
+
+  var INLINE_TOK = /\*\*([^*\n]+?)\*\*|`([^`\n]+)`|\*([^*\s](?:[^*\n]*[^*\s])?)\*/g;
+  function inline(parent, text, seen) {
+    var last = 0, m, el;
+    INLINE_TOK.lastIndex = 0;
+    while ((m = INLINE_TOK.exec(text))) {
+      if (m.index > last) addText(parent, text.slice(last, m.index), seen);
+      if (m[1] !== undefined) { el = document.createElement('strong'); addText(el, m[1], seen); }
+      else if (m[2] !== undefined) { el = document.createElement('code'); el.textContent = m[2]; }
+      else { el = document.createElement('em'); addText(el, m[3], seen); }
+      parent.appendChild(el);
+      last = INLINE_TOK.lastIndex;
+    }
+    if (last < text.length) addText(parent, text.slice(last), seen);
+  }
+
+  /* Tapping a place name in a reply asks about it. */
+  log.addEventListener('click', function (e) {
+    var chip = e.target.closest ? e.target.closest('.bud__pl') : null;
+    if (!chip || busy) return;
+    input.value = 'Tell me more about ' + chip.getAttribute('data-place');
+    submit();
+  });
 
   function bulletText(line) {
     var m = /^\s*[-*\u2022]\s+(.+)$/.exec(line);
@@ -651,11 +770,12 @@ document.addEventListener('DOMContentLoaded', function () {
     var lines = String(text).split('\n');
     var prose = [];
     var list  = null;
+    var seen  = {};   // place names already linked in this message
 
     function flushProse() {
       if (!prose.length) return;
       var p = document.createElement('p');
-      p.textContent = prose.join(' ').trim();
+      inline(p, prose.join(' ').trim(), seen);
       if (p.textContent) into.appendChild(p);
       prose = [];
     }
@@ -671,6 +791,24 @@ document.addEventListener('DOMContentLoaded', function () {
       flushProse(); flushList();
       tableToList(tCells, tDividers, tFirst, into);
       tCells = []; tDividers = 0; tFirst = 0;
+    }
+
+    function listItem(content, num) {
+      flushProse();
+      if (!list) {
+        list = document.createElement('ul');
+        list.className = 'bud__list';
+        into.appendChild(list);
+      }
+      var li = document.createElement('li');
+      if (num) {
+        var n = document.createElement('span');
+        n.className = 'bud__n';
+        n.textContent = num + '.';
+        li.appendChild(n);
+      }
+      inline(li, content, seen);
+      list.appendChild(li);
     }
 
     lines.forEach(function (raw) {
@@ -706,21 +844,13 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       var bullet = bulletText(line);
-      if (bullet) {
-        flushProse();
-        if (!list) {
-          list = document.createElement('ul');
-          list.className = 'bud__list';
-          into.appendChild(list);
-        }
-        var li = document.createElement('li');
-        li.textContent = plain(bullet);
-        list.appendChild(li);
-        return;
-      }
+      if (bullet) { listItem(bullet, null); return; }
+
+      var numd = numberedText(line);
+      if (numd) { listItem(numd.text, numd.n); return; }
 
       flushList();
-      prose.push(plain(line));
+      prose.push(line.trim());
     });
 
     flushTable();
@@ -854,6 +984,12 @@ document.addEventListener('DOMContentLoaded', function () {
       if (wrap.querySelector('.bud__h, .bud__list, .bud__places')) {
         wrap.classList.add('bud__msg--wide');
       }
+      /* Blocks rise in one after another instead of the whole reply
+         appearing at once. */
+      wrap.classList.add('bud-reveal');
+      [].forEach.call(wrap.children, function (c, i) {
+        c.style.animationDelay = Math.min(i, 6) * 70 + 'ms';
+      });
     }
 
     var node = who === 'user' ? (log.appendChild(wrap), wrap) : mountBot(wrap);
@@ -914,12 +1050,21 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  function addTyping() {
+  function addTyping(label) {
     var wrap = document.createElement('div');
     wrap.className = 'bud__msg bud__msg--bot';
     wrap.classList.add('bud__msg--typing');
-    wrap.setAttribute('aria-label', 'Bud is typing');
+    wrap.setAttribute('aria-label', label || 'Bud is typing');
     wrap.innerHTML = '<span class="bud__typing"><i></i><i></i><i></i></span>';
+    if (label) {
+      /* Building a plan takes a while; say what is happening. */
+      wrap.style.display = 'flex';
+      wrap.style.alignItems = 'center';
+      var lb = document.createElement('span');
+      lb.className = 'bud__typing-label';
+      lb.textContent = label;
+      wrap.appendChild(lb);
+    }
     /* The row is returned, so typing.remove() takes the avatar too. */
     var row = mountBot(wrap);
     scrollLog();
@@ -949,7 +1094,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function showSuggestions() {
-    if (suggestionsShown) return;
+    if (!SHOW_SUGGESTIONS || suggestionsShown) return;
     suggestionsShown = true;
 
     /* A sideways strip just above the text box, not a stack inside the
@@ -973,7 +1118,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (sg.itinerary) {
           addMessage('Can you make me an itinerary?', 'user');
-          startWizard();
+          startPlanning();
         } else {
           /* The other two are ordinary questions — put the text in and
              go through the same path a typed message takes, so there
@@ -1082,208 +1227,298 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   /* ==================================================================
-     ITINERARY BUILDER
+     ITINERARY CHAT
 
-     Four questions, then a plan. The questions are BUTTONS, not
-     typing: on a phone, tapping "3-4 people" beats spelling it out,
-     and a fixed set of answers means the server never has to guess
-     what somebody meant by "a few of us".
+     No buttons, no fixed questions. The visitor types in their own
+     words ("3 of us, 2 nights, we love beaches and food") and Bud
+     works out what is still missing, asks for just that, and builds
+     the plan once it has enough. Whatever they already said is never
+     asked again.
 
-     No model call happens until all four are answered, so the whole
-     interview is free. Only the generation costs a request, which
-     matters on a 500-a-day quota.
+     The conversation goes to api/bud.php with mode 'plan_chat'. That
+     replies with { reply, ready, cancel, brief }. When ready is true
+     the brief goes straight into the existing generate-then-save
+     path below, so the plan is built, shown, and saved to Plan your
+     trip exactly as before.
+
+     Chatting is cheap; only the final generation is a big request.
      ================================================================== */
 
-  var STEPS = [
-    { key: 'travellers', q: 'How many of you are travelling?',
-      opts: [ { v: 1, l: 'Just me' }, { v: 2, l: '2 of us' },
-              { v: 4, l: '3-4' },     { v: 8, l: '5 or more' } ] },
+  var planning    = false;   // true while Bud is interviewing in chat
+  var planHistory = [];      // the planning conversation only
+  var planKnown   = null;    // what the server last said it had worked out
+  var planRebuild = false;   // true when the visitor is changing a trip that was already built
+  var currentPlan = null;    // the trip on screen, so the chat can talk about it
+  var PLAN_HISTORY_MAX = 20;
+  var DEFAULT_PLACEHOLDER = input.getAttribute('placeholder') || '';
 
-    { key: 'nights', q: 'How many nights are you staying?',
-      opts: [ { v: 1, l: '1 night' }, { v: 2, l: '2 nights' },
-              { v: 3, l: '3 nights' }, { v: 5, l: '5 or more' } ] },
-
-    { key: 'perDay', q: 'How many places per day?',
-      opts: [ { v: 1, l: 'One, take it slow' },
-              { v: 2, l: 'Two' },
-              { v: 3, l: 'Three' } ] },
-
-    { key: 'budget', q: 'What kind of budget?',
-      opts: [ { v: 'budget', l: 'Backpacker' },
-              { v: 'mid', l: 'Middle' },
-              { v: 'comfortable', l: 'Comfortable' } ] },
-
-    /* The only multi-choice step, so it needs a Done button — the
-       others advance on the tap itself. */
-    { key: 'interests', q: 'What are you most interested in?',
-      multi: true,
-      opts: [ { v: 'beaches', l: 'Beaches' },   { v: 'waterfalls', l: 'Waterfalls' },
-              { v: 'islands', l: 'Islands' },   { v: 'hiking', l: 'Hiking' },
-              { v: 'heritage', l: 'Heritage' }, { v: 'food', l: 'Food' },
-              { v: 'relaxed', l: 'Take it easy' }, { v: 'adventure', l: 'Adventure' } ] },
-
-    /* The only typed answer. A name cannot be a set of buttons, and
-       "Lei's birthday trip" is worth more to the person who wrote it
-       than anything a model would name it. Skippable, because being
-       made to name a thing before seeing it is a poor trade. */
-    { key: 'name', q: 'What would you like to call this trip?',
-      text: true, placeholder: 'Bicol long weekend', skip: 'Let Bud name it' }
-  ];
-
-  var wizard = null;   // null when not building
-
-  function startWizard() {
-    wizard = { step: 0, brief: { interests: [] } };
-
-    /* A friendly lead-in before the first question, so the interview
-       feels like Bud getting to know the trip, not a form. */
-    /* "Madya" is Bicol for "come on" / "let's go". */
-    addMessage('Madya, let\u2019s plan your trip! \uD83E\uDDF3 A few quick taps and I\u2019ll put together a day-by-day plan for you.', 'bot');
-    askStep();
+  /* While planning, the text box says what to do. Put back afterwards. */
+  function setPlanning(on) {
+    planning = on;
+    if (on) {
+      input.setAttribute('placeholder', 'Tell Bud about your trip\u2026');
+    } else {
+      input.setAttribute('placeholder', DEFAULT_PLACEHOLDER);
+      planHistory = [];
+      planKnown   = null;
+      planRebuild = false;
+    }
   }
 
-  function askStep() {
-    var step = STEPS[wizard.step];
+  /* A failed plan must not lose the trip. Re-open the planning chat with the
+     brief as its first turn, so "2 nights instead" is read as a change to
+     THIS trip rather than a fresh question. */
+  function reopenPlanning(brief) {
+    if (!brief) return;
+    var bits = [];
+    if (brief.startDate) bits.push('start date ' + brief.startDate);
+    if (brief.endDate)   bits.push('end date ' + brief.endDate);
+    if (brief.nights)    bits.push(brief.nights + ' nights');
+    if (brief.travellers) bits.push(brief.travellers + ' travellers');
+    if (brief.budgetAmount) {
+      bits.push('budget ' + brief.budgetAmount + ' pesos ('
+        + (brief.budgetBasis === 'perPerson' ? 'per person'
+        : brief.budgetBasis === 'perPersonPerDay' ? 'per person per day' : 'total') + ')');
+    } else if (brief.budget) {
+      bits.push('budget ' + brief.budget);
+    }
+    if (brief.dayStart && brief.dayEnd) bits.push('daily hours ' + brief.dayStart + ' to ' + brief.dayEnd);
+    if (brief.perDay) bits.push(brief.perDay + ' places per day');
+    if (brief.interests && brief.interests.length) bits.push('interests ' + brief.interests.join(', '));
+    if (brief.places && brief.places.length) bits.push('must include ' + brief.places.join(', '));
+    if (typeof brief.name === 'string') bits.push(brief.name ? 'trip name "' + brief.name + '"' : 'trip name: skip');
+    setPlanning(true);
+    planKnown = brief;   // so a long chat after a failed plan still knows the trip
+    planHistory = [
+      { role: 'user', content: 'My trip so far: ' + bits.join('; ') + '.' },
+      { role: 'assistant', content: 'I have your trip details, but the plan did not come out. What would you like to change before I build it again?' }
+    ];
+  }
 
-    var wrap = document.createElement('div');
-    wrap.className = 'bud__msg bud__msg--bot bud__msg--wide';
+  function releaseInput() {
+    busy = false;
+    send.disabled = false;
+    input.focus();
+  }
 
-    var p = document.createElement('p');
-    p.textContent = step.q;
-    wrap.appendChild(p);
+  /* The line Bud opens with when the visitor taps the "Plan my trip"
+     chip. Ten of them, so it does not sound like a recording.
 
-    var opts = document.createElement('div');
-    opts.className = 'bud__opts';
+     Each is a short reaction, then ONE question. Every question asks
+     for the start date and nothing else, because the planning chat is
+     told that is what the visitor has just been asked, and reads their
+     next message as the answer. If you add one, keep it that way: no
+     second question, no place names, no facts, at most one emoji.
+     "Madya" is Bicol for "come on" / "let's go"; "Dios mabalos" is
+     "thank you". */
+  /* One of several lines for a fixed message, never the same one twice
+     running. Memory only: it is about not repeating inside one
+     conversation, so nothing here needs to outlive the page. */
+  var lastLine = {};
+  function pickLine(key, lines) {
+    var i = Math.floor(Math.random() * lines.length);
+    if (i === lastLine[key]) i = (i + 1) % lines.length;
+    lastLine[key] = i;
+    return lines[i];
+  }
 
-    /* ---- the typed step ---- */
-    if (step.text) {
-      var field = document.createElement('input');
-      field.type = 'text';
-      field.className = 'bud__opt-text';
-      field.placeholder = step.placeholder || '';
-      field.maxLength = 60;
+  /* The fixed messages. Each line in a pool says the same thing, so any
+     of them is safe to show. Add more freely, but keep what each one
+     has to tell the visitor: that the plan is still above, that the
+     connection failed, where the saved trip is. */
+  var NET_LINES = [
+    'I could not reach the server just now. Check your connection and try again.',
+    'Hmm, I lost the connection for a moment. Could you check your signal and try again?',
+    'That did not go through, probably the connection. Try once more?',
+    'Sorry, I could not reach the server just then. Give it another go in a moment.'
+  ];
+  var PLAN_FAIL_LINES = [
+    'I could not build a plan just then. Try again?',
+    'That plan did not come together. Want me to try again?',
+    'Something went wrong while I was building that one. Shall I try again?',
+    'I got stuck putting that plan together. Let\u2019s try it once more?'
+  ];
+  var SIGN_IN_LINES = [
+    'Sign in and I will keep this on your account.',
+    'Want to keep this one? Sign in and I\u2019ll save it to your account.',
+    'Sign in and I\u2019ll hold on to this plan for you.',
+    'This one\u2019s worth keeping. Sign in and I\u2019ll save it to your account.'
+  ];
+  var SAVED_LINES = [
+    'Saved! Dios mabalos \uD83D\uDE4F You will find it under Plan your trip.',
+    'All saved. You\u2019ll find it under Plan your trip.',
+    'Done, it\u2019s on your account now. Look for it under Plan your trip.',
+    'Saved! You can open it any time from Plan your trip.',
+    'Kept it for you. It\u2019s waiting under Plan your trip. \uD83C\uDF34',
+    'Saved! Dios mabalos for planning with me. It\u2019s under Plan your trip.'
+  ];
+  var SAVE_FAIL_LEADS = [
+    'I could not save this one \u2014 ',
+    'This one did not save \u2014 ',
+    'Saving did not work this time \u2014 '
+  ];
+  var SAVE_NET_LINES = [
+    'I could not reach the server to save that. Your plan is above, so nothing is lost.',
+    'The save did not go through, probably the connection. Your plan is above, so nothing is lost.',
+    'I lost the connection while saving. Your plan is above, so nothing is lost.'
+  ];
 
-      var go = document.createElement('button');
-      go.type = 'button';
-      go.className = 'bud__opt bud__opt--go';
-      go.textContent = 'Build my plan';
+  var OPENERS = [
+    ['I\u2019d love to map that out for you! \uD83E\uDDF3',          'When does your trip start?'],
+    ['Madya, let\u2019s build you a trip! \uD83C\uDF34',             'What day are you starting?'],
+    ['Happy to plan this with you.',                               'Which date does the trip begin?'],
+    ['Let\u2019s put a trip together, one step at a time. \u2728', 'First, what date do you start?'],
+    ['Sounds like a plan! \uD83D\uDDFA\uFE0F',                      'What is the first day of your trip?'],
+    ['Let\u2019s get you out exploring. \uD83C\uDF0A',              'When would you like to start?'],
+    ['I\u2019m in. Let\u2019s do it properly, day by day.',        'What date are you heading out?'],
+    ['Dios mabalos for asking! I\u2019ll help you plan it. \uD83E\uDD65', 'When does your trip begin?'],
+    ['A trip is easier to plan once the date is set.',            'What day will you start?'],
+    ['Let\u2019s make it a good one! \u2600\uFE0F',                  'Which day does your trip start?']
+  ];
+  var OPENER_KEY = 'budLastOpener';
 
-      var skip = document.createElement('button');
-      skip.type = 'button';
-      skip.className = 'bud__opt';
-      skip.textContent = step.skip || 'Skip';
+  /* Random, but never the one used last time. The last pick is kept in
+     localStorage so it holds across visits too; if storage is blocked
+     it simply picks at random. */
+  function pickOpener() {
+    var last = -1;
+    try { last = parseInt(localStorage.getItem(OPENER_KEY), 10); } catch (e) {}
 
-      function finishText(value) {
-        wizard.brief[step.key] = value;
-        lockOptions(opts, value || (step.skip || 'Skipped'));
-        nextStep();
-      }
+    var i = Math.floor(Math.random() * OPENERS.length);
+    if (i === last) i = (i + 1) % OPENERS.length;
 
-      go.addEventListener('click', function () {
-        if (!wizard) return;
-        finishText(field.value.trim());
-      });
+    try { localStorage.setItem(OPENER_KEY, String(i)); } catch (e) {}
+    return OPENERS[i][0] + '\n\n' + OPENERS[i][1];
+  }
 
-      /* Enter submits, so nobody has to reach for the button after
-         typing. The panel's own send box is a different control and
-         must not fire here. */
-      field.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') { e.preventDefault(); go.click(); }
-      });
+  /* Tapped the "Plan my trip" chip. Bud's opening is written by the
+     model, the same as every other turn, so it is not a recording and it
+     can already be reacting to the page the visitor is on. The canned
+     openers above are only the fallback: if the model cannot be reached
+     (or this is the design preview) the chip still opens a conversation
+     instead of landing on an error. */
+  function startPlanning() {
+    setPlanning(true);
 
-      skip.addEventListener('click', function () {
-        if (!wizard) return;
-        finishText('');
-      });
+    if (previewMode) {
+      addMessage(pickOpener(), 'bot');
+      input.focus();
+      return;
+    }
+    planTurn('Can you make me an itinerary?', true);
+  }
 
-      opts.appendChild(field);
-      opts.appendChild(go);
-      opts.appendChild(skip);
-      wrap.appendChild(opts);
-      mountBot(wrap);
-      scrollLog();
-      if (window.matchMedia('(hover:hover)').matches) field.focus();
+  /* The trip on screen, cut down to what the chat needs to talk about it:
+     the dates, the group, the budget and each day's stops. */
+  function compactPlan(plan) {
+    if (!plan) return null;
+    return {
+      name: plan.name, startDate: plan.startDate, endDate: plan.endDate,
+      nights: plan.nights, travelers: plan.travelers, brief: plan.brief,
+      days: (plan.days || []).map(function (d) {
+        return { date: d.date, items: (d.items || []).map(function (it) {
+          return { time: it.time, name: it.name, town: it.town };
+        }) };
+      })
+    };
+  }
+
+  /* The chat model decided this message is a request to build or change a
+     trip ("include it on my itinerary", "make it cheaper"). Hand it to the
+     planner WITH the conversation so far, so "it" means the place that was
+     just discussed, and with the trip on screen if there is one, so a
+     change is applied to that trip instead of starting an interview over. */
+  function handOffToPlanner(text) {
+    planHistory = history.slice(-6).map(function (t) {
+      return { role: t.role, content: t.content };
+    });
+    setPlanning(true);
+    planKnown   = currentPlan ? currentPlan.brief : null;
+    planRebuild = !!currentPlan;
+    planTurn(text);
+  }
+
+  /* One turn of the planning chat. */
+  function planTurn(text, fromChip) {
+    if (previewMode) {
+      setPlanning(false);
+      addMessage('I need to be connected to the assistant before I can plan a trip. '
+               + 'This is a design preview.', 'bot');
       return;
     }
 
-    step.opts.forEach(function (o) {
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'bud__opt';
-      b.textContent = o.l;
+    busy = true;
+    send.disabled = true;
+    clearQuickReplies();
 
-      b.addEventListener('click', function () {
-        if (!wizard) return;
+    planHistory.push({ role: 'user', content: text });
+    var typing = addTyping();
 
-        if (step.multi) {
-          /* Toggle, and let them keep choosing. aria-pressed rather
-             than a class alone, so the state is announced. */
-          var on = b.getAttribute('aria-pressed') === 'true';
-          b.setAttribute('aria-pressed', on ? 'false' : 'true');
-          var list = wizard.brief.interests;
-          if (on) {
-            list.splice(list.indexOf(o.v), 1);
-          } else if (list.indexOf(o.v) === -1) {
-            list.push(o.v);
-          }
-          done.disabled = list.length === 0;
-          return;
+    fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        mode: 'plan_chat',
+        message: text,
+        history: planHistory.slice(0, -1),  // everything before this turn
+        known: planKnown,                   // what has already been worked out
+        rebuild: planRebuild                // changing a trip that already exists
+      })
+    })
+    .then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (d) {
+        if (!res.ok || !d.reply) {
+          var err = new Error('plan_chat HTTP ' + res.status);
+          if (d && d.error) err.budMessage = d.error;
+          throw err;
         }
-
-        wizard.brief[step.key] = o.v;
-        lockOptions(opts, o.l);
-        nextStep();
+        return d;
       });
+    })
+    .then(function (d) {
+      typing.remove();
+      addMessage(d.reply, 'bot');
+      if (d.known) { planKnown = d.known; }
 
-      if (step.multi) b.setAttribute('aria-pressed', 'false');
-      opts.appendChild(b);
+      planHistory.push({ role: 'assistant', content: d.reply });
+      if (planHistory.length > PLAN_HISTORY_MAX) {
+        planHistory = planHistory.slice(-PLAN_HISTORY_MAX);
+      }
+
+      releaseInput();
+
+      if (d.cancel) {
+        setPlanning(false);
+      } else if (d.ready && d.brief) {
+        setPlanning(false);
+        generatePlan(d.brief);
+      }
+    })
+    .catch(function (err) {
+      typing.remove();
+
+      /* Drop the failed turn so a retry does not send it twice. */
+      planHistory.pop();
+
+      if (fromChip && !(err && err.budMessage)) {
+        /* The chip should never land on an error: open with a canned
+           line, and remember both sides so the visitor's answer to it
+           is read in context. */
+        var fallback = pickOpener();
+        addMessage(fallback, 'bot');
+        planHistory.push({ role: 'user', content: text }, { role: 'assistant', content: fallback });
+      } else {
+        addMessage((err && err.budMessage) || pickLine('net', NET_LINES), 'bot');
+      }
+      console.error('Bud.Ai planning chat failed:', err);
+      releaseInput();
     });
-
-    var done = null;
-    if (step.multi) {
-      done = document.createElement('button');
-      done.type = 'button';
-      done.className = 'bud__opt bud__opt--go';
-      done.textContent = 'Build my plan';
-      done.disabled = true;
-      done.addEventListener('click', function () {
-        if (!wizard || !wizard.brief.interests.length) return;
-        lockOptions(opts, wizard.brief.interests.length + ' chosen');
-        nextStep();
-      });
-      opts.appendChild(done);
-    }
-
-    wrap.appendChild(opts);
-    mountBot(wrap);
-    scrollLog();
-  }
-
-  /* Once answered, the buttons stop being buttons. Leaving them live
-     invites a second tap that would answer a question already gone. */
-  function lockOptions(opts, chosenLabel) {
-    opts.innerHTML = '';
-    var tag = document.createElement('span');
-    tag.className = 'bud__opt-picked';
-    tag.textContent = chosenLabel;
-    opts.appendChild(tag);
-  }
-
-  function nextStep() {
-    wizard.step++;
-    if (wizard.step < STEPS.length) {
-      askStep();
-    } else {
-      generatePlan();
-    }
   }
 
   /* ---------- generate, then save ---------- */
 
-  function generatePlan() {
-    var brief = wizard.brief;
-    wizard = null;
-
+  function generatePlan(brief) {
     if (previewMode) {
       addMessage('I need to be connected to the assistant before I can build a plan. '
                + 'This is a design preview.', 'bot');
@@ -1292,7 +1527,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     busy = true;
     send.disabled = true;
-    var typing = addTyping();
+    var typing = addTyping('Building your itinerary\u2026');
 
     fetch(endpoint, {
       method: 'POST',
@@ -1312,19 +1547,66 @@ document.addEventListener('DOMContentLoaded', function () {
     })
     .then(function (plan) {
       typing.remove();
+      currentPlan = plan;
       renderPlan(plan);
       savePlan(plan);
     })
     .catch(function (err) {
       typing.remove();
-      addMessage((err && err.budMessage)
-        || 'I could not build a plan just then. Try again?', 'bot');
+      addMessage((err && err.budMessage) || pickLine('planfail', PLAN_FAIL_LINES), 'bot');
       console.error('Bud.Ai itinerary failed:', err);
+      reopenPlanning(brief);
     })
     .then(function () {
       busy = false;
       send.disabled = false;
     });
+  }
+
+  /* "2026-11-13" -> a local Date. Built from the parts, never from
+     new Date('2026-11-13'), which is read as UTC midnight and shows
+     the previous day anywhere behind UTC. */
+  function parseYmd(v) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || '');
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+  }
+
+  function fmtDate(v, withWeekday, withYear) {
+    var d = parseYmd(v);
+    if (!d) return '';
+    var o = { day: 'numeric', month: 'short' };
+    if (withWeekday) o.weekday = 'short';
+    if (withYear) o.year = 'numeric';
+    return d.toLocaleDateString('en-PH', o);
+  }
+
+  /* "09:00" <-> minutes, for working out how long a stop lasts. */
+  function toMin(t) {
+    var m = /^(\d{1,2}):(\d{2})$/.exec(t || '');
+    return m ? (+m[1]) * 60 + (+m[2]) : null;
+  }
+  function fromMin(n) {
+    return ('0' + Math.floor(n / 60)).slice(-2) + ':' + ('0' + (n % 60)).slice(-2);
+  }
+
+  /* When the visit ends. Uses the end the planner gave. If there is none
+     (an older plan, or a stop added by code), it is worked out: up to
+     half an hour before the next stop, or three hours for the last one
+     of the day, never later than 20:00. */
+  function visitEnd(it, next) {
+    var start = toMin(it.time);
+    if (start === null) return '';
+    var given = toMin(it.end);
+    if (given !== null && given > start) return fromMin(given);
+
+    var nxt = next ? toMin(next.time) : null;
+    var end;
+    if (nxt !== null && nxt > start) {
+      end = nxt - start >= 90 ? nxt - 30 : nxt;
+    } else {
+      end = Math.min(start + 180, 20 * 60);
+    }
+    return end > start ? fromMin(end) : '';
   }
 
   function renderPlan(plan) {
@@ -1336,6 +1618,22 @@ document.addEventListener('DOMContentLoaded', function () {
     h.textContent = plan.name;
     wrap.appendChild(h);
 
+    /* The trip at a glance: dates, length, party size. */
+    var facts = [];
+    if (plan.startDate && plan.endDate) {
+      facts.push(fmtDate(plan.startDate, true, false) + ' \u2192 ' + fmtDate(plan.endDate, true, true));
+    }
+    var nDays = plan.days.length;
+    facts.push(nDays + (nDays === 1 ? ' day' : ' days')
+             + (plan.nights ? ', ' + plan.nights + (plan.nights === 1 ? ' night' : ' nights') : ''));
+    if (plan.travelers) {
+      facts.push(plan.travelers + (plan.travelers === 1 ? ' traveller' : ' travellers'));
+    }
+    var meta = document.createElement('p');
+    meta.className = 'bud__plan-note';
+    meta.textContent = facts.join(' \u00B7 ');
+    wrap.appendChild(meta);
+
     if (plan.summary) {
       var p = document.createElement('p');
       p.textContent = plan.summary;
@@ -1345,19 +1643,22 @@ document.addEventListener('DOMContentLoaded', function () {
     plan.days.forEach(function (day, i) {
       var dh = document.createElement('div');
       dh.className = 'bud__h';
-      dh.textContent = 'Day ' + (i + 1);
+      dh.textContent = 'Day ' + (i + 1)
+        + (day.date ? ' \u00B7 ' + fmtDate(day.date, true, false) : '');
       wrap.appendChild(dh);
 
       var ul = document.createElement('ul');
       ul.className = 'bud__plan-day';
 
-      day.items.forEach(function (it) {
+      day.items.forEach(function (it, ii) {
         var li = document.createElement('li');
+        li.dataset.budStop = it.name || '';   // lets the map focus this stop on a tap
 
         if (it.time) {
           var t = document.createElement('span');
           t.className = 'bud__plan-time';
-          t.textContent = it.time;
+          var endAt = visitEnd(it, day.items[ii + 1]);
+          t.textContent = endAt ? it.time + ' \u2013 ' + endAt : it.time;
           li.appendChild(t);
         }
 
@@ -1391,6 +1692,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
     mountBot(wrap);
     scrollLog();
+
+    /* Hand the map EVERY stop of the plan, with its coordinates. The
+       map used to find places by spotting their names in the reply
+       text, which caught one stop and missed the rest. Sent after the
+       current tick so it lands after the map's own reply handling. */
+    var stops = [];
+    plan.days.forEach(function (day, di) {
+      (day.items || []).forEach(function (it) {
+        stops.push({ n: it.name || '', t: it.town || '', g: it.tag || '',
+                     la: it.lat, lo: it.lng, day: di + 1 });
+      });
+    });
+    setTimeout(function () {
+      try {
+        document.dispatchEvent(new CustomEvent('bud:plan', { detail: { stops: stops } }));
+      } catch (e) { /* the map is a bonus; never break the chat over it */ }
+    }, 0);
   }
 
   /* Saving is separate from generating on purpose. A visitor who is
@@ -1410,7 +1728,7 @@ document.addEventListener('DOMContentLoaded', function () {
     })
     .then(function (r) {
       if (r.status === 401) {
-        addSaveNotice('Sign in and I will keep this on your account.', true);
+        addSaveNotice(pickLine('signin', SIGN_IN_LINES), true);
         return;
       }
 
@@ -1429,16 +1747,16 @@ document.addEventListener('DOMContentLoaded', function () {
           why = 'The server answered with ' + r.status + '.';
         }
 
-        addSaveNotice('I could not save this one — ' + why
+        addSaveNotice(pickLine('savefail', SAVE_FAIL_LEADS) + why
                     + ' Your plan is above, so nothing is lost.', false);
         console.error('Bud.Ai save failed:', r.status, r.data);
         return;
       }
 
-      addSaveNotice('Saved! Dios mabalos \uD83D\uDE4F You will find it under Plan your trip.', false, 'plan-trip.php');
+      addSaveNotice(pickLine('saved', SAVED_LINES), false, 'plan-trip.php');
     })
     .catch(function (e) {
-      addSaveNotice('I could not reach the server to save that. Your plan is above, so nothing is lost.', false);
+      addSaveNotice(pickLine('savenet', SAVE_NET_LINES), false);
       console.error('Bud.Ai save failed:', e);
     });
   }
@@ -1476,14 +1794,139 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* ---------- sending ---------- */
 
-  /* Someone typing the request rather than tapping the chip. Kept
-     narrow deliberately: "itinerary" or "plan my trip" starts the
-     builder, but "what is on the itinerary for Calaguas" is a
-     question and should stay one. */
-  function looksLikeItineraryRequest(t) {
-    t = t.toLowerCase();
-    return /(create|make|build|plan|generate|gawa|gumawa)\b/.test(t)
-        && /(itinerary|itenerary|trip|plan)\b/.test(t);
+  /* ---------- quick replies ----------
+     A row of tappable follow-ups under Bud's last message. The visitor
+     taps instead of typing, and a tap goes through the same submit()
+     path as typed text, so there is one place the intent is read. They
+     disappear as soon as anything is sent. */
+  var qrEl = null;
+
+  function clearQuickReplies() {
+    if (qrEl) { qrEl.remove(); qrEl = null; }
+  }
+
+  function showQuickReplies(items) {
+    clearQuickReplies();
+    if (!items || !items.length) return;
+
+    var row = document.createElement('div');
+    row.className = 'bud__qr';
+    row.setAttribute('role', 'group');
+    row.setAttribute('aria-label', 'Suggested replies');
+
+    items.slice(0, 4).forEach(function (it) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'bud__chip';
+      b.textContent = it.label;
+      b.addEventListener('click', function () {
+        if (busy) return;
+        clearQuickReplies();
+        if (it.run) { it.run(); return; }
+        input.value = it.say;
+        submit();
+      });
+      row.appendChild(b);
+    });
+
+    qrEl = row;
+    log.appendChild(row);
+    scrollLog();
+  }
+
+  /* ---------- reading what the visitor means ----------
+     Most of this used to be left to the model alone, which meant a
+     plain request like "make it cheaper" was answered with advice, and
+     a bare "yes" to "want me to plan it?" was answered with "yes to
+     what?". Obvious cases are now recognised here, before any request
+     is made; everything else still goes to the model. */
+  function norm(t) { return String(t).toLowerCase().replace(/\s+/g, ' ').trim(); }
+
+  /* Takes off the politeness so the verb is what is left:
+     "can you please add Malatap to my trip?" -> "add malatap to my trip" */
+  function stripPolite(t) {
+    return t.replace(/^(?:hey|hi|hello|uy|hoy)?[\s,]*(?:bud(?:\.ai)?)?[\s,]*/, '')
+            .replace(/^(?:can|could|would|will)\s+(?:you|u)\s+(?:please\s+|pls\s+)?/, '')
+            .replace(/^(?:please|pls|paki)\s+/, '')
+            .replace(/[?!.\s]+$/, '')
+            .trim();
+  }
+
+  function questionLike(t) {
+    return /^(?:what|how|where|when|which|why|who|is|are|does|do|did|should|ano|paano|saan|kailan|magkano)\b/.test(t);
+  }
+
+  var REQ_VERB = /\b(?:make|create|build|generate|plan|prepare|put together|set up|draft|give|suggest|want|need|wanna|looking for|gusto|gawa|gumawa)\b/;
+  var PLAN_NOUN = /\b(?:itin\w*|iten\w*|itern\w*|trip|plan|schedule)\b/;
+
+  /* Someone typing the request rather than tapping the chip. Loose on
+     the NOUN on purpose: people type "itineraryr", "itinerery" and
+     "iternary", and a typo must not drop them into ordinary chat. But
+     a question ("how do I plan a trip?") and advice ("tips to make the
+     trip easier") are not requests to build one. */
+  function looksLikeItineraryRequest(text) {
+    var t = stripPolite(norm(text));
+    if (questionLike(t)) return false;
+    if (/\b(?:tips?|advice|pack|bring|wear)\b/.test(t) && !/\b(?:itin\w*|iten\w*|itern\w*)\b/.test(t)) return false;
+    return REQ_VERB.test(t) && PLAN_NOUN.test(t);
+  }
+
+  var EDIT_RES = [
+    /\b(?:make|keep|get)\s+(?:it|this|that)\b.*\b(?:cheap\w*|short\w*|long\w*|slow\w*|relax\w*|chill\w*|pack\w*|fit|afford\w*|budget|\d+\s*(?:days?|nights?|pax|people))/,
+    /\b(?:add|include|put|isama|idagdag|dagdag\w*)\b.*\b(?:day|night|stop)\b/,
+    /\b(?:swap|replace|palitan|remove|delete|drop|alisin|tanggalin|take out|cancel)\b.*\b(?:day|stop|place|activity|falls|beach|island|church|park|monument|first|second|third|last|morning|afternoon)\b/,
+    /\b(?:one more|another|an extra|extra|extend)\b.*\b(?:day|night)s?\b/,
+    /\b(?:start|begin|move|push)\b.*\b(?:later|earlier|a day|next)\b/,
+    /\bmake it fit\b|\b(?:fit|within|under)\b.*\bbudget\b/
+  ];
+
+  /* A request to build or change the trip, as opposed to asking about it. */
+  function looksLikePlanEdit(text) {
+    var t = stripPolite(norm(text));
+    if (questionLike(t)) return false;
+
+    /* "include it on my itinerary", "add Malatap Falls to my trip" - works
+       with or without a trip already on screen. */
+    if (/\b(?:include|add|put|isama|idagdag|dagdag\w*)\b.*\b(?:itinerary|itin\w*|plan|trip|schedule)\b/.test(t)) return true;
+
+    if (!currentPlan) return false;
+    return EDIT_RES.some(function (re) { return re.test(t); });
+  }
+
+  /* The visitor is pointing at the trip they already have: "edit my previous
+     itinerary", "change the plan", or describing a change to "my itinerary"
+     (hours, stops per day). With a trip on screen this is an edit, never a
+     fresh interview. A request that says new/another/from scratch is not. */
+  var NEW_PLAN_RE = /\b(?:new|another|different|fresh|from scratch|start over|brand new)\b/;
+  var EXISTING_RE = /\b(?:edit|change|update|modify|revise|adjust|redo|fix|rework|tweak)\b.*\b(?:itin\w*|iten\w*|plan|trip)\b|\b(?:previous|last|existing|current|earlier|same)\s+(?:itin\w*|iten\w*|plan|trip)\b|\b(?:itin\w*|iten\w*)\b.*\b(?:range|hours?|per day|a day|each day|daily|starts? from)\b/;
+
+  function refersToExistingPlan(text) {
+    if (!currentPlan) return false;
+    var t = stripPolite(norm(text));
+    if (NEW_PLAN_RE.test(t)) return false;
+    return EXISTING_RE.test(t) || looksLikePlanEdit(text);
+  }
+
+  /* Switch a planning chat that is already under way over to editing the
+     trip on screen. The trip's own details are the truth; only the hours
+     and stops-per-day worked out in this chat are carried across. */
+  function switchToRebuild() {
+    var src = currentPlan.brief || {}, base = {};
+    Object.keys(src).forEach(function (k) { base[k] = src[k]; });
+    ['dayStart', 'dayEnd', 'perDay'].forEach(function (k) {
+      if (planKnown && planKnown[k]) base[k] = planKnown[k];
+    });
+    planKnown   = base;
+    planRebuild = true;
+  }
+
+  /* A bare "yes" only means something if Bud just offered to plan. */
+  var lastOffer = false;
+  var YES_RE = /^(?:yes|yeah|yep|yup|ya|oo|opo|sige|ok|okay|sure|go|please|pls|sounds good|do it|go ahead|let'?s go|let'?s do it)(?:\s+(?:please|pls|po|na|sige|do it|go ahead|thanks|thank you))?[\s!.]*$/;
+  function offeredPlan(reply) {
+    var r = String(reply).trim();
+    return /\?\s*$/.test(r) &&
+      /\b(?:want|like|shall|should)\b[^.?!]{0,50}\b(?:build|plan|put together|map out|make|create|set up|add)\b/i.test(r);
   }
 
   function submit() {
@@ -1491,46 +1934,110 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!text || busy) return;
 
     hideSuggestions();
+    clearQuickReplies();
 
-    if (!wizard && looksLikeItineraryRequest(text)) {
+    /* Mid-planning: every message is an answer to Bud's questions. */
+    if (planning) {
       addMessage(text, 'user');
       input.value = '';
-      startWizard();
+      if (currentPlan && !planRebuild && refersToExistingPlan(text)) switchToRebuild();
+      planTurn(text);
       return;
     }
 
-    busy = true;
-    send.disabled = true;
+    var t = norm(text);
+
+    /* A trip is already on screen and they are talking about it. */
+    if (refersToExistingPlan(text)) {
+      addMessage(text, 'user');
+      input.value = '';
+      lastOffer = false;
+      handOffToPlanner(text);
+      return;
+    }
+
+    /* Typed the request instead of tapping the chip. Send what they
+       wrote as the first turn - "plan a 3 night trip for 2, beaches"
+       already answers most of it, and Bud will only ask for the rest. */
+    if (looksLikeItineraryRequest(text)) {
+      addMessage(text, 'user');
+      input.value = '';
+      planHistory = [];
+      lastOffer = false;
+      setPlanning(true);
+      planTurn(text);
+      return;
+    }
+
+    /* "make it cheaper", "add Malatap to my trip", or a plain "yes" to
+       Bud's offer to plan: straight to the planner, with the chat so far
+       as its background. */
+    if ((lastOffer && YES_RE.test(t)) || looksLikePlanEdit(text)) {
+      addMessage(text, 'user');
+      input.value = '';
+      lastOffer = false;
+      handOffToPlanner(text);
+      return;
+    }
 
     addMessage(text, 'user');
     history.push({ role: 'user', content: text });
     input.value = '';
+    runChat(text);
+  }
+
+  /* One ordinary question and its answer. Split from submit() so
+     "Try again" can run it again without showing the question twice. */
+  function runChat(text) {
+    busy = true;
+    send.disabled = true;
 
     var typing = addTyping();
+    var handedOff = false;
 
     askBud(text)
       .then(function (result) {
         var reply  = result.reply;
         var places = result.places;
 
+        /* The model said this is for the planner. Its own text is not
+           shown: the planner answers in its place. */
+        if (result.plan) {
+          typing.remove();
+          history.pop();          // the planner owns this turn now
+          handedOff = true;
+          lastOffer = false;
+          handOffToPlanner(text);
+          return;
+        }
+
         typing.remove();
-        addMessage(reply, 'bot');
-        addPlaces(places);
+        var botRow = addMessage(reply, 'bot');
+
+        /* addMessage already puts photo cards inside the bubble when it
+           finds a destination name in the reply. The server sends its
+           own list too, and drawing both showed every photo twice. The
+           server's list is now the fallback: used only when the bubble
+           got no cards of its own. */
+        if (!botRow.querySelector('.bud__places')) {
+          addPlaces(places);
+        }
         history.push({ role: 'assistant', content: reply });
         if (history.length > HISTORY_MAX) {
           history = history.slice(-HISTORY_MAX);
         }
+
+        lastOffer = offeredPlan(reply);
       })
       .catch(function (err) {
         typing.remove();
 
         /* The server writes messages meant to be read by a visitor, so
            show its text when there is some. Drop the failed question
-           from the history — keeping a turn the model never answered
+           from the history - keeping a turn the model never answered
            leaves a gap that confuses the next reply. */
-        addMessage(
-          (err && err.budMessage) ||
-          'I could not reach the server just now. Check your connection and try again.',
+        var row = addMessage(
+          (err && err.budMessage) || pickLine('net', NET_LINES),
           'bot'
         );
 
@@ -1538,9 +2045,20 @@ document.addEventListener('DOMContentLoaded', function () {
           return !(t.role === 'user' && t.content === text);
         });
 
+        showQuickReplies([{
+          label: '\u21BB Try again',
+          retry: true,
+          run: function () {
+            row.remove();
+            history.push({ role: 'user', content: text });
+            runChat(text);
+          }
+        }]);
+
         console.error('Bud.Ai request failed:', err);
       })
       .then(function () {
+        if (handedOff) return;     // the planner is mid-request and releases the input itself
         busy = false;
         send.disabled = false;
         input.focus();
@@ -1600,21 +2118,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
       body: JSON.stringify({
         message: message,
-        history: history.slice(0, -1)   // drop the turn just pushed
+        history: history.slice(0, -1),  // drop the turn just pushed
+        plan: compactPlan(currentPlan)  // the trip on screen, if there is one
       })
     })
     .then(function (res) {
       return res.json()
         .catch(function () { return {}; })   // HTML error page, not JSON
         .then(function (data) {
-          if (!res.ok || !data.reply) {
+          if (!res.ok || (!data.reply && !data.plan)) {
             var err = new Error('bud.php HTTP ' + res.status);
             if (data && data.error) {
               err.budMessage = data.error;
             }
             throw err;
           }
-          return { reply: data.reply, places: data.places || [] };
+          return { reply: data.reply || '', places: data.places || [], plan: !!data.plan };
         });
     });
   }

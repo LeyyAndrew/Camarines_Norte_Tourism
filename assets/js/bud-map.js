@@ -552,6 +552,27 @@
 
       L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+      /* Reset sits just above the zoom buttons (a later control in a
+         bottom corner stacks on top of the earlier ones). It is a real
+         button, so it is reachable from the keyboard and announced. */
+      var ResetControl = L.Control.extend({
+        options: { position: 'bottomright' },
+        onAdd: function () {
+          var b = L.DomUtil.create('button', 'leaflet-control budmap__reset');
+          b.type = 'button';
+          b.title = 'Reset map';
+          b.setAttribute('aria-label', 'Reset map: clear pins and show all destinations');
+          b.innerHTML = icon('reset') + '<span>Reset</span>';
+          /* Without this a click on the button is also a click on the
+             map underneath it, which would arm wheel-zoom and close
+             the popup it just closed. */
+          L.DomEvent.disableClickPropagation(b);
+          L.DomEvent.on(b, 'click', resetMap);
+          return b;
+        }
+      });
+      new ResetControl().addTo(map);
+
       /* Off the bottom-right corner, where the zoom buttons are. Two
          controls in one corner means one of them is unreadable. */
       map.attributionControl.setPosition('bottomleft');
@@ -609,6 +630,10 @@
          downloading. Their click is honoured now rather than dropped. */
       if (pending) { var p = pending; pending = null; focusPlace(p); }
       else if (queued) { var q = queued; queued = null; highlight(q); fitTo(q); }
+
+      /* A plan that was built before the map existed. Applied last so
+         it wins over a reply that only named one of its stops. */
+      if (planStops && !p) applyPlan();
     }
 
     function addPin(p) {
@@ -834,6 +859,44 @@
       });
     }
 
+    /* ---------- reset ----------
+
+       Puts the map back the way it was when it first opened: no pin
+       picked out, no popup, the All 24 filter, saved-only off, and the
+       whole province in view. Anything a reply or a tap changed is
+       undone in one go.
+
+       Saved places themselves are NOT touched. They are the
+       visitor's own list, kept on purpose, and a view reset should
+       never delete them. */
+    function resetMap() {
+      if (!map) return;
+
+      map.closePopup();
+      pending = null;
+      queued  = null;
+
+      highlight([]);
+
+      activeGroup = 'all';
+      savedOnly   = false;
+      chipBar.querySelectorAll('.budmap__chip').forEach(function (x) {
+        x.classList.toggle('is-on', x.dataset.group === 'all');
+      });
+      savedBtn.classList.remove('is-on');
+      applyFilter();
+
+      if (home) {
+        if (CALM) map.fitBounds(home, { animate: false });
+        else map.flyToBounds(home, { duration: .8 });
+      }
+
+      /* Back to "not yet touched", so a window resize re-frames the
+         whole province again rather than whatever was last zoomed to.
+         The next real gesture on the map sets it again. */
+      settled = false;
+    }
+
     function fitTo(names) {
       if (!map || !names.length) return;
 
@@ -861,6 +924,104 @@
       if (CALM) map.setView(latlng, zoom, { animate: false });
       else map.flyTo(latlng, zoom, { duration: .8 });
     }
+
+    /* ================================================================
+       A PLAN ON THE MAP
+
+       bud.js announces a finished plan with every stop and its
+       coordinates. Each stop is matched to an existing pin by name,
+       then by position. A stop with neither gets a pin of its own, so
+       every place in the plan is on the map, lit, and in view.
+       ================================================================ */
+    var planStops = null;     // stops announced before the map existed
+    var planKeys  = {};       // normalised stop name -> marker key
+
+    function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+
+    document.addEventListener('bud:plan', function (e) {
+      var stops = (e && e.detail && e.detail.stops) || [];
+      planStops = stops.length ? stops : null;
+      if (!planStops) return;
+      if (map) applyPlan();
+      /* No map yet: buildMap() applies it once Leaflet has loaded. */
+    });
+
+    function addExtraPlace(s) {
+      var p = { n: s.n, t: s.t || '', g: s.g || '', la: s.la, lo: s.lo };
+      places.push(p);
+      aliasList.push({ text: p.n, lower: p.n.toLowerCase(), place: p });
+      aliasList.sort(function (a, b) { return b.text.length - a.text.length; });
+      addPin(p);
+      return p.n;
+    }
+
+    function applyPlan() {
+      if (!map || !planStops) return;
+
+      var stops = planStops;
+      planStops = null;
+      planKeys  = {};
+      var names = [];
+
+      stops.forEach(function (s) {
+        if (!s || !s.n) return;
+        var la = parseFloat(s.la), lo = parseFloat(s.lo);
+        var hasPos = isFinite(la) && isFinite(lo) && !(la === 0 && lo === 0);
+        var key = null;
+
+        // 1. a pin with the same name
+        Object.keys(markers).some(function (n) {
+          if (norm(n) === norm(s.n)) { key = n; return true; }
+          return false;
+        });
+
+        // 2. a pin in the same spot, under a different name
+        if (!key && hasPos) {
+          Object.keys(markers).some(function (n) {
+            var p = markers[n].place;
+            if (Math.abs(p.la - la) < 0.002 && Math.abs(p.lo - lo) < 0.002) { key = n; return true; }
+            return false;
+          });
+        }
+
+        // 3. no pin at all: give the stop its own
+        if (!key && hasPos) {
+          key = addExtraPlace({ n: s.n, t: s.t, g: s.g, la: la, lo: lo });
+        }
+
+        if (key) {
+          planKeys[norm(s.n)] = key;
+          if (names.indexOf(key) === -1) names.push(key);
+        }
+      });
+
+      if (!names.length) return;
+
+      /* A category filter or the saved-only view could be hiding some
+         of them. Show everything so the whole plan is visible. */
+      if (activeGroup !== 'all' || savedOnly) {
+        activeGroup = 'all';
+        savedOnly   = false;
+        chipBar.querySelectorAll('.budmap__chip').forEach(function (x) {
+          x.classList.toggle('is-on', x.dataset.group === 'all');
+        });
+        savedBtn.classList.remove('is-on');
+      }
+      applyFilter();
+
+      highlight(names);
+      fitTo(names);
+    }
+
+    /* Tapping a stop in the plan shows it on the map. */
+    panel.addEventListener('click', function (e) {
+      var li = e.target.closest && e.target.closest('li[data-bud-stop]');
+      if (!li || e.target.closest('.bud__ref, a, button')) return;
+      var key = planKeys[norm(li.dataset.budStop)];
+      if (!key) return;
+      if (!bud.classList.contains('is-wide')) setWide(true);
+      focusPlace(key);
+    });
 
     /* ================================================================
        WATCHING THE CONVERSATION
@@ -915,6 +1076,12 @@
       /* Photo cards bud.js drew inside this message get the save and
          locate buttons, whether or not the map has ever been opened. */
       msg.querySelectorAll('.bud__place').forEach(upgradeCard);
+
+      /* A day-by-day plan is mapped from its stops (see 'bud:plan'
+         below), all of them at once. Spotting names in its text found
+         only some, highlighted just those, and turned stray words in
+         the descriptions into links. */
+      if (msg.querySelector('.bud__plan-day')) return;
 
       if (!found.length) return;
 
@@ -1203,7 +1370,8 @@
       expand:   '<path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6"/>',
       collapse: '<path d="M3 9h6V3M21 9h-6V3M3 15h6v6M21 15h-6v6"/>',
       heart:    '<path d="M12 20.7C12 20.7 4 15.4 4 9.9A4.4 4.4 0 0 1 12 7.3 4.4 4.4 0 0 1 20 9.9c0 5.5-8 10.8-8 10.8z"/>',
-      pin:      '<path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/>'
+      pin:      '<path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/>',
+      reset:    '<path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/>'
     };
     return svg(paths[name] || '');
   }

@@ -483,7 +483,7 @@
       name: $('#ptName').value.trim() || 'Untitled trip',
       start: $('#ptStart').value,
       end: $('#ptEnd').value,
-      travelers: +$('#ptTravelers').value || 1,
+      travelers: Math.min(60, Math.max(1, Math.round(+$('#ptTravelers').value) || 1)),
       days: days
     };
   }
@@ -518,6 +518,53 @@
         (dayDate(d.i) ? fmtDate(dayDate(d.i)) : 'no date') + '</span></b>' + rows + '</div>';
     }).join('')
       : '<div class="pt-ov-empty">Nothing planned yet.<br>Add a destination and it shows up here.</div>';
+
+    scheduleAutosave();
+  }
+
+  /* ---------- autosave ----------
+     A planner that loses an hour of work on a closed tab is not a
+     planner. The draft is written a moment after the last change.
+     An empty page clears the draft instead of overwriting it with a
+     blank one. */
+  var autoTimer;
+  function hasContent(t) {
+    return (t.name && t.name !== 'Untitled trip') || t.start || t.end ||
+      t.days.some(function (d) {
+        return d.items.some(function (i) { return i.destId || i.note; });
+      });
+  }
+  function scheduleAutosave() {
+    clearTimeout(autoTimer);
+    autoTimer = setTimeout(function () {
+      var t = collect();
+      if (hasContent(t)) store.set(JSON.stringify(t)); else store.clear();
+    }, 700);
+  }
+
+  function dayHasContent(el) {
+    return [].some.call(el.querySelectorAll('.pt-act'), function (r) {
+      return r.querySelector('.pt-pick').dataset.id || r.querySelector('.pt-note').value.trim();
+    });
+  }
+  function grow(ta) {
+    ta.style.height = 'auto';
+    if (ta.scrollHeight) ta.style.height = ta.scrollHeight + 'px';
+  }
+
+  /* Activities stay in time order. Runs after focus has left the time
+     field, so the row you are typing in never jumps under your hand. */
+  function sortActs(acts) {
+    if (!acts) return;
+    var rows = [].slice.call(acts.children);
+    var sorted = rows.map(function (r, i) { return { r: r, i: i, t: r.querySelector('input[type=time]').value || '99:99' }; })
+      .sort(function (a, b) { return a.t < b.t ? -1 : a.t > b.t ? 1 : a.i - b.i; })
+      .map(function (x) { return x.r; });
+    var moved = sorted.some(function (r, i) { return r !== rows[i]; });
+    if (!moved) return;
+    var keep = document.activeElement;
+    sorted.forEach(function (r) { acts.appendChild(r); });
+    if (keep && keep !== document.body && keep.focus) keep.focus();
   }
 
   /* ---------- events on the builder ---------- */
@@ -528,14 +575,28 @@
     var rmDay = e.target.closest('[data-remove-day]');
     if (rmDay) {
       var day = rmDay.closest('.pt-day');
+      if (day.classList.contains('is-going')) return;   /* double-click */
+      var hadContent = dayHasContent(day);
+      var snapshot = collect();
       day.classList.add('is-going');
-      setTimeout(function () { day.remove(); renumber(); }, 260);
+      setTimeout(function () {
+        day.remove();
+        renumber();
+        syncEnd();
+        if (hadContent) {
+          toast('Day removed.', {
+            label: 'Undo',
+            onClick: function () { hydrate(snapshot); toast('Day restored.'); }
+          });
+        }
+      }, 260);
       return;
     }
 
     var del = e.target.closest('.pt-del');
     if (del) {
       var row = del.closest('.pt-act'), acts = row.parentElement;
+      if (row.classList.contains('is-going')) return;
       row.classList.add('is-going');
       setTimeout(function () {
         row.remove();
@@ -552,27 +613,117 @@
       $('#ptSearch').focus();
     }
   });
-  daysEl.addEventListener('input', sync);
+  daysEl.addEventListener('input', function (e) {
+    if (e.target.classList && e.target.classList.contains('pt-note')) grow(e.target);
+    sync();
+  });
+  daysEl.addEventListener('focusout', function (e) {
+    if (e.target.type !== 'time') return;
+    var acts = e.target.closest('.pt-acts');
+    setTimeout(function () { sortActs(acts); sync(); }, 0);
+  });
+
+  $('#ptTravelers').addEventListener('change', function () {
+    this.value = Math.min(60, Math.max(1, Math.round(+this.value) || 1));
+    sync();
+  });
 
   ['#ptName', '#ptStart', '#ptEnd', '#ptTravelers'].forEach(function (s) {
     $(s).addEventListener('input', renumber);
   });
 
+  /* ---------- no dates in the past ---------- */
+  /* Local today as YYYY-MM-DD. Built from the parts, because
+     toISOString() is UTC and shows yesterday for visitors behind it.
+     ISO date strings compare correctly as plain text. */
+  function todayYmd() {
+    var d = new Date();
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) +
+           '-' + ('0' + d.getDate()).slice(-2);
+  }
+
+  /* The calendar greys out earlier days, but a typed date or a saved
+     draft walks straight past a min attribute, so the value is checked
+     too. Returns true if something was cleared. */
+  function dropPastDates(say) {
+    var today = todayYmd(), sEl = $('#ptStart'), eEl = $('#ptEnd'), cleared = false;
+    sEl.min = today;
+    eEl.min = sEl.value && sEl.value >= today ? sEl.value : today;
+    if (sEl.value && sEl.value < today) {
+      sEl.value = '';
+      cleared = true;
+      if (say) toast('That start date has already passed. <b>Pick today or a later day.</b>');
+    }
+    if (eEl.value && (eEl.value < today || (sEl.value && eEl.value < sEl.value))) {
+      eEl.value = '';
+      if (say && !cleared) toast('The end date cannot be in the past or before the start date.');
+      cleared = true;
+    }
+    return cleared;
+  }
+  /* The end date follows the number of day cards: add a day and it moves
+     forward, remove one and it steps back. Set programmatically, so no
+     change event fires and the handler below does not regenerate days. */
+  var MAX_DAYS = 30;
+  function syncEnd() {
+    var sEl = $('#ptStart'), eEl = $('#ptEnd');
+    if (!sEl.value) return;
+    var d = dayDate(daysEl.children.length - 1);
+    if (!d) return;
+    eEl.value = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) +
+                '-' + ('0' + d.getDate()).slice(-2);
+    eEl.min = sEl.value;
+  }
+
+  $('#ptStart').addEventListener('change', function () {
+    dropPastDates(true);
+    renumber();
+    syncEnd();   /* keep the same number of days, shift the end with the start */
+  });
+  $('#ptEnd').addEventListener('change', function () { if (dropPastDates(true)) syncEnd(); });
+  dropPastDates(false);
+
   /* End date generates the days between it and the start. Capped, so a
      mistyped year cannot spawn four thousand cards and lock the tab. */
   $('#ptEnd').addEventListener('change', function () {
     var s = $('#ptStart').value, e = $('#ptEnd').value;
-    if (!s || !e) return;
+    if (!s) return;
+    if (!e) { syncEnd(); return; }          /* cleared by hand: put it back */
     var span = Math.round((new Date(e) - new Date(s)) / 864e5) + 1;
-    if (span < 1) { toast('That end date is before the start date.'); return; }
-    if (span > 30) { toast('That is over 30 days. Shorten the range, or add days by hand.'); return; }
-    while (daysEl.children.length < span) makeDay(['09:00']);
-    while (daysEl.children.length > span) daysEl.lastElementChild.remove();
-    renumber();
+    if (span < 1) { toast('That end date is before the start date.'); syncEnd(); return; }
+    if (span > MAX_DAYS) {
+      toast('That is over ' + MAX_DAYS + ' days. Shorten the range, or add days by hand.');
+      syncEnd();
+      return;
+    }
+
+    function apply() {
+      while (daysEl.children.length < span) makeDay(['09:00']);
+      while (daysEl.children.length > span) daysEl.lastElementChild.remove();
+      renumber();
+      syncEnd();
+    }
+
+    /* Shortening the trip must not silently throw away planned days. */
+    var cut = [].slice.call(daysEl.children, span).filter(dayHasContent);
+    if (!cut.length) { apply(); return; }
+    ptConfirm({
+      eyebrow: 'Shorten trip',
+      title: 'Remove ' + (daysEl.children.length - span) + ' day(s)?',
+      body: 'Moving the end date earlier deletes the last days of the itinerary, and they have activities in them.',
+      cancel: 'Keep my days',
+      confirm: 'Remove days'
+    }).then(function (yes) { if (yes) apply(); else syncEnd(); });
   });
 
   $('#ptAddDay').addEventListener('click', function () {
-    makeDay(['09:00']).scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (daysEl.children.length >= MAX_DAYS) {
+      toast('Trips are limited to ' + MAX_DAYS + ' days.');
+      return;
+    }
+    var day = makeDay(['09:00']);
+    syncEnd();   /* end date moves to the new last day */
+    day.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
 
   /* ---------- destination picker ---------- */
@@ -668,12 +819,16 @@
     var c = e.target.closest('.pt-dcard');
     if (!c || !activePick) return;
     var d = BY_ID[c.dataset.id];
+    var dup = [].some.call(activePick.closest('.pt-day').querySelectorAll('.pt-pick'), function (p) {
+      return p !== activePick && p.dataset.id === d.id;
+    });
     activePick.dataset.id = d.id;
     activePick.classList.add('is-filled');
     activePick.closest('.pt-act').classList.add('is-set');
     activePick.innerHTML = pickHtml(d);
     closeModal();
     sync();
+    if (dup) toast('<b>' + esc(d.name) + '</b> is already on this day.');
   });
 
   /* ---------- modal plumbing ---------- */
@@ -688,6 +843,7 @@
       m.classList.remove('is-open');
     });
     document.body.style.overflow = '';
+    activePick = null;
     if (lastFocus) { lastFocus.focus(); lastFocus = null; }
   }
   document.addEventListener('click', function (e) {
@@ -718,7 +874,7 @@
 
     $('#ptPrevBody').innerHTML =
       '<div class="pt-prev-h"><span class="pt-label">Itinerary</span><h3>' + esc(t.name) + '</h3><p>' +
-      fmtDate(dayDate(0), true) + ' → ' + fmtDate(dayDate(t.days.length - 1), true) +
+      (dayDate(0) ? fmtDate(dayDate(0), true) + ' → ' + fmtDate(dayDate(t.days.length - 1), true) : 'Dates not set') +
       ' · ' + t.travelers + ' traveller' + (t.travelers === 1 ? '' : 's') +
       ' · ' + t.days.length + ' day' + (t.days.length === 1 ? '' : 's') + '</p></div>' +
       (body || '<p class="pt-none">Your itinerary is still empty. Add a destination first.</p>');
@@ -794,27 +950,75 @@
       return d.items.some(function (i) { return i.destId; });
     });
     if (!hasDest) { toast('Add at least one destination before saving.'); return; }
+    if (!$('#ptName').value.trim()) {
+      toast('Give your trip a name first.');
+      $('#ptName').focus();
+      return;
+    }
+    if (!t.start) {
+      toast('Pick a start date so every day has a real date.');
+      $('#ptStart').focus();
+      return;
+    }
+    if (t.start < todayYmd() || (t.end && t.end < todayYmd())) {
+      dropPastDates(true);
+      return;
+    }
 
+    var empty = [];
+    t.days.forEach(function (d, i) {
+      if (!d.items.some(function (x) { return x.destId || x.note; })) empty.push(i + 1);
+    });
+    if (!empty.length) { persist(t); return; }
+
+    ptConfirm({
+      eyebrow: 'Empty days',
+      title: 'Some days have nothing planned',
+      body: (empty.length === 1 ? 'Day ' : 'Days ') + empty.join(', ') + ' ' +
+            (empty.length === 1 ? 'is' : 'are') + ' still empty. Save anyway?',
+      cancel: 'Go back',
+      confirm: 'Save anyway'
+    }).then(function (yes) { if (yes) persist(t); });
+  });
+
+  var saving = false;   /* blocks a double-click from posting twice */
+
+  function persist(t) {
     store.set(JSON.stringify(t));
 
     if (!SIGNED_IN) {
       toast('Saved on this device. <b>Sign in to keep it on your account.</b>');
       return;
     }
+    if (saving) return;
+    saving = true;
+    var btn = $('#ptSave');
+    if (btn) btn.disabled = true;
 
     fetch(SAVE_URL, {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(t)
     }).then(function (r) {
+      if (r.status === 400) {   /* a refusal with a reason, e.g. a past date */
+        return r.json().then(function (d) { var e = new Error('rejected'); e.userMsg = d && d.message; throw e; });
+      }
       if (!r.ok) throw new Error(r.status);
       return r.json();
     }).then(function () {
-      toast('Itinerary saved to your account.');
-    }).catch(function () {
+      try { sessionStorage.setItem('pt_just_saved', '1'); } catch (e) {}
+      window.location.reload();
+      /* hold the button disabled until the page actually unloads */
+      return new Promise(function () {});
+    }).catch(function (err) {
+      if (err && err.userMsg) { toast(err.userMsg); return; }
       toast('Saved on this device — <b>save-itinerary.php did not answer.</b>');
+    }).then(function () {
+      saving = false;
+      if (btn) btn.disabled = false;
     });
-  });
+  }
 
   /* ---------- restore, or start fresh ---------- */
   /* Named, because undo rebuilds the page from a snapshot the same
@@ -829,7 +1033,9 @@
       var acts = makeDay([]).querySelector('.pt-acts');
       (d.items && d.items.length ? d.items : [{ time: '09:00' }]).forEach(function (it) {
         var row = addRow(acts, it.time);
-        row.querySelector('.pt-note').value = it.note || '';
+        var nt = row.querySelector('.pt-note');
+        nt.value = it.note || '';
+        if (nt.value) grow(nt);
         var dd = BY_ID[it.destId];
         if (dd) {
           var p = row.querySelector('.pt-pick');
@@ -841,19 +1047,35 @@
       });
     });
     if (!daysEl.children.length) makeDay(['08:00', '12:00', '15:00']);
+    dropPastDates(false);   /* an old draft must not bring back past dates */
     renumber();
+    syncEnd();
   }
+
+  var justSaved = false;
+  try {
+    justSaved = sessionStorage.getItem('pt_just_saved') === '1';
+    sessionStorage.removeItem('pt_just_saved');
+  } catch (e) {}
 
   var raw = store.get();
   if (raw) {
     try {
       hydrate(JSON.parse(raw));
-      toast('Picked up the draft you left here.');
+      toast(justSaved ? 'Itinerary saved to your account.' : 'Picked up the draft you left here.');
     } catch (err) {
       daysEl.innerHTML = '';
       makeDay(['08:00', '12:00', '15:00']);
     }
   } else {
     makeDay(['08:00', '12:00', '15:00']);
+    if (justSaved) toast('Itinerary saved to your account.');
+  }
+
+  if (justSaved) {
+    var saved = document.getElementById('ptSaved');
+    if (saved && saved.scrollIntoView) {
+      setTimeout(function () { saved.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 250);
+    }
   }
 })();

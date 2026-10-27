@@ -143,7 +143,12 @@ function bud_context_from_data(string $dataFile): string {
         }
 
         if (!empty($d['budget_low']) || !empty($d['budget_high'])) {
-            $out[] = '  day budget: ' . trim(($d['budget_low'] ?? '') . ' to ' . ($d['budget_high'] ?? ''), ' to ');
+            /* Was trim($x, ' to '), which strips the CHARACTERS space, t
+               and o from both ends, not the word. A value ending in
+               "t" or "o" lost its last letter ("Not yet" -> "Not ye"). */
+            $bLo = trim((string) ($d['budget_low'] ?? ''));
+            $bHi = trim((string) ($d['budget_high'] ?? ''));
+            $out[] = '  day budget: ' . ($bLo !== '' && $bHi !== '' ? $bLo . ' to ' . $bHi : $bLo . $bHi);
         }
 
         /* Routes grouped by origin, so "from Manila" reads as one
@@ -260,6 +265,137 @@ function bud_context_from_file(string $dataFile): string {
 
     $out[] = '';
     $out[] = 'Send unanswered questions to the Camarines Norte Provincial Tourism Office.';
+
+    return implode("\n", $out);
+}
+
+/**
+ * What the ITINERARY prompt should know about the visitor's actual dates.
+ *
+ * Itinerary mode used to get no destination data at all, so it planned
+ * the same trip for March and for December. This hands it two things,
+ * both computed here in PHP so the model never does date arithmetic:
+ *
+ *   - for each place it may choose: best months, hours, permit, advance
+ *     booking, guide (the workbook's own words, unverified)
+ *   - any festival whose dates overlap the trip
+ *
+ * It is told to use this to CHOOSE and ORDER stops, never to quote it,
+ * because the notes rule (no hours, no prices) still stands.
+ *
+ * Returns '' when there is nothing to add, and the caller wraps it in a
+ * try/catch: if this file is missing, or its dates are in a shape this
+ * cannot read, the plan is built exactly as before.
+ *
+ * @param array $slugs slug => ['name' => ...], the places the model may use
+ */
+function bud_trip_facts(string $dataFile, array $slugs, DateTimeImmutable $start, DateTimeImmutable $end): string
+{
+    if (!is_file($dataFile)) {
+        return '';
+    }
+
+    $data  = require $dataFile;
+    $dests = is_array($data) ? (array) ($data['destinations'] ?? []) : [];
+    $fests = is_array($data) ? (array) ($data['festivals'] ?? []) : [];
+
+    $norm = static function ($s): string {
+        return (string) preg_replace('/[^a-z0-9]+/', '', strtolower((string) $s));
+    };
+    $clip = static function ($s, int $n = 90): string {
+        $s = trim((string) preg_replace('/\s+/', ' ', (string) $s));
+        return function_exists('mb_substr') ? mb_substr($s, 0, $n) : substr($s, 0, $n);
+    };
+
+    /* The months the trip touches, so the model compares month NAMES
+       rather than working out which month a date falls in. */
+    $months = [];
+    for ($m = $start->modify('first day of this month'); $m <= $end; $m = $m->modify('first day of next month')) {
+        $months[] = $m->format('F');
+    }
+    $months = array_values(array_unique($months));
+
+    /* ---- per place ---- */
+    $byName = [];
+    foreach ($dests as $d) {
+        if (is_array($d) && !empty($d['name'])) {
+            $byName[$norm($d['name'])] = $d;
+        }
+    }
+
+    $lines  = [];
+    $labels = ['best_months' => 'best months', 'hours' => 'hours', 'permit' => 'permit',
+               'booking' => 'advance booking', 'guide' => 'guide'];
+
+    foreach ($slugs as $slug => $info) {
+        $d = $byName[$norm($info['name'] ?? '')] ?? null;
+        if (!$d) {
+            continue;
+        }
+        $bits = [];
+        foreach ($labels as $k => $label) {
+            if (!empty($d[$k]) && is_scalar($d[$k])) {
+                $bits[] = $label . ': ' . $clip($d[$k]);
+            }
+        }
+        if ($bits) {
+            $lines[] = $slug . ' - ' . implode('; ', $bits);
+        }
+    }
+
+    /* ---- festivals that overlap the trip ----
+       Only strict YYYY-MM-DD dates are used. PHP will happily read
+       "2026" as a time of day, so anything looser is skipped. */
+    $during = [];
+    foreach ($fests as $f) {
+        if (!is_array($f) || empty($f['name'])) {
+            continue;
+        }
+        foreach ((array) ($f['dates'] ?? []) as $dt) {
+            $s = trim((string) ($dt['start'] ?? ''));
+            $e = trim((string) ($dt['end'] ?? ''));
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}/', $s) || ($e !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}/', $e))) {
+                continue;
+            }
+            try {
+                $fs = new DateTimeImmutable(substr($s, 0, 10), $start->getTimezone());
+                $fe = $e !== '' ? new DateTimeImmutable(substr($e, 0, 10), $start->getTimezone()) : $fs;
+            } catch (Throwable $ex) {
+                continue;
+            }
+            if ($fs <= $end && $fe >= $start) {
+                $during[] = '- ' . $f['name'] . (!empty($f['town']) ? ' (' . $f['town'] . ')' : '')
+                          . ', ' . bud_date_span(substr($s, 0, 10), $e !== '' ? substr($e, 0, 10) : null)
+                          . ' (' . ($dt['status'] ?? 'status unknown') . ')';
+            }
+        }
+    }
+
+    if (!$lines && !$during) {
+        return '';
+    }
+
+    $out   = [];
+    $out[] = 'TRIP FACTS. The visitor travels ' . $start->format('j F Y') . ' to ' . $end->format('j F Y')
+           . ' (' . implode(', ', $months) . ').';
+    $out[] = 'Everything in this block is unverified collected data. Use it only to CHOOSE and ORDER stops. '
+           . 'Never quote hours, permits or months in a note, and never tell the visitor a place is open or closed.';
+
+    if ($lines) {
+        $out[] = '';
+        $out[] = 'Per place, slug first. Prefer places whose best months include the trip months. '
+               . 'Island and boat trips depend on weather and sea conditions, so outside a place\'s best months '
+               . 'choose a land-based alternative. If you still use one, keep it to one such place and say in its '
+               . 'note, without naming months, that conditions can be less ideal then.';
+        $out = array_merge($out, array_slice($lines, 0, 30));
+    }
+
+    if ($during) {
+        $out[] = '';
+        $out[] = 'FESTIVALS DURING THE TRIP. Expect crowds and full transport in that town. You may plan around '
+               . 'one or avoid that town, but do not state ticket prices or programmes.';
+        $out = array_merge($out, array_slice(array_values(array_unique($during)), 0, 8));
+    }
 
     return implode("\n", $out);
 }
@@ -431,7 +567,11 @@ function bud_festivals(PDO $pdo): string {
            FROM festival_contacts ORDER BY is_primary DESC',
         'festival_id');
 
-    $today = new DateTimeImmutable('today');
+    /* Manila's today, like api/bud.php. The server's own timezone made
+       "starts in N days" wrong by one for eight hours of every day on
+       a UTC host. */
+    $tz    = new DateTimeZone('Asia/Manila');
+    $today = new DateTimeImmutable('today', $tz);
 
     $out   = [];
     $out[] = 'FESTIVALS';
@@ -460,7 +600,7 @@ function bud_festivals(PDO $pdo): string {
         $lastPast = null;
 
         foreach ($dates[$id] ?? [] as $d) {
-            $end = new DateTimeImmutable($d['end_date'] ?: $d['start_date']);
+            $end = new DateTimeImmutable($d['end_date'] ?: $d['start_date'], $tz);
             if ($end >= $today) {
                 if ($upcoming === null) {
                     $upcoming = $d;   // ordered by start_date, so first wins
@@ -471,7 +611,7 @@ function bud_festivals(PDO $pdo): string {
         }
 
         if ($upcoming) {
-            $start = new DateTimeImmutable($upcoming['start_date']);
+            $start = new DateTimeImmutable($upcoming['start_date'], $tz);
             $span  = bud_date_span($upcoming['start_date'], $upcoming['end_date']);
             $days  = (int) $today->diff($start)->format('%r%a');
 
@@ -565,7 +705,8 @@ function bud_context(PDO $pdo, string $cacheDir): string {
        otherwise still be served at 00:05 with yesterday's arithmetic,
        and the count would be wrong by one all morning. A new day means
        a new file; the old ones are harmless. */
-    $cacheFile = rtrim($cacheDir, '/') . '/bud-context-' . date('Y-m-d') . '.txt';
+    $cacheFile = rtrim($cacheDir, '/') . '/bud-context-'
+               . (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d') . '.txt';
 
     if (is_file($cacheFile) && (time() - filemtime($cacheFile)) < BUD_CONTEXT_TTL) {
         $cached = file_get_contents($cacheFile);

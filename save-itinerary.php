@@ -91,6 +91,49 @@ try {
 
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
+/* ---------- posts from other sites ----------
+   Browsers attach the session cookie to a form that another site
+   submits, so without this a page anywhere could make a signed-in
+   visitor save or delete trips. A POST must say it came from this
+   host. A request with no Origin and no Referer at all (older tools,
+   privacy settings that strip both) is let through rather than
+   locked out.
+
+   If a proxy or CDN ever makes this refuse your own site, set the
+   constant to false while you look into it. */
+const IT_CHECK_ORIGIN = true;
+
+function it_same_origin(): bool
+{
+    $src = $_SERVER['HTTP_ORIGIN'] ?? '';
+    if ($src === '') {
+        $src = $_SERVER['HTTP_REFERER'] ?? '';
+    }
+    if ($src === '') {
+        return true;
+    }
+
+    $host = parse_url((string) $src, PHP_URL_HOST);
+    if (!is_string($host) || $host === '') {
+        return false;      // "null" and other unreadable origins
+    }
+
+    $mine = [];
+    foreach (['HTTP_HOST', 'HTTP_X_FORWARDED_HOST'] as $k) {
+        if (!empty($_SERVER[$k])) {
+            foreach (explode(',', (string) $_SERVER[$k]) as $h) {
+                $mine[] = strtolower(preg_replace('/:\d+$/', '', trim($h)));
+            }
+        }
+    }
+    return in_array(strtolower($host), $mine, true);
+}
+
+if (IT_CHECK_ORIGIN && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !it_same_origin()) {
+    it_respond(['ok' => false, 'error' => 'bad_origin',
+                'message' => 'That request did not come from this site.'], 403);
+}
+
 /* ---------- slug -> destination id ----------
    plan-trip.js speaks slugs, the database speaks ids, and the slug is
    built the same way in plan-trip.php: lowercase "town name", every
@@ -304,11 +347,67 @@ $name = it_cut($name, 160);
 function it_date($v): ?string
 {
     $v = trim((string) $v);
-    return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) ? $v : null;
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $v, $m)) {
+        return null;
+    }
+    /* 2026-02-31 fits the pattern but is not a day. Without this it went
+       to the database, which refused it, and the visitor saw a generic
+       "something went wrong". checkdate() makes it null instead. */
+    return checkdate((int) $m[2], (int) $m[3], (int) $m[1]) ? $v : null;
 }
 
-$start = it_date($body['start'] ?? '');
-$end   = it_date($body['end'] ?? '');
+/* The manual builder posts start / end. Bud's plan carries the same two
+   dates as startDate / endDate, and before this fallback they were read
+   as nothing, so every Bud trip was saved with no dates at all. */
+$start = it_date($body['start'] ?? $body['startDate'] ?? '');
+$end   = it_date($body['end']   ?? $body['endDate']   ?? '');
+
+/* ---------- no trips in the past ----------
+   plan-trip.js blocks past dates, but this endpoint is public and
+   takes whatever is posted, so it checks again. Same zone as
+   api/bud.php, so "today" means the same day in both. ISO dates
+   compare correctly as plain strings. */
+$itToday = (new DateTimeImmutable('today', new DateTimeZone('Asia/Manila')))->format('Y-m-d');
+
+$itPast = ($start !== null && $start < $itToday) || ($end !== null && $end < $itToday);
+if ($end !== null && $start !== null && $end < $start) {
+    it_respond(['ok' => false, 'error' => 'bad_range',
+                'message' => 'The end date is before the start date.'], 400);
+}
+if (is_array($body['days'] ?? null)) {
+    foreach ($body['days'] as $d) {
+        $dd = is_array($d) ? it_date($d['date'] ?? '') : null;
+        if ($dd !== null && $dd < $itToday) {
+            $itPast = true;
+            break;
+        }
+    }
+}
+if ($itPast) {
+    it_respond(['ok' => false, 'error' => 'past_date',
+                'message' => 'That trip has dates that already passed. Pick today or a later day.'], 400);
+}
+
+/* ---------- and not absurdly far ahead ----------
+   9999-12-31 is a valid date and a useless trip. Three years is more
+   than any real plan needs. */
+$itLimit = (new DateTimeImmutable('today', new DateTimeZone('Asia/Manila')))
+    ->modify('+1095 days')->format('Y-m-d');
+
+$itFar = ($start !== null && $start > $itLimit) || ($end !== null && $end > $itLimit);
+if (!$itFar && is_array($body['days'] ?? null)) {
+    foreach ($body['days'] as $d) {
+        $dd = is_array($d) ? it_date($d['date'] ?? '') : null;
+        if ($dd !== null && $dd > $itLimit) {
+            $itFar = true;
+            break;
+        }
+    }
+}
+if ($itFar) {
+    it_respond(['ok' => false, 'error' => 'too_far',
+                'message' => 'That date is too far ahead. Pick a date within the next three years.'], 400);
+}
 
 $travelers = (int) ($body['travelers'] ?? 1);
 if ($travelers < 1)  { $travelers = 1; }

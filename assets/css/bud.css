@@ -575,6 +575,13 @@
 
 .bud__input::placeholder{ color:rgba(255,255,255,.38); }
 
+/* iOS Safari zooms the whole page when an input under 16px takes focus,
+   and does not zoom back out. Touch screens only, so desktop keeps the
+   smaller size. */
+@media (hover:none) and (pointer:coarse){
+  .bud .bud__input{ font-size:16px; }
+}
+
 .bud__input:focus{
   outline:none;
   border-color:var(--orange, #FF6E00);

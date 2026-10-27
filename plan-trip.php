@@ -184,12 +184,14 @@ $ptSignedIn = isset($_SESSION['user_id']);
          its own rows rather than calling save-itinerary.php, so the
          panel is complete on first paint and does not depend on
          plan-trip.js having loaded. -->
+    <div id="ptSaved">
     <?php
     $ptAiPanel = pt_find('ai-itineraries.php');
     if ($ptAiPanel !== null) {
         require $ptAiPanel;
     }
     ?>
+    </div><!-- #ptSaved: plan-trip.js swaps this block after a save -->
 
     <!-- ---------- TRIP DETAILS ---------- -->
     <section class="pt-card">
@@ -205,11 +207,11 @@ $ptSignedIn = isset($_SESSION['user_id']);
         </div>
         <div class="pt-field">
           <label for="ptStart">Start date</label>
-          <input id="ptStart" type="date">
+          <input id="ptStart" type="date" min="<?= date('Y-m-d') ?>">
         </div>
         <div class="pt-field">
           <label for="ptEnd">End date</label>
-          <input id="ptEnd" type="date">
+          <input id="ptEnd" type="date" min="<?= date('Y-m-d') ?>">
         </div>
         <div class="pt-field">
           <label for="ptTravelers">Travellers</label>
